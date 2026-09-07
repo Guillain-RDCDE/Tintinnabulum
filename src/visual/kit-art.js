@@ -287,6 +287,118 @@ const MOTIFS = {
       ctx.stroke();
     }
   },
+
+  // --- the ambiences -----------------------------------------------------
+  // These three are places rather than instruments, so the motifs are
+  // landscapes: a horizon, and something happening on it.
+
+  // A shore: bands of swell, one of them breaking into foam.
+  shore(ctx, w, h, c) {
+    const horizon = h * 0.42;
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = c.deep;
+    ctx.fillRect(0, horizon, w, h - horizon);
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 5; i++) {
+      const y = horizon + (h - horizon) * (0.12 + i * 0.2);
+      ctx.globalAlpha = 0.3 + i * 0.13;
+      ctx.strokeStyle = i === 3 ? c.bright : c.accent;
+      ctx.lineWidth = 1 + i * 0.6;
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 4) {
+        // Each band is a little longer in wavelength than the one behind it,
+        // which is what reads as distance.
+        const yy = y + Math.sin((x / w) * Math.PI * (5 - i) + i) * (1.5 + i * 1.4);
+        if (x === 0) ctx.moveTo(x, yy);
+        else ctx.lineTo(x, yy);
+      }
+      ctx.stroke();
+    }
+    // Foam on the breaking band.
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = c.bright;
+    for (let i = 0; i < 14; i++) {
+      const x = ((i * 37) % 100) / 100 * w;
+      ctx.beginPath();
+      ctx.arc(x, horizon + (h - horizon) * 0.72 + ((i * 13) % 5) - 2, 1.1, 0, TAU);
+      ctx.fill();
+    }
+  },
+
+  // A fire: a bed of embers, flames above, sparks leaving.
+  fire(ctx, w, h, c) {
+    const base = h * 0.86;
+    ctx.globalAlpha = 0.85;
+    for (let i = 0; i < 3; i++) {
+      const x = w * (0.32 + i * 0.18);
+      const tall = h * (0.34 + ((i * 7) % 3) * 0.12);
+      const grad = ctx.createLinearGradient(x, base, x, base - tall);
+      grad.addColorStop(0, c.hot);
+      grad.addColorStop(1, c.bg);
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.moveTo(x - 9, base);
+      ctx.quadraticCurveTo(x - 4, base - tall * 0.55, x, base - tall);
+      ctx.quadraticCurveTo(x + 5, base - tall * 0.5, x + 9, base);
+      ctx.closePath();
+      ctx.fill();
+    }
+    ctx.globalAlpha = 0.75;
+    ctx.strokeStyle = c.deep;
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    for (const [x1, x2, y] of [[0.2, 0.55, 0.97], [0.45, 0.82, 0.93]]) {
+      ctx.beginPath();
+      ctx.moveTo(w * x1, h * y);
+      ctx.lineTo(w * x2, h * (y - 0.04));
+      ctx.stroke();
+    }
+    ctx.fillStyle = c.hot;
+    for (let i = 0; i < 9; i++) {
+      ctx.globalAlpha = 0.9 - i * 0.08;
+      ctx.beginPath();
+      ctx.arc(w * (0.3 + ((i * 23) % 50) / 100), h * (0.42 - i * 0.035), 1.3, 0, TAU);
+      ctx.fill();
+    }
+  },
+
+  // A marsh at night: reeds, a low moon, and the water taking its light.
+  camargue(ctx, w, h, c) {
+    const water = h * 0.66;
+    ctx.globalAlpha = 0.9;
+    ctx.fillStyle = c.bright;
+    ctx.beginPath();
+    ctx.arc(w * 0.74, h * 0.3, Math.min(w, h) * 0.11, 0, TAU);
+    ctx.fill();
+    ctx.globalAlpha = 0.28;
+    ctx.fillStyle = c.deep;
+    ctx.fillRect(0, water, w, h - water);
+    // The moon's reflection, broken into bands by the surface.
+    ctx.globalAlpha = 0.5;
+    ctx.strokeStyle = c.bright;
+    ctx.lineWidth = 1.4;
+    for (let i = 0; i < 5; i++) {
+      const y = water + 4 + i * 5;
+      const half = (w * 0.09) * (1 - i * 0.13);
+      ctx.beginPath();
+      ctx.moveTo(w * 0.74 - half, y);
+      ctx.lineTo(w * 0.74 + half, y);
+      ctx.stroke();
+    }
+    // Reeds against it.
+    ctx.globalAlpha = 0.85;
+    ctx.strokeStyle = c.accent;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 11; i++) {
+      const x = w * (0.05 + i * 0.055);
+      const tall = h * (0.26 + ((i * 17) % 5) * 0.07);
+      ctx.lineWidth = 1 + ((i * 3) % 2) * 0.8;
+      ctx.beginPath();
+      ctx.moveTo(x, h);
+      ctx.quadraticCurveTo(x + 3, h - tall * 0.6, x + 7 + ((i * 5) % 3), h - tall);
+      ctx.stroke();
+    }
+  },
 };
 
 /** Anything without a motif of its own gets a plain, legible fallback. */

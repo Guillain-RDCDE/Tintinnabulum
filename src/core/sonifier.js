@@ -3,7 +3,7 @@ import { Mapper } from './mapper.js';
 import { VoicePool } from './voices.js';
 import { AudioEngine } from '../audio/engine.js';
 import { AudioSink } from '../audio/audio-sink.js';
-import { hatnoteKit, synthKit, makeKit } from '../audio/instruments.js';
+import { hatnoteKit, synthKit, makeKit, KITS } from '../audio/instruments.js';
 
 // The facade. Sources push in, sinks read out, and the mapper sits in the
 // middle deciding what each magnitude sounds like.
@@ -106,6 +106,13 @@ export class Sonifier {
       status.fellBackToSynth = status.usable;
     }
 
+    // A bed chosen while the context was still blocked has been waiting for
+    // permission to make a sound. This is where it gets it.
+    if (running && this._pendingBed !== undefined) {
+      this.audio.setBed(this._pendingBed);
+      this._pendingBed = null;
+    }
+
     this.audioStatus = {
       running,
       audible: running && status.usable,
@@ -124,11 +131,18 @@ export class Sonifier {
    */
   async setKit(kit) {
     const built = typeof kit === 'string' ? makeKit(kit) : kit;
+    // An ambience carries a continuous bed as well as its instruments, and the
+    // bed belongs to the kit: swapping kits must silence the sea before the
+    // fire starts. A kit that names no bed clears whatever was running.
+    const bed = typeof kit === 'string' && KITS[kit] ? KITS[kit].bed || null : null;
     if (this.engine.locked) {
       this.audio.setKit(built); // nothing can sound yet anyway
+      this._pendingBed = bed;
       return this;
     }
     await this.audio.loadKit(built);
+    this.audio.setBed(bed);
+    this._pendingBed = null;
     return this;
   }
 

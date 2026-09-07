@@ -2,6 +2,7 @@
 
 import { SampleInstrument } from './sample-instrument.js';
 import { SynthInstrument } from './synth-instrument.js';
+import { AMBIENCES } from './ambiences.js';
 
 
 // Resolved from this module's own location rather than the site root, so the
@@ -44,9 +45,14 @@ export function synthKit(opts = {}) {
 /** Shorthand for a kit made of three presets. */
 function trio(addP, subP, accentP, o = {}) {
   return () => ({
-    add: new SynthInstrument({ name: addP, preset: addP, baseFreq: o.baseFreq }),
-    sub: new SynthInstrument({ name: subP, preset: subP, baseFreq: o.baseFreq }),
-    accent: new SynthInstrument({ name: accentP, preset: accentP, baseFreq: 130.81, gain: 0.3 }),
+    // Per-voice gain matters more for the ambiences than for the instruments:
+    // a wave and a tick of foam are the same event seen from different
+    // distances, and balancing them is most of what makes a place convincing.
+    add: new SynthInstrument({ name: addP, preset: addP, baseFreq: o.baseFreq, ...(o.add ? { gain: o.add } : {}) }),
+    sub: new SynthInstrument({ name: subP, preset: subP, baseFreq: o.baseFreq, ...(o.sub ? { gain: o.sub } : {}) }),
+    accent: new SynthInstrument({
+      name: accentP, preset: accentP, baseFreq: 130.81, gain: o.accent ?? 0.3,
+    }),
   });
 }
 
@@ -115,6 +121,33 @@ export const KITS = {
     label: 'Night',
     note: 'Crickets ticking over a low owl, with the wind for the rare events. Sparse feeds suit it best.',
     make: trio('cricket', 'owl', 'breeze'),
+  },
+
+  // --- ambiences ---------------------------------------------------------
+  // These carry a `bed` as well as instruments. The bed is continuous and
+  // answers how busy the feed is; the instruments answer single events. Both
+  // read the same data, which is what makes an ambience a second reading of it
+  // rather than a costume over the first.
+  shore: {
+    label: 'Seashore',
+    note: AMBIENCES.shore.note,
+    ambience: true,
+    bed: 'shore',
+    make: trio('wave', 'undertow', 'gull', { add: 0.5, sub: 0.45, accent: 0.22 }),
+  },
+  fire: {
+    label: 'Forest fire',
+    note: AMBIENCES.fire.note,
+    ambience: true,
+    bed: 'fire',
+    make: trio('crackle', 'logfall', 'gust', { add: 0.5, sub: 0.6, accent: 0.3 }),
+  },
+  camargue: {
+    label: 'Camargue night',
+    note: AMBIENCES.camargue.note,
+    ambience: true,
+    bed: 'camargue',
+    make: trio('croak', 'reed', 'heron', { add: 0.4, sub: 0.35, accent: 0.2 }),
   },
 };
 

@@ -764,6 +764,111 @@ const played = await page.evaluate(async () => {
 });
 ok('playing the mapped events reaches the engine', played >= 2, `${played} received`);
 
+
+// --- ambiences: a bed, and voices made of noise -------------------------
+// The noise engine and the continuous bed are the two things the audio side
+// could not do before. Both are measured through an OfflineAudioContext, so a
+// silent ambience fails here rather than being discovered by ear.
+const ambience = await page.evaluate(async () => {
+  const { SynthInstrument, Bed, AMBIENCES, KITS } = await import('../src/index.js');
+
+  // Every noise preset must actually make a sound, and a loud one.
+  const peaks = {};
+  for (const preset of ['wave', 'undertow', 'foam', 'crackle', 'logfall', 'gust', 'reed']) {
+    const off = new OfflineAudioContext(1, 44100 * 3, 44100);
+    const inst = new SynthInstrument({ name: preset, preset });
+    inst.play(off, off.destination, { semitone: 0, velocity: 1, when: 0 });
+    const buf = await off.startRendering();
+    const d = buf.getChannelData(0);
+    let peak = 0;
+    for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+    peaks[preset] = Number(peak.toFixed(4));
+  }
+
+  // Noise must be noise: a filtered oscillator would show a strong single
+  // period. Count zero crossings -- broadband noise crosses constantly.
+  const off = new OfflineAudioContext(1, 44100, 44100);
+  const foam = new SynthInstrument({ name: 'foam', preset: 'foam' });
+  foam.play(off, off.destination, { semitone: 0, velocity: 1, when: 0 });
+  const fb = (await off.startRendering()).getChannelData(0);
+  let crossings = 0;
+  for (let i = 1; i < 4000; i++) if ((fb[i - 1] < 0) !== (fb[i] < 0)) crossings++;
+
+  // The bed: continuous, and louder when the world is busy.
+  const quiet = new OfflineAudioContext(1, 44100 * 4, 44100);
+  const b1 = new Bed(AMBIENCES.shore);
+  b1.start(quiet, quiet.destination);
+  b1.setDensity(0);
+  const qb = (await quiet.startRendering()).getChannelData(0);
+
+  const busy = new OfflineAudioContext(1, 44100 * 4, 44100);
+  const b2 = new Bed(AMBIENCES.shore);
+  b2.start(busy, busy.destination);
+  b2.setDensity(1);
+  const bb = (await busy.startRendering()).getChannelData(0);
+
+  // Measure the last second, after the fade-in and after the density ramp.
+  const rms = (d) => {
+    let s = 0;
+    for (let i = d.length - 44100; i < d.length; i++) s += d[i] * d[i];
+    return Math.sqrt(s / 44100);
+  };
+
+  // Density from a rate, not set by hand.
+  const counter = new Bed(AMBIENCES.camargue);
+  const now = Date.now();
+  for (let i = 0; i < 30; i++) counter.observe(now - i * 100);
+  const fromRate = counter.density;
+
+  return {
+    peaks,
+    crossings,
+    quiet: Number(rms(qb).toFixed(5)),
+    busy: Number(rms(bb).toFixed(5)),
+    fromRate: Number(fromRate.toFixed(3)),
+    ambienceKits: Object.entries(KITS).filter(([, k]) => k.ambience).map(([n, k]) => [n, k.bed]),
+    rateNow: counter.eventsPerSecond,
+    // Same counter, told about something an hour old: it must not count it.
+    rateStale: (() => { counter.observe(now - 3600000); return counter.eventsPerSecond; })(),
+    forgets: (() => counter.eventsPerSecond <= 3.1)(),
+  };
+});
+
+const silent = Object.entries(ambience.peaks).filter(([, p]) => p < 0.01);
+ok('every noise preset actually sounds', silent.length === 0,
+   silent.map(([n, p]) => `${n}=${p}`).join(', ') || JSON.stringify(ambience.peaks));
+ok('the noise engine makes noise, not a filtered tone',
+   ambience.crossings > 400, ambience.crossings + ' zero crossings in 4000 samples');
+ok('the bed sounds continuously', ambience.quiet > 0.0005, 'rms=' + ambience.quiet);
+ok('and it rises with how busy the feed is',
+   ambience.busy > ambience.quiet * 1.5, `quiet=${ambience.quiet} busy=${ambience.busy}`);
+ok('density is derived from the event rate',
+   ambience.fromRate > 0.5 && ambience.fromRate <= 1, String(ambience.fromRate));
+// The counter is a rolling window, not a total. Without this a feed that was
+// once busy would keep the sea up for the rest of the session.
+ok('and the rate window forgets what has passed',
+   ambience.forgets, `${ambience.rateNow.toFixed(1)}/s now, ${ambience.rateStale.toFixed(1)}/s after a minute`);
+ok('three ambiences ship, each naming its bed',
+   ambience.ambienceKits.length === 3 && ambience.ambienceKits.every(([, b]) => b),
+   JSON.stringify(ambience.ambienceKits));
+
+// Choosing an ambience starts its bed; choosing an ordinary kit stops it.
+const bedSwap = await page.evaluate(async () => {
+  const son = window.son;
+  await son.setKit('shore');
+  const onShore = son.audio.bed && son.audio.bed.name;
+  await son.setKit('fire');
+  const onFire = son.audio.bed && son.audio.bed.name;
+  await son.setKit('synth');
+  const afterPlain = son.audio.bed;
+  await son.setKit('hatnote');
+  return { onShore, onFire, afterPlain };
+});
+ok('choosing an ambience starts its bed', bedSwap.onShore === 'shore', String(bedSwap.onShore));
+ok('choosing another swaps it rather than stacking', bedSwap.onFire === 'fire', String(bedSwap.onFire));
+ok('choosing an ordinary kit silences it', bedSwap.afterPlain === null, String(bedSwap.afterPlain));
+
+
 // --- voice stealing under real load -------------------------------------
 const flood = await page.evaluate(async () => {
   const son = window.son;

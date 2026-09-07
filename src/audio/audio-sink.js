@@ -1,4 +1,6 @@
 import { VoicePool } from '../core/voices.js';
+import { Bed } from './bed.js';
+import { AMBIENCES } from './ambiences.js';
 
 // Turns mapped events into sound. Instrument choice is: category override
 // first, then polarity. Accents bypass the voice pool entirely, because a rare
@@ -18,6 +20,9 @@ export class AudioSink {
     this.minGap = opts.minGap ?? 0;
     this._pending = null;
     this._timer = null;
+    // An ambience's continuous layer. Null for every ordinary kit, which is
+    // most of them, so nothing here costs anything unless one is chosen.
+    this.bed = null;
     this._lastAt = 0;
     this.stats = { played: 0, dropped: 0, passedOver: 0 };
   }
@@ -103,6 +108,31 @@ export class AudioSink {
 
   setKit(kit) {
     this.kit = kit;
+    return this;
+  }
+
+  /**
+   * Give this sink an ambience's bed, or take the current one away.
+   *
+   * The bed belongs to the kit, so it is swapped with it: choosing Bells after
+   * Seashore must silence the sea, and choosing Seashore twice must not start
+   * two of them.
+   */
+  setBed(name) {
+    if (this.bed && this.bed.name === name) return this;
+    if (this.bed) {
+      this.bed.stop();
+      this.bed = null;
+    }
+    const spec = name && AMBIENCES[name];
+    if (!spec) return this;
+    this.bed = new Bed(spec);
+    try {
+      this.bed.start(this.engine.ctx, this.engine.destination);
+    } catch (e) {
+      console.warn('bed failed to start', e);
+      this.bed = null;
+    }
     return this;
   }
 
@@ -197,6 +227,10 @@ export class AudioSink {
 
   handle(ev) {
     if (!this.enabled || ev.dimmed || !ev.map) return false;
+    // The bed is told about every event, even one that will not be sounded.
+    // It measures how busy the world is, and a note dropped by restraint or by
+    // voice stealing still happened.
+    if (this.bed) this.bed.observe(ev.ts || Date.now());
     if (!this.minGap) return this._play(ev);
 
     const t = typeof performance !== 'undefined' ? performance.now() : Date.now();

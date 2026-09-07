@@ -83,4 +83,68 @@ export const SYNTH_PRESETS = {
     engine: 'sub', wave: 'sawtooth', attack: 0.5, decay: 2.6,
     cutoff: 520, cutoffDecay: 2.0, q: 1, detune: 14, octave: -7,
   },
+
+  // --- filtered noise: the ambiences ------------------------------------
+  // These are not notes. The mapper's pitch still reaches them, but it moves
+  // the filter rather than an oscillator, so a large event breaks deeper and a
+  // small one ticks lighter -- the mapping survives even though nothing is
+  // tuned. See the `noise` engine in synth-instrument.js.
+
+  // A wave arriving: a slow gather, then a long fall as the filter closes.
+  wave: {
+    engine: 'noise', colour: 'pink', attack: 0.35, decay: 2.6,
+    cutoff: 1800, cutoffRatio: 0.08, cutoffDecay: 2.4, q: 0.9, octave: -6,
+  },
+  // The water going back out. The filter opens instead of closing, which is
+  // the whole difference between a break and a drag.
+  undertow: {
+    engine: 'noise', colour: 'pink', attack: 0.6, decay: 2.2,
+    cutoff: 200, cutoffRatio: 6, cutoffDecay: 1.8, q: 1.2, octave: -6,
+  },
+  // Foam and shingle: a scatter of very short, very high ticks.
+  foam: {
+    engine: 'noise', colour: 'white', filter: 'highpass', attack: 0.002, decay: 0.16,
+    cutoff: 4200, cutoffRatio: 1.6, cutoffDecay: 0.14, q: 0.7, octave: 6,
+  },
+  // A gull, a long way off. FM, because a cry has harmonics a filter cannot make.
+  gull: {
+    engine: 'fm', wave: 'sine', ratio: 1.51, index: 90, indexDecay: 0.35,
+    attack: 0.03, decay: 0.9, sweep: 1.7, sweepTime: 0.25,
+    vibrato: { rate: 11, depth: 0.03 }, octave: 19,
+  },
+
+  // A single crack in a fire: a few milliseconds, and a resonance from the wood.
+  crackle: {
+    engine: 'noise', colour: 'white', filter: 'bandpass', attack: 0.001, decay: 0.09,
+    cutoff: 2600, cutoffRatio: 0.5, cutoffDecay: 0.07, q: 5,
+    formant: 1800, formantQ: 9, formantMix: 0.5, octave: 4,
+  },
+  // A log settling: the low half of the same event.
+  logfall: {
+    engine: 'noise', colour: 'brown', attack: 0.004, decay: 1.1,
+    cutoff: 420, cutoffRatio: 0.2, cutoffDecay: 0.9, q: 2.5, octave: -12,
+  },
+  // Wind moving through the canopy, with the whistle a formant gives it.
+  gust: {
+    engine: 'noise', colour: 'pink', attack: 1.1, decay: 3.4,
+    cutoff: 900, cutoffRatio: 0.35, cutoffDecay: 3.0, q: 1.4,
+    formant: 1400, formantQ: 4, formantMix: 0.35, octave: -4,
+  },
+
+  // A frog: a short pulse train, made by a fast vibrato on a low FM voice.
+  croak: {
+    engine: 'fm', wave: 'sine', ratio: 2.02, index: 140, indexDecay: 0.12,
+    attack: 0.008, decay: 0.28, sweep: 0.85, sweepTime: 0.06,
+    vibrato: { rate: 34, depth: 0.22 }, octave: -5,
+  },
+  // Reeds brushing: dry, narrow, brief.
+  reed: {
+    engine: 'noise', colour: 'white', filter: 'bandpass', attack: 0.02, decay: 0.4,
+    cutoff: 3200, cutoffRatio: 0.7, cutoffDecay: 0.35, q: 7, octave: 8,
+  },
+  // A heron, far across the water. Rare on purpose.
+  heron: {
+    engine: 'fm', wave: 'sine', ratio: 1.24, index: 210, indexDecay: 0.5,
+    attack: 0.02, decay: 1.4, sweep: 1.35, sweepTime: 0.35, octave: 7,
+  },
 };

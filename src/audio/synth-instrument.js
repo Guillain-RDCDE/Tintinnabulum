@@ -2,6 +2,7 @@
 
 import { Instrument } from './instrument.js';
 import { SYNTH_PRESETS } from './presets.js';
+import { noiseSource } from './noise.js';
 
 export class SynthInstrument extends Instrument {
   constructor({ name = 'synth', preset = 'bell', baseFreq = 261.63, gain = 0.35, ...overrides } = {}) {
@@ -56,7 +57,36 @@ export class SynthInstrument extends Instrument {
       nodes.push(lfo);
     };
 
-    if (p.engine === 'fm') {
+    if (p.engine === 'noise') {
+      // Filtered noise: a wave breaking, an ember cracking, a gust. The note's
+      // pitch still matters -- it moves the filter, not an oscillator -- so a
+      // large event is a deeper break and a small one a lighter tick, and the
+      // mapper's work is not thrown away just because nothing here is tuned.
+      const src = noiseSource(ctx, p.colour || 'pink');
+      const filt = ctx.createBiquadFilter();
+      filt.type = p.filter || 'lowpass';
+      filt.Q.value = p.q ?? 1;
+
+      const centre = Math.min(18000, Math.max(40, (p.cutoff ?? 1200) * (freq / this.baseFreq)));
+      const target = Math.min(18000, Math.max(40, centre * (p.cutoffRatio ?? 0.25)));
+      filt.frequency.setValueAtTime(centre, t0);
+      filt.frequency.exponentialRampToValueAtTime(target, t0 + (p.cutoffDecay || decay));
+
+      let out = src.connect(filt);
+      // A second, narrow band on top is what turns flat noise into something
+      // with a voice: the resonant whistle in a gust, the hiss of foam.
+      if (p.formant) {
+        const band = ctx.createBiquadFilter();
+        band.type = 'bandpass';
+        band.frequency.value = Math.min(18000, p.formant * (freq / this.baseFreq));
+        band.Q.value = p.formantQ ?? 6;
+        const mix = ctx.createGain();
+        mix.gain.value = p.formantMix ?? 0.5;
+        filt.connect(band).connect(mix).connect(amp);
+      }
+      out.connect(amp);
+      nodes.push(src);
+    } else if (p.engine === 'fm') {
       const car = ctx.createOscillator();
       car.type = p.wave;
       bend(car.frequency, freq);

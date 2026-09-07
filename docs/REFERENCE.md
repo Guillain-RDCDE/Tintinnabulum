@@ -10,13 +10,13 @@ Open the sandbox and change one thing at a time.
 
 | | |
 |---|---|
-| **Sound → Water** | The same events as drops in a cavity. Eleven of the twelve kits are pure synthesis: no audio files at all. |
+| **Sound → Water** | The same events as drops in a cavity. Fourteen of the fifteen kits are pure synthesis: no audio files at all. |
 | **Sound → Gongs** | Pair it with Earthquakes. Long, slow, inharmonic. |
 | **Sound → Scale → pentatonic** | Notes snap to five. It stops sounding arbitrary and starts sounding composed. |
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Look** | Seventeen visualisations and seventeen palettes. Marks already on screen recolour at once. |
+| **Look** | Twenty-one visualisations and seventeen palettes. Marks already on screen recolour at once. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -209,7 +209,7 @@ nothing beyond `node:http`.
 Implement `load(ctx)` and `play(ctx, dest, {semitone, velocity})` and you have a
 new instrument.
 
-Twelve kits ship, selectable at runtime.
+Fifteen kits ship, selectable at runtime. Three of them are places rather than instruments.
 
 | Kit | Sound |
 |---|---|
@@ -226,7 +226,7 @@ Twelve kits ship, selectable at runtime.
 | **Dawn chorus** | Birdsong, built from swept whistles rather than recordings |
 | **Night** | Crickets and low wind. The quietest thing here |
 
-Only the first uses audio files. **The other eleven are pure synthesis: nothing
+Only the first uses audio files. **The other fourteen are pure synthesis: nothing
 to download, nothing to license, and they work offline.**
 
 - `SampleInstrument` plays recorded banks, resampled through `playbackRate`, so
@@ -341,11 +341,71 @@ were on screen.
 The test suite floods the renderer with thousands of events per scene and
 asserts that nothing exceeds its budget.
 
+### Ambiences
+
+Twelve of the kits are instruments: one event, one note. Three are places.
+
+| | |
+|---|---|
+| **Seashore** | A swell that rises with the feed, waves breaking on the large events, foam on the small ones. A gull, rarely. |
+| **Forest fire** | A rumble that grows, cracks on every event, a log giving way on the large ones, wind through the tops. |
+| **Camargue night** | Crickets, a low warmth off the marsh, frogs on the events, reeds on the small ones. A heron, once in a long while. |
+
+An ambience reads the data **twice**, and that is the whole idea rather than a
+costume over the old one.
+
+- **The bed** answers *density*: how much is happening, measured over a rolling
+  ten seconds. A quiet feed is a distant swell; a busy one is a sea getting up.
+  Nothing about it is triggered — it runs continuously, and only its loudness
+  and colour move, over seconds rather than instantly. A bed that jumped with
+  the rate would be a volume control being turned; one that takes four seconds
+  to answer is weather.
+- **The voices** answer single *events*, exactly as an instrument kit does.
+
+So the aggregate becomes texture and the individual event stays a detail inside
+it. The bed is told about every event, including ones restraint or voice
+stealing will not sound: a note that was dropped still happened, and the weather
+should know.
+
+This needed a third synthesis engine. Everything before it came from an
+oscillator — which is why the old `breeze` is a detuned sawtooth under a filter,
+a *pitched* approximation of wind. Surf, fire, rain and reeds are not pitched at
+all; they are filtered noise ([`src/audio/noise.js`](../src/audio/noise.js)).
+White, pink and brown buffers are generated once per context and looped, because
+two seconds of noise is a few million random numbers and making one per note
+would be heard as a stutter.
+
+```js
+son.setKit('shore');            // starts the bed with the kit
+son.audio.bed.density;          // 0..1, what the sea currently thinks
+son.setKit('bells');            // and silences it again
+```
+
 ### Visualisations
 
-A scene decides what a moment of data looks like. Seventeen ship — the four
+A scene decides what a moment of data looks like. Twenty-one ship — the four
 below join Bloom, Constellation, Flow field, Ripples, Grid, Truchet, Orbits,
-Rain, Radar, Spiral, Tree rings, Terrain and Skyline:
+Rain, Radar, Spiral, Tree rings, Terrain, Skyline, and four taken from the
+canon of generative art:
+
+| | |
+|---|---|
+| **Chladni** | The nodal lines of a vibrating plate, after Ernst Chladni, 1787 — sand settles where the plate is still. The literal image of sound, which is what this project is. Each event retunes the plate and the figure walks to its new shape. |
+| **10 PRINT** | `PRINT CHR$(205.5+RND(1))` — one line of Commodore BASIC from 1982, and the maze it draws forever. Truchet's sibling: each event flips one tile. |
+| **Substrate** | Cracks that travel until they meet another, then split off at right angles. After Jared Tarbell, 2003. The longer it runs the more it looks like a city nobody planned. |
+| **Reaction** | Gray-Scott: two substances, one feeding on the other. Turing's 1952 account of how a uniform thing becomes a patterned one. Each event drops reagent in and the pattern eats outward. |
+
+They were chosen on one criterion. Truchet is the scene people stop on, and the
+reason is that it **accumulates**: the picture is the history of the feed rather
+than its present moment, so leaving it running produces something. A scene that
+fades only ever shows the last few seconds.
+
+Two of them paint through an offscreen canvas rather than stroking every frame —
+a plate mode is a hundred thousand samples and a reaction grid is thirty
+thousand cells, and neither can be redrawn sixty times a second in this budget.
+They are computed when they change and blitted when they do not.
+
+The others:
 
 | Scene | What it draws |
 |---|---|
@@ -455,12 +515,15 @@ src/audio/
   synth-instrument.js   FM and subtractive engines, vibrato, pitch bend
   presets.js            timbres as data
   kits.js               named kits, and makeKit for your own
+  noise.js              white, pink and brown buffers, made once per context
+  bed.js                the continuous layer, driven by event density
+  ambiences.js          the three places, described as layers
   instruments.js        the barrel the rest of the library imports
   audio-sink.js         routing events to voices
   recorder-sink.js      offline rendering to WAV
 src/visual/
   canvas-sink.js        the canvas loop
-  scenes/               marks, fields, structures, physical, budget -- one file per family
+  scenes/               marks, fields, structures, physical, generative, budget
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation
   shapes.js             mark geometry

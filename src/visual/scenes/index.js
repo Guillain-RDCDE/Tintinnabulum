@@ -27,6 +27,7 @@ import { MARK_SCENES } from './marks.js';
 import { FIELD_SCENES } from './fields.js';
 import { STRUCTURE_SCENES } from './structures.js';
 import { PHYSICAL_SCENES } from './physical.js';
+import { GENERATIVE_SCENES } from './generative.js';
 
 export { noise2 } from './noise.js';
 
@@ -35,6 +36,7 @@ export const SCENES = {
   ...FIELD_SCENES,
   ...STRUCTURE_SCENES,
   ...PHYSICAL_SCENES,
+  ...GENERATIVE_SCENES,
 };
 
 export const SCENE_NAMES = Object.keys(SCENES);
