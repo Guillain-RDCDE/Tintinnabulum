@@ -65,7 +65,13 @@ async function launch() {
 }
 
 const browser = await launch();
-const page = await browser.newPage();
+// An explicit context rather than browser.newPage(). The projection check needs
+// a second window that shares this one's origin and storage -- that is what
+// BroadcastChannel talks across -- and the implicit context browser.newPage()
+// creates refuses to make one. A second Playwright context would not do: it is
+// a separate profile, so the channel would never connect.
+const context = await browser.newContext();
+const page = await context.newPage();
 const consoleErrors = [];
 const badResponses = [];
 // One check below deliberately requests files that do not exist, to prove a
@@ -1075,50 +1081,124 @@ ok('coming back to a scene finds it as it was left', dialUi.backOnWave === 30, S
 // An exhibition puts the work on a projector and the controls on a laptop. The
 // second window runs its own renderer at its own size, so the composition is
 // made for that screen rather than letterboxed from this one.
-// Opened through the real button, as a popup of the sandbox: a second window
-// in the same browsing context, which is what BroadcastChannel needs and what
-// somebody setting up an exhibition actually does.
-const [wall] = await Promise.all([
-  page.waitForEvent('popup', { timeout: 20000 }),
-  page.evaluate(() => document.querySelector('#project-open').click()),
-]);
+//
+// The control is checked separately from the mechanism, and on purpose. It has
+// to be a link with a target rather than a button calling window.open, because
+// window.open is a pop-up: blockers and enterprise policy stop it, and when
+// they do it returns null and the person gets nothing. That property is worth
+// asserting, and it is not the same claim as "two windows can talk".
+const control = await page.evaluate(() => {
+  const el = document.querySelector('#project-open');
+  return {
+    tag: el.tagName,
+    href: el.getAttribute('href'),
+    target: el.getAttribute('target'),
+    rel: el.getAttribute('rel'),
+  };
+});
+ok('the projection control is a link, which no pop-up blocker can stop',
+   control.tag === 'A' && control.href === 'project.html' && Boolean(control.target),
+   `${control.tag} href=${control.href} target=${control.target}`);
+ok('and it is named, so clicking twice reuses the one window',
+   control.target === 'tintinnabulum-projection', String(control.target));
+
+// The mechanism: a second window of the same origin, which is what the link
+// produces and what BroadcastChannel needs. Opened directly rather than by
+// waiting on a pop-up event, so this measures the projection window and not
+// the browser's pop-up policy.
+//
+// From here on, whichever page is about to be driven is brought to the front
+// first. A hidden page's task queue is throttled so hard that a bare
+// `evaluate(() => 1 + 1)` on one measured 27.9 seconds -- so a suite that
+// clicks about in a background window is not slow, it is stopped, and it looks
+// like a hang. This is a property of the browser, not of anything under test.
+const wall = await context.newPage();
 const wallErrors = [];
 wall.on('pageerror', (e) => wallErrors.push(String(e.message)));
 await wall.setViewportSize({ width: 900, height: 506 }); // 16:9, unlike the sandbox
-await wall.waitForLoadState('domcontentloaded');
+await wall.goto(BASE + '/demo/project.html', { waitUntil: 'domcontentloaded' });
 await wall.waitForFunction(() => window.projection, null, { timeout: 20000 });
-ok('the projection window opens from the button and starts a renderer', true);
+ok('the projection window loads and starts a renderer of its own', true);
 await page.waitForTimeout(400);
 
+const drive = async (target) => {
+  await target.bringToFront();
+  return target;
+};
+
+await drive(wall);
 ok('it says it is waiting until something arrives',
    (await wall.evaluate(() => document.getElementById('note').hidden)) === false);
 
-const sent = await page.evaluate(async () => {
+// Count what the wall receives as well as what it draws. Those are two
+// different claims, and conflating them cost an afternoon: the waiting notice
+// is hidden the moment any event message lands, before the renderer has looked
+// at it, so a window that received everything and drew none of it still looked
+// like it was working.
+await wall.evaluate(() => {
+  window.__got = { event: 0, settings: 0, clear: 0, withoutMap: 0, afterHandle: 0 };
+  const sink = window.projection.sink;
+  const handle = sink.handle.bind(sink);
+  sink.handle = (ev) => {
+    handle(ev);
+    window.__got.afterHandle = sink.particles.length;
+  };
+  const ch = window.projection.channel;
+  const inner = ch.onmessage;
+  ch.onmessage = (m) => {
+    const t = m.data && m.data.type;
+    if (t in window.__got) window.__got[t]++;
+    if (t === 'event' && !(m.data.event && m.data.event.map)) window.__got.withoutMap++;
+    return inner.call(ch, m);
+  };
+});
+// Waits are Playwright waits rather than in-page setTimeouts, for the same
+// reason: a hidden page's timers are throttled to about one firing a minute.
+await drive(page);
+const sent = await page.evaluate(() => {
   const son = window.son;
   for (let i = 0; i < 25; i++) son.emit({ magnitude: 100 + i * 40, id: 'wall-' + i, category: 'user' });
-  await new Promise((r) => setTimeout(r, 500));
   return 25;
 });
-await wall.waitForTimeout(500);
+await drive(wall);
+await wall.waitForTimeout(700);
 const wallState = await wall.evaluate(() => ({
-  particles: window.projection.sink.particles.length,
+  got: window.__got,
+  life: window.projection.sink.life,
+  cap: window.projection.sink.maxParticles,
+  scene: window.projection.sink.sceneName,
   noteHidden: document.getElementById('note').hidden,
   w: window.projection.sink.w,
   h: window.projection.sink.h,
 }));
-ok('events reach the second window', wallState.particles >= 20,
-   `${wallState.particles} of ${sent} arrived`);
+ok('events reach the second window', wallState.got.event >= 20,
+   `${wallState.got.event} of ${sent} messages arrived`);
+ok('and they carry the mapping the renderer needs',
+   wallState.got.event > 0 && wallState.got.withoutMap === 0,
+   `${wallState.got.withoutMap} without a map`);
+// The peak the renderer reached, not the count read later.
+//
+// A mark has a lifetime -- eighteen seconds on the wall -- and the sandbox
+// window is in the background while this runs, where Chrome throttles timers
+// hard. More than a lifetime can pass between the events being handled and
+// this line executing, and then every mark has legitimately expired and the
+// count is zero. Reading the live count was measuring the delay between two
+// Playwright calls, which is not a property of the projection window.
+ok('the second window draws them', wallState.got.afterHandle >= 20,
+   `${wallState.got.afterHandle} marks from ${wallState.got.event} messages` +
+   ` (life ${wallState.life}, cap ${wallState.cap}, scene ${wallState.scene})`);
 ok('and the waiting notice gets out of the way', wallState.noteHidden === true);
 ok('it draws at its own size rather than the sandbox size',
    wallState.w === 900 && wallState.h === 506, `${wallState.w}x${wallState.h}`);
 
 // Settings follow, so changing the look next door changes the wall.
-await page.evaluate(async () => {
+await drive(page);
+await page.evaluate(() => {
   document.querySelector('[data-palette="neon"]').click();
   document.querySelector('[data-scene="truchet"]').click();
-  await new Promise((r) => setTimeout(r, 250));
 });
-await wall.waitForTimeout(500);
+await drive(wall);
+await wall.waitForTimeout(700);
 const wallFollowed = await wall.evaluate(() => ({
   palette: window.projection.sink.paletteName,
   scene: window.projection.sink.sceneName,
@@ -1126,16 +1206,17 @@ const wallFollowed = await wall.evaluate(() => ({
 ok('the wall follows the palette chosen next door', wallFollowed.palette === 'neon', wallFollowed.palette);
 ok('and the visualisation too', wallFollowed.scene === 'truchet', wallFollowed.scene);
 
-const dialCrossed = await page.evaluate(async () => {
+await drive(page);
+const dialCrossed = await page.evaluate(() => {
   const slider = document.querySelector('#scene-params input[data-param="weight"]');
   if (!slider) return null;
   slider.value = '0.28';
   slider.dispatchEvent(new Event('input', { bubbles: true }));
   slider.dispatchEvent(new Event('change', { bubbles: true }));
-  await new Promise((r) => setTimeout(r, 300));
   return 0.28;
 });
-await wall.waitForTimeout(500);
+await drive(wall);
+await wall.waitForTimeout(700);
 const wallDial = await wall.evaluate(() => window.projection.sink.param('weight', 'truchet'));
 ok('a dial turned on the laptop reaches the wall', dialCrossed === null || wallDial === dialCrossed,
    `${wallDial} on the wall`);
@@ -1158,6 +1239,8 @@ ok('it re-lays out for a portrait screen', reshaped.w === 540 && reshaped.h === 
    `${reshaped.w}x${reshaped.h}`);
 ok('the projection window logged no errors', wallErrors.length === 0, wallErrors.join(' | '));
 await wall.close();
+// Back to the sandbox, so the rest of the suite is not driving a hidden page.
+await page.bringToFront();
 
 // --- voice stealing under real load -------------------------------------
 const flood = await page.evaluate(async () => {

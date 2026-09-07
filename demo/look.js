@@ -168,6 +168,10 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     onPick: (name) => selectScene(name),
   });
   const repaintScenePreviews = () => scenePicker.repaint(paintScenePreview);
+  const repaintPendingPreviews = () => {
+    scenePicker.repaintPending(paintScenePreview);
+    shapePicker.repaintPending(paintSwatch);
+  };
 
   // --- palettes -----------------------------------------------------------
   function selectPalette(name, persist = true) {
@@ -292,7 +296,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
 
   return {
     selectScene, selectPalette, selectShape, selectRichness, selectBudget,
-    repaintScenePreviews, repaintShapeSwatches, drawParams,
+    repaintScenePreviews, repaintShapeSwatches, repaintPendingPreviews, drawParams,
     SHAPE_LABELS,
     get richnessWord() {
       return richnessWord;

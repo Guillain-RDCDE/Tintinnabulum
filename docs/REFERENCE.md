@@ -396,8 +396,14 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. Twenty-two ship. Five of
-them are taken from the canon of generative art:
+A scene decides what a moment of data looks like. Thirty-four ship, and
+seventeen of them are constructions anyone can look up: nodal figures, polar
+curves, space-filling curves, recursive packings. None of that is anyone's
+property and none of it is engineering, so what each scene actually has to
+decide is the part that belongs to this project -- which of the construction's
+parameters the live data turns.
+
+Five come from the canon of generative art:
 
 | | |
 |---|---|
@@ -426,9 +432,45 @@ The others:
 | **Lissajous** | Each event draws a figure whose two frequencies come from its size |
 | **Nebula** | Soft glows added on top of one another, so busy moments burn bright |
 
+
+#### Drawing machines
+
+Six figures that are a formula and a pen, and every one of them predates the
+computer. A spirograph is a toothed wheel inside a ring, sold as a toy in 1965
+and known as a hypotrochoid for a century before that. A harmonograph is two
+pendulums and a pen, a Victorian parlour instrument. Guilloche is the
+engine-turning on the back of a pocket watch and the border of a banknote.
+Times-table string art is a nail-and-thread exercise from a school hall.
+
+| | |
+|---|---|
+| **Supershape** | Gielis's superformula, 1997: one polar equation whose four numbers give circles, stars, petals and shards. Every event on screen gets a cell of a plate and draws its own. |
+| **Maurer rose** | Peter Maurer, 1987: walk a rose curve in fixed angular strides and join the stops with straight lines. The rose is the ghost; the web across it is what the walk leaves. |
+| **Spirograph** | A wheel rolling inside a ring with a pen through one of its holes. Each event sends a pen round, and each pen draws its whole closed figure. |
+| **Harmonograph** | Two pendulums per axis, swinging down. Most events push the pendulum; only one that has had time to develop is replaced. |
+| **Times table** | Mark N points round a circle and join each to its multiple. Two gives a cardioid, three a nephroid, and every whole number after that its own figure. |
+| **Guilloche** | A rosette cut by a machine whose two gears run at a fixed ratio. The moire between neighbouring passes is the whole effect. |
+
+The choice that matters in each is not the formula, which is anybody's, but
+which of its parameters the data turns.
+
+#### Recursion, packing and tiling
+
+The family the drawing machines are not: these have no natural length, and what
+they draw at minute ten is not what they drew at minute one.
+
+| | |
+|---|---|
+| **Hilbert curve** | David Hilbert, 1891: one unbroken line that reaches every cell of a grid and never crosses itself. An event's position becomes a distance along it, and that stretch lights up. |
+| **Dragon curve** | Fold a strip of paper in half repeatedly, then open every crease to a right angle. Events pay out more of the strip, so a quiet feed leaves it half unfolded. |
+| **Chaos game** | Jump part of the way to a random corner, mark the spot, repeat. The rule mentions no triangle and a triangle is what appears. Sierpinski, 1915. |
+| **Subdivision** | Every event splits the rectangle it lands in, across its longer side. Nothing decides where the lines go except the data. |
+| **Circle packing** | Each event drops a circle where it landed and lets it grow until it touches another. What is left is the shape of the space nothing has used. |
+| **Quasicrystal** | Plane waves at angles that share no common measure, so the interference never repeats. Shechtman, 1982, and a Nobel eight years after the ridicule. |
+
 #### Dials
 
-Ten scenes declare their own controls, and the panel draws whatever it finds —
+Twenty-two scenes declare their own controls, and the panel draws whatever it finds —
 adding a visualisation with three sliders needs no interface change. A dial is
 a range with a default; values are clamped, held per scene, and forgotten only
 when you ask:
@@ -474,6 +516,15 @@ The full set:
 | **Tree rings** | A clock face: arrival sets the angle, size the distance out |
 | **Terrain** | A ridgeline pushed up by each event and scrolling away, leaving a profile of what happened |
 | **Skyline** | A scrolling record: one bar per event, height by size |
+
+**Thumbnails are drawn, not stored.** Each card runs the real scene against
+synthetic events for a hundred frames, which is what stops a card from ever
+disagreeing with the canvas — a stored image would be stale the moment a
+palette or a dial changed. That is affordable for a card you are looking at and
+not for a panel full of them: painting all of them on load cost eleven seconds
+before the page would respond, and the panels start folded, so not one of those
+cards was on screen. Cards inside a folded panel are skipped and painted when
+the panel is opened.
 
 **Adding one is adding an object** to
 one of the families in [`src/visual/scenes/`](../src/visual/scenes), or registering it from
@@ -587,7 +638,8 @@ src/audio/
   recorder-sink.js      offline rendering to WAV
 src/visual/
   canvas-sink.js        the canvas loop
-  scenes/               marks, fields, structures, physical, generative, budget
+  scenes/               marks, fields, structures, physical, generative,
+                        geometry, recursive, budget, paint
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation
   shapes.js             mark geometry
@@ -603,6 +655,7 @@ sounds/                 the original sampled banks, and:
   field/                real animal calls, public domain and CC0
 tools/
   render.mjs            drive the real visualiser headless, out to PNG
+  contact-sheet.mjs     every scene on one sheet, to look at them
   make-social-preview.mjs  regenerate the card in .github/, from the engine
 demo/
   demo.js               the sandbox page

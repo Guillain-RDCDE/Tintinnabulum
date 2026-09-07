@@ -287,6 +287,7 @@ const kitPicker = createPicker($('#kits'), Object.entries(KITS), {
 const paintKitArts = () => kitPicker.repaint(paintKitArt);
 requestAnimationFrame(paintKitArts);
 
+
 const scaleSel = $('#scale');
 for (const name of Object.keys(SCALES)) {
   const o = document.createElement('option');
@@ -369,6 +370,18 @@ const look = setupLook({
 });
 const { selectScene, selectPalette, selectShape, selectRichness, selectBudget, SHAPE_LABELS } = look;
 
+// A card inside a folded panel is skipped rather than drawn -- see the note on
+// `repaint` in dom.js -- so unfolding a panel is when the cards inside it get
+// made. `toggle` does not bubble, hence the capture phase.
+document.addEventListener(
+  'toggle',
+  () => {
+    kitPicker.repaintPending(paintKitArt);
+    look.repaintPendingPreviews();
+  },
+  true
+);
+
 // =========================================================================
 // Sound: space between notes
 // =========================================================================
@@ -445,9 +458,10 @@ son.on((ev) => projector.send(ev));
 
 function refreshProjectState() {
   const el = $('#project-state');
+  const link = $('#project-open');
   if (!projector.supported) {
     el.textContent = 'This browser cannot talk between windows.';
-    $('#project-open').disabled = true;
+    link.setAttribute('aria-disabled', 'true');
     return;
   }
   el.textContent = projector.listeners
@@ -455,11 +469,23 @@ function refreshProjectState() {
     : 'No second screen yet.';
 }
 projector.onListeners(refreshProjectState);
+
+// A link, not a button that calls window.open.
+//
+// window.open is a pop-up, and a pop-up is exactly the thing browsers block:
+// blockers, policies and enterprise settings all stop it, and when they do it
+// fails silently -- the caller gets null and the person gets nothing. A link
+// with a target is an ordinary navigation the person asked for, and nothing
+// blocks it. The window is named, so clicking twice reuses the same one rather
+// than opening a second.
+//
+// The cost is that the window opens at whatever size the browser gives it
+// instead of the 1280x800 window.open could ask for. That is a poor trade to
+// refuse: anyone projecting puts the window fullscreen anyway, which is what
+// the message says.
 $('#project-open').addEventListener('click', () => {
-  const opened = projector.open();
-  $('#project-state').textContent = opened
-    ? 'Opening — put that window fullscreen on the screen you want.'
-    : 'The browser blocked the window. Allow pop-ups for this page and try again.';
+  $('#project-state').textContent =
+    'Opening — put that window fullscreen on the screen you want.';
 });
 refreshProjectState();
 

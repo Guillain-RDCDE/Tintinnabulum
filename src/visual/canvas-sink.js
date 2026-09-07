@@ -104,6 +104,11 @@ export class CanvasSink {
   clear() {
     this.particles.length = 0;
     this.banners.length = 0;
+    // Scenes that accumulate keep their picture on their own buffer, so
+    // emptying the particle list left Substrate's cracks and 10 PRINT's maze
+    // exactly where they were -- Clear cleared nothing you could see. Rebuild
+    // the scene, which is what discards that state.
+    this._initScene();
     return this;
   }
 

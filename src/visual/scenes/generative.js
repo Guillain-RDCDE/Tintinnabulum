@@ -18,22 +18,9 @@
 // this budget. They are computed when they change and blitted when they do not.
 
 import { noise2 } from './noise.js';
+import { scratch, hexToRgb } from './paint.js';
 
 const TAU = Math.PI * 2;
-
-/** An offscreen canvas the same size as the visible one, made once. */
-function scratch(api, key = 'buf') {
-  const s = api.scene;
-  if (s[key] && s[key].width === Math.max(1, api.w) && s[key].height === Math.max(1, api.h)) {
-    return s[key];
-  }
-  const cv = document.createElement('canvas');
-  cv.width = Math.max(1, Math.round(api.w));
-  cv.height = Math.max(1, Math.round(api.h));
-  s[key] = cv;
-  s[key + 'Ctx'] = cv.getContext('2d', { willReadFrequently: key === 'rd' });
-  return cv;
-}
 
 export const GENERATIVE_SCENES = {
   wavefield: {
@@ -497,7 +484,7 @@ export const GENERATIVE_SCENES = {
         s.b2 = b;
       }
 
-      const cv = scratch(api, 'rd');
+      const cv = scratch(api, 'rd', true);
       const g = s.rdCtx;
       if (!s.img || s.img.width !== gw || s.img.height !== gh) {
         s.img = g.createImageData(gw, gh);
@@ -534,11 +521,3 @@ export const GENERATIVE_SCENES = {
     },
   },
 };
-
-/** '#rrggbb' to [r, g, b]. Anything else falls back to a mid grey. */
-function hexToRgb(c) {
-  const m = /^#([0-9a-f]{6})$/i.exec(String(c).trim());
-  if (!m) return [200, 200, 200];
-  const n = parseInt(m[1], 16);
-  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-}

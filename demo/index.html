@@ -167,10 +167,12 @@
     border: 1px solid var(--line-strong); border-radius: 8px; resize: vertical;
     font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
   textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-  #sec-connect .row { display: flex; flex-wrap: wrap; gap: .5rem; margin: .7rem 0 .2rem; }
-  #sec-connect .row button { font: inherit; padding: .5rem .9rem; min-height: 40px; cursor: pointer;
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin: .7rem 0 .2rem; }
+  .row button, .row .btn { font: inherit; padding: .5rem .9rem; min-height: 40px; cursor: pointer;
+    display: inline-flex; align-items: center; text-decoration: none;
     color: var(--fg); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; }
-  #sec-connect .row button:disabled { opacity: .45; cursor: default; }
+  .row button:hover, .row .btn:hover { background: #fafafb; }
+  .row button:disabled, .row .btn[aria-disabled="true"] { opacity: .45; cursor: default; pointer-events: none; }
   #connect-status[data-state="bad"] { color: #ff8f6b; }
   #connect-status[data-state="good"] { color: #6bd6a6; }
   table.trace { width: 100%; border-collapse: collapse; font-size: .78rem; margin-top: .5rem;
@@ -346,7 +348,8 @@
         fullscreen on a projector or a second screen. It draws at whatever size
         and shape that screen is — not a letterboxed copy of this one.</p>
       <div class="row">
-        <button type="button" id="project-open">Open projection window</button>
+        <a class="btn" id="project-open" href="project.html"
+           target="tintinnabulum-projection" rel="noopener">Open projection window</a>
         <span class="note" id="project-state"></span>
       </div>
 
