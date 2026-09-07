@@ -10,6 +10,11 @@ export const FIELD_SCENES = {
     label: 'Flow field',
     positional: false,
     note: 'Every event releases a mote into a slowly turning noise field, and it draws where it drifts.',
+    params: {
+      scale: { label: 'Field scale', min: 40, max: 460, step: 1, default: 190 },
+      trail: { label: 'Trail length', min: 10, max: 200, step: 2, default: 120 },
+      drift: { label: 'Drift speed', min: 0.2, max: 3, step: 0.05, default: 1 },
+    },
     init(api) {
       api.scene.trails = [];
       api.scene.seed = Math.random() * 1000;
@@ -38,11 +43,14 @@ export const FIELD_SCENES = {
       const step = Math.min(0.05, api.dt / 1000);
       for (let i = s.trails.length - 1; i >= 0; i--) {
         const tr = s.trails[i];
-        const angle = noise2(tr.x / 190 + t, tr.y / 190 - t) * TAU * 2;
-        tr.x += Math.cos(angle) * tr.speed * step;
-        tr.y += Math.sin(angle) * tr.speed * step;
+        const scale = api.param('scale');
+        const angle = noise2(tr.x / scale + t, tr.y / scale - t) * TAU * 2;
+        const drift = api.param('drift');
+        tr.x += Math.cos(angle) * tr.speed * step * drift;
+        tr.y += Math.sin(angle) * tr.speed * step * drift;
         tr.pts.push(tr.x, tr.y);
-        if (tr.pts.length > 120) tr.pts.splice(0, tr.pts.length - 120);
+        const keep = api.param('trail');
+        if (tr.pts.length > keep) tr.pts.splice(0, tr.pts.length - keep);
         tr.life -= step * 0.14;
         if (
           tr.life <= 0 ||
@@ -82,8 +90,14 @@ export const FIELD_SCENES = {
     label: 'Grid',
     positional: false,
     note: 'An ordered grid that each event knocks out of true, settling back over time. After Vera Molnár.',
+    // `rebuild` says a change re-runs init(): a grid cannot resize its cells
+    // without being built again, where a line width can just be read.
+    params: {
+      cell: { label: 'Cell size', min: 16, max: 90, step: 1, default: 40, rebuild: true },
+      square: { label: 'Square size', min: 0.25, max: 0.95, step: 0.01, default: 0.62 },
+    },
     init(api) {
-      const cell = Math.max(34, Math.min(api.w, api.h) / 14);
+      const cell = api.param('cell');
       const cols = Math.max(1, Math.floor(api.w / cell));
       const rows = Math.max(1, Math.floor(api.h / cell));
       api.scene.cell = cell;
@@ -109,7 +123,7 @@ export const FIELD_SCENES = {
       const decay = Math.min(0.06, api.dt / 1000) * 0.55;
       const w = api.w / s.cols;
       const h = api.h / s.rows;
-      const side = Math.min(w, h) * 0.62;
+      const side = Math.min(w, h) * api.param('square');
       ctx.lineWidth = 1.2;
       for (let y = 0; y < s.rows; y++) {
         for (let x = 0; x < s.cols; x++) {
@@ -148,10 +162,14 @@ export const FIELD_SCENES = {
     label: 'Truchet',
     positional: false,
     note: 'Quarter-arc tiles that flip as events land, so unbroken curves wander across the whole field.',
+    params: {
+      cell: { label: 'Tile size', min: 18, max: 140, step: 1, default: 64, rebuild: true },
+      weight: { label: 'Line weight', min: 0.04, max: 0.34, step: 0.005, default: 0.16 },
+    },
     init(api) {
       // Larger tiles: at sixteen across the curves read as texture rather than
       // as the continuous lines that are the whole point of a Truchet field.
-      const cell = Math.max(44, Math.min(api.w, api.h) / 9);
+      const cell = api.param('cell');
       const cols = Math.max(1, Math.ceil(api.w / cell));
       const rows = Math.max(1, Math.ceil(api.h / cell));
       api.scene.cols = cols;
@@ -177,7 +195,7 @@ export const FIELD_SCENES = {
       const w = api.w / s.cols;
       const h = api.h / s.rows;
       const decay = Math.min(0.05, api.dt / 1000) * 0.5;
-      ctx.lineWidth = Math.max(2, Math.min(w, h) * 0.16);
+      ctx.lineWidth = Math.max(1, Math.min(w, h) * api.param('weight'));
       ctx.lineCap = 'butt';
       for (let y = 0; y < s.rows; y++) {
         for (let x = 0; x < s.cols; x++) {
@@ -219,8 +237,12 @@ export const FIELD_SCENES = {
     label: 'Threads',
     positional: false,
     note: 'Level threads pushed aside by each event, weaving a fabric out of where things happened.',
+    params: {
+      rows: { label: 'Threads', min: 4, max: 60, step: 1, default: 20, rebuild: true },
+      push: { label: 'Displacement', min: 0.1, max: 1.6, step: 0.02, default: 0.5 },
+    },
     init(api) {
-      const rows = Math.max(6, Math.floor(api.h / 26));
+      const rows = api.param('rows');
       const cols = Math.max(30, Math.floor(api.w / 8));
       api.scene.rows = rows;
       api.scene.cols = cols;
@@ -233,7 +255,7 @@ export const FIELD_SCENES = {
       if (!s.off) return;
       const row = Math.min(s.rows - 1, Math.max(0, Math.floor((p.y / api.h) * s.rows)));
       const at = Math.min(s.cols - 1, Math.max(0, Math.floor((p.x / api.w) * s.cols)));
-      const push = Math.min(api.h / s.rows, p.r * 0.5) * (Math.random() < 0.5 ? -1 : 1);
+      const push = Math.min(api.h / s.rows, p.r * api.param('push')) * (Math.random() < 0.5 ? -1 : 1);
       const width = 6;
       for (let d = -width; d <= width; d++) {
         const i = at + d;
@@ -298,6 +320,10 @@ export const FIELD_SCENES = {
     label: 'Nebula',
     positional: false,
     note: 'Soft glows added on top of one another, so busy moments burn bright and quiet ones stay dim.',
+    params: {
+      glow: { label: 'Glow size', min: 0.5, max: 5, step: 0.05, default: 1.8 },
+      intensity: { label: 'Intensity', min: 0.05, max: 0.6, step: 0.01, default: 0.2 },
+    },
     frame(ctx, api) {
       // Additive blending: overlapping events accumulate rather than occlude,
       // which is what makes density read as brightness.
@@ -305,13 +331,13 @@ export const FIELD_SCENES = {
       for (const p of api.particles) {
         const age = api.now - p.born;
         const fade = 1 - age / p.life;
-        const rad = Math.max(18, p.r * 1.8) * (0.6 + (1 - fade) * 0.8);
+        const rad = Math.max(18, p.r * api.param('glow')) * (0.6 + (1 - fade) * 0.8);
         const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
         g.addColorStop(0, p.color);
         g.addColorStop(1, 'rgba(0,0,0,0)');
         // Additive light accumulates fast: a modest per-glow alpha keeps
         // individual events legible instead of merging into one wash.
-        ctx.globalAlpha = fade * 0.2;
+        ctx.globalAlpha = fade * api.param('intensity');
         ctx.fillStyle = g;
         ctx.beginPath();
         ctx.arc(p.x, p.y, rad, 0, TAU);

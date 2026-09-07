@@ -17,6 +17,8 @@
 // sixteen thousand cells, and neither can be redrawn sixty times a second in
 // this budget. They are computed when they change and blitted when they do not.
 
+import { noise2 } from './noise.js';
+
 const TAU = Math.PI * 2;
 
 /** An offscreen canvas the same size as the visible one, made once. */
@@ -34,10 +36,89 @@ function scratch(api, key = 'buf') {
 }
 
 export const GENERATIVE_SCENES = {
+  wavefield: {
+    label: 'Wave field',
+    positional: false,
+    note: 'A grid of short strokes, each turned to face a slowly moving noise field. Events bend it where they land. The quietest thing here, and the one that holds up largest.',
+    params: {
+      grid: { label: 'Grid size', min: 8, max: 70, step: 1, default: 33 },
+      scale: { label: 'Flow scale', min: 1, max: 100, step: 0.5, default: 35 },
+      length: { label: 'Line length', min: 2, max: 40, step: 0.5, default: 11.5 },
+      turn: { label: 'Drift', min: 0, max: 3, step: 0.02, default: 0.5 },
+    },
+    init(api) {
+      api.scene.seed = Math.random() * 500;
+      api.scene.bends = [];
+    },
+    event(p, api) {
+      const s = api.scene;
+      // An event is a local twist in the field, not a mark. It decays, so the
+      // field always returns to the shape the noise gives it.
+      s.bends.push({ x: p.x, y: p.y, r: Math.max(40, p.r * 2.4), turn: (p.pick - 0.5) * 3.4, born: api.now, color: p.color });
+      const capB = Math.max(12, Math.min(90, Math.round((api.budget || 800) * 0.06)));
+      if (s.bends.length > capB) s.bends.shift();
+    },
+    frame(ctx, api) {
+      const s = api.scene;
+      const n = Math.max(4, Math.round(api.param('grid')));
+      const scale = api.param('scale') * 8;
+      const len = api.param('length');
+      const t = (api.now / 12000) * api.param('turn') + s.seed;
+
+      // The field is square and centred, because a stroke grid stretched to a
+      // wide canvas stops reading as a field and starts reading as a mistake.
+      const side = Math.min(api.w, api.h) * 0.92;
+      const ox = (api.w - side) / 2;
+      const oy = (api.h - side) / 2;
+      const step = side / n;
+
+      // Bends are read once per frame rather than per stroke: a hundred strokes
+      // times ninety bends is nine thousand distance checks, every frame.
+      const live = s.bends.filter((b) => api.now - b.born < 14000);
+      s.bends = live;
+
+      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1, step * 0.09);
+      const base = api.palette.default;
+      for (let gy = 0; gy < n; gy++) {
+        for (let gx = 0; gx < n; gx++) {
+          const cx = ox + (gx + 0.5) * step;
+          const cy = oy + (gy + 0.5) * step;
+          let a = noise2(cx / scale + t, cy / scale - t) * TAU * 2;
+          let tint = null;
+          let lift = 0;
+          for (const b of live) {
+            const dx = cx - b.x;
+            const dy = cy - b.y;
+            const d2 = dx * dx + dy * dy;
+            if (d2 > b.r * b.r) continue;
+            const near = 1 - Math.sqrt(d2) / b.r;
+            const age = 1 - (api.now - b.born) / 14000;
+            const pull = near * near * age;
+            a += b.turn * pull;
+            if (pull > lift) { lift = pull; tint = b.color; }
+          }
+          const half = Math.min(step * 0.48, len * 0.5);
+          ctx.globalAlpha = 0.35 + lift * 0.6;
+          ctx.strokeStyle = lift > 0.04 ? tint || base : base;
+          ctx.beginPath();
+          ctx.moveTo(cx - Math.cos(a) * half, cy - Math.sin(a) * half);
+          ctx.lineTo(cx + Math.cos(a) * half, cy + Math.sin(a) * half);
+          ctx.stroke();
+        }
+      }
+    },
+  },
+
   chladni: {
     label: 'Chladni',
     positional: false,
     note: 'The nodal lines of a vibrating plate, after Ernst Chladni, 1787. Sand settles where the plate is still. Each event retunes it, and the figure walks to its new shape.',
+    params: {
+      sharpness: { label: 'Line sharpness', min: 4, max: 40, step: 0.5, default: 14 },
+      travel: { label: 'Travel speed', min: 0.2, max: 6, step: 0.1, default: 1.6 },
+      highest: { label: 'Highest mode', min: 5, max: 22, step: 1, default: 14 },
+    },
     init(api) {
       const s = api.scene;
       s.n = 3;
@@ -56,8 +137,9 @@ export const GENERATIVE_SCENES = {
       // which reads as a zoom rather than as a pattern. Real Chladni plates
       // are photographed well into double digits.
       const k = 1 - Math.min(1, p.r / 90);
-      s.tn = 3 + Math.round(k * 11);
-      s.tm = 2 + Math.round(((p.pick + k) % 1) * 11);
+      const top = api.param('highest');
+      s.tn = 3 + Math.round(k * (top - 3));
+      s.tm = 2 + Math.round(((p.pick + k) % 1) * (top - 2));
       if (s.tn === s.tm) s.tm += 1; // n === m is a blank plate
       s.hot = api.now;
     },
@@ -65,7 +147,7 @@ export const GENERATIVE_SCENES = {
       const s = api.scene;
       // Ease towards the new mode instead of cutting to it: the walk between
       // two figures is the part worth watching.
-      const step = Math.min(1, (api.dt / 1000) * 1.6);
+      const step = Math.min(1, (api.dt / 1000) * api.param('travel'));
       const near = (a, b) => Math.abs(a - b) < 0.01;
       if (!near(s.n, s.tn) || !near(s.m, s.tm)) {
         s.n += (s.tn - s.n) * step;
@@ -81,6 +163,7 @@ export const GENERATIVE_SCENES = {
         const img = g.createImageData(w, h);
         const d = img.data;
         const { n, m } = s;
+        const sharp = api.param('sharpness');
         // The colour of the lines comes from the palette like everything else.
         const rgb = hexToRgb(api.palette.user || api.palette.default);
         for (let y = 0; y < h; y++) {
@@ -94,7 +177,7 @@ export const GENERATIVE_SCENES = {
               Math.cos(m * Math.PI * u) * Math.cos(n * Math.PI * v);
             // Near zero is a line. The falloff is what makes it sand rather
             // than a wireframe.
-            const a = Math.max(0, 1 - Math.abs(f) * 14);
+            const a = Math.max(0, 1 - Math.abs(f) * sharp);
             const i = (y * w + x) * 4;
             d[i] = rgb[0];
             d[i + 1] = rgb[1];
@@ -123,9 +206,13 @@ export const GENERATIVE_SCENES = {
     label: '10 PRINT',
     positional: false,
     note: 'PRINT CHR$(205.5+RND(1)) — one line of Commodore BASIC from 1982, and the maze it draws forever. Truchet\'s sibling: each event flips one tile.',
+    params: {
+      cell: { label: 'Cell size', min: 8, max: 80, step: 1, default: 26, rebuild: true },
+      weight: { label: 'Line weight', min: 0.03, max: 0.3, step: 0.005, default: 0.11 },
+    },
     init(api) {
       const s = api.scene;
-      const cell = Math.max(14, Math.min(api.w, api.h) / 22);
+      const cell = api.param('cell');
       s.cols = Math.max(2, Math.ceil(api.w / cell));
       s.rows = Math.max(2, Math.ceil(api.h / cell));
       s.tile = new Uint8Array(s.cols * s.rows);
@@ -150,7 +237,8 @@ export const GENERATIVE_SCENES = {
       const h = api.h / s.rows;
       const decay = Math.min(0.05, api.dt / 1000) * 0.6;
       ctx.lineCap = 'square';
-      ctx.lineWidth = Math.max(1.5, Math.min(w, h) * 0.11);
+      const weight = api.param('weight');
+      ctx.lineWidth = Math.max(1, Math.min(w, h) * weight);
       for (let y = 0; y < s.rows; y++) {
         for (let x = 0; x < s.cols; x++) {
           const i = y * s.cols + x;
@@ -172,9 +260,9 @@ export const GENERATIVE_SCENES = {
           if (api.depth && hot) {
             ctx.globalAlpha = s.heat[i] * 0.85;
             ctx.strokeStyle = s.lastRim || ctx.strokeStyle;
-            ctx.lineWidth = Math.max(1, Math.min(w, h) * 0.045);
+            ctx.lineWidth = Math.max(0.6, Math.min(w, h) * weight * 0.4);
             ctx.stroke();
-            ctx.lineWidth = Math.max(1.5, Math.min(w, h) * 0.11);
+            ctx.lineWidth = Math.max(1, Math.min(w, h) * weight);
           }
         }
       }
@@ -186,6 +274,11 @@ export const GENERATIVE_SCENES = {
     positional: false,
     preview: { dt: 30, frames: 220 }, // cracks need time to travel
     note: 'Cracks that travel until they meet another, then split off at right angles. After Jared Tarbell, 2003. The longer it runs, the more it looks like a city nobody planned.',
+    params: {
+      branch: { label: 'Branching', min: 0, max: 0.9, step: 0.01, default: 0.45 },
+      speed: { label: 'Crack speed', min: 20, max: 300, step: 5, default: 90 },
+      sand: { label: 'Sand', min: 0, max: 1, step: 0.02, default: 0.4 },
+    },
     init(api) {
       const s = api.scene;
       // A coarse occupancy grid rather than pixel reads: reading the canvas
@@ -227,7 +320,7 @@ export const GENERATIVE_SCENES = {
         s.painted = true;
       }
 
-      const step = Math.min(3, Math.max(1, (api.dt / 1000) * 90));
+      const step = Math.min(4, Math.max(1, (api.dt / 1000) * api.param('speed')));
       g.lineCap = 'butt';
       for (let i = s.cracks.length - 1; i >= 0; i--) {
         const c = s.cracks[i];
@@ -254,7 +347,7 @@ export const GENERATIVE_SCENES = {
           g.stroke();
           // A sand trail beside the line, which is Tarbell's own touch and
           // most of why the original looks like paper rather than vector art.
-          if (api.depth && Math.random() < 0.4) {
+          if (api.depth && Math.random() < api.param('sand')) {
             g.globalAlpha = 0.05;
             g.strokeStyle = c.rim || c.colour;
             const spread = 6 + Math.random() * 10;
@@ -273,7 +366,7 @@ export const GENERATIVE_SCENES = {
           // a handful of lines into a lattice.
           if (hit && s.cracks.length < 200) {
             for (const turn of [Math.PI / 2, -Math.PI / 2]) {
-              if (Math.random() < 0.45) {
+              if (Math.random() < api.param('branch')) {
                 s.cracks.push({
                   x: c.x, y: c.y, a: c.a + turn,
                   colour: c.colour, rim: c.rim, life: 0, width: c.width * 0.85,
@@ -294,25 +387,28 @@ export const GENERATIVE_SCENES = {
     positional: false,
     preview: { dt: 60, frames: 200 },
     note: 'Two substances, one feeding on the other. Gray-Scott, after Turing\'s 1952 account of how a uniform thing becomes a patterned one. Each event drops reagent in, and the pattern eats outward.',
+    // Feed and kill are the two numbers that decide whether this makes spots,
+    // stripes, or a culture that divides forever. The whole zoo of Gray-Scott
+    // behaviour lives in a small region of them, so they are worth a dial each.
+    params: {
+      feed: { label: 'Feed', min: 0.01, max: 0.08, step: 0.0005, default: 0.037 },
+      kill: { label: 'Kill', min: 0.04, max: 0.075, step: 0.0002, default: 0.06 },
+      grain: { label: 'Grain', min: 2, max: 12, step: 0.5, default: 4, rebuild: true },
+    },
     init(api) {
       const s = api.scene;
-      // Deliberately coarse. A finer grid is prettier and costs the frame
-      // rate; at this size it is sixteen thousand cells twice a frame.
       // Fine enough that the upscale is not a blur. Eighty cells across a
       // laptop screen is fourteen pixels a cell, and smoothing turns that into
       // porridge; this is about four.
-      s.gw = Math.max(40, Math.min(240, Math.round(api.w / 4)));
-      s.gh = Math.max(28, Math.min(170, Math.round(api.h / 4)));
+      const grain = api.param('grain') || 4;
+      s.gw = Math.max(30, Math.min(260, Math.round(api.w / grain)));
+      s.gh = Math.max(20, Math.min(190, Math.round(api.h / grain)));
       const n = s.gw * s.gh;
       s.a = new Float32Array(n).fill(1);
       s.b = new Float32Array(n);
       s.a2 = new Float32Array(n).fill(1);
       s.b2 = new Float32Array(n);
       s.img = null;
-      // Feed and kill: the two numbers that decide whether this makes spots,
-      // stripes or a slowly dividing cell culture.
-      s.feed = 0.037;
-      s.kill = 0.06;
     },
     event(p, api) {
       const s = api.scene;
@@ -338,7 +434,11 @@ export const GENERATIVE_SCENES = {
     frame(ctx, api) {
       const s = api.scene;
       if (!s.b) return;
-      const { gw, gh, feed, kill } = s;
+      const { gw, gh } = s;
+      // Read live, so turning a dial changes the chemistry under a pattern that
+      // is already growing rather than after a restart.
+      const feed = api.param('feed');
+      const kill = api.param('kill');
       const dA = 1.0;
       const dB = 0.5;
 

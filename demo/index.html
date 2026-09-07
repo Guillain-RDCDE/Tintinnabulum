@@ -79,6 +79,10 @@
   .panel .v { color: var(--muted); font-size: .8125rem; overflow: hidden;
               text-overflow: ellipsis; white-space: nowrap; }
   .panel .body { padding: 1.15rem; }
+  /* The header is sticky, so anything scrolled to lands underneath it unless
+     it reserves the room. */
+  main .panel, main .card, main .sw, main button, main input, main textarea,
+  main .dial, main .row, main #scene-params { scroll-margin-top: 88px; }
 
   .sub-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .06em;
                color: var(--muted); font-weight: 600; margin: 1.35rem 0 .1rem; }
@@ -176,6 +180,20 @@
   table.trace th { color: var(--muted); font-weight: 600; }
   table.trace td:nth-child(2) { font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--muted); }
   table.trace tr[data-state="bad"] td { color: #ff8f6b; }
+  /* A scene's own dials. Label on the left, value on the right in the muted
+     tone, track across the full width underneath: the reading order is what
+     it is called, what it is set to, and only then how to change it. */
+  .dial { display: block; margin: 0 0 .85rem; }
+  .dial-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem;
+    font-size: .8125rem; margin-bottom: .35rem; }
+  .dial-head span:first-child { color: var(--fg); }
+  .dial-head span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dial input[type=range] { width: 100%; }
+  #scene-params:empty::after { content: "This one has no settings of its own.";
+    color: var(--muted); font-size: .8125rem; }
+  #scene-params .reset { font: inherit; font-size: .78rem; color: var(--muted);
+    background: none; border: 0; padding: .2rem 0; cursor: pointer; text-decoration: underline; }
+  #project-state { align-self: center; }
   .check { display: flex; align-items: center; gap: .55rem; font-size: .875rem; color: var(--fg);
            min-height: 40px; cursor: pointer; }
   .check input { width: 18px; height: 18px; accent-color: var(--accent); }
@@ -319,6 +337,18 @@
       <p class="sub-label" id="shapes-label">Shapes</p>
       <div class="swatches" id="shapes"></div>
       <p class="note" id="shape-note"></p>
+
+      <p class="sub-label" id="params-label">This visualisation</p>
+      <div id="scene-params"></div>
+
+      <p class="sub-label">Projection</p>
+      <p class="note">Open the work in its own window, then put that window
+        fullscreen on a projector or a second screen. It draws at whatever size
+        and shape that screen is — not a letterboxed copy of this one.</p>
+      <div class="row">
+        <button type="button" id="project-open">Open projection window</button>
+        <span class="note" id="project-state"></span>
+      </div>
 
       <details class="more" id="more-look">
         <summary>Advanced</summary>

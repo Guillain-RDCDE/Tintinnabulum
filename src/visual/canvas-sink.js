@@ -60,6 +60,9 @@ export class CanvasSink {
     this._stars = null;
 
     this.sceneName = SCENES[opts.scene] ? opts.scene : DEFAULT_SCENE;
+    // Per-scene dial positions, kept by scene name so leaving a visualisation
+    // and coming back finds it as you left it.
+    this._params = { ...(opts.params || {}) };
     this._scene = {}; // scratch space owned by the active scene
     this._lastFrame = 0;
 
@@ -180,6 +183,10 @@ export class CanvasSink {
       // carry hard-coded caps of their own, so raising the limit governed the
       // marks and nothing else.
       budget: this.maxParticles,
+      // A scene's own dials. It declares them, the picker draws them, and this
+      // hands back the current value -- so a scene never reads the DOM and the
+      // interface never has to know what a scene is made of.
+      param: (name) => this.param(name),
       // Scenes ask for a fill rather than reading p.color, so the gradient and
       // its caching stay here instead of being copied into every scene.
       fill: (ctx, p) => this.fillFor(ctx, p),
@@ -206,6 +213,53 @@ export class CanvasSink {
     if (!SCENES[name]) return this;
     this.sceneName = name;
     this._initScene();
+    return this;
+  }
+
+  /** Every dial the current scene declares, with its current value. */
+  paramsOf(sceneName = this.sceneName) {
+    const spec = (SCENES[sceneName] || {}).params || {};
+    const held = this._params[sceneName] || {};
+    return Object.entries(spec).map(([name, def]) => ({
+      name,
+      ...def,
+      value: held[name] === undefined ? def.default : held[name],
+    }));
+  }
+
+  /** The current value of one dial, or its default. */
+  param(name, sceneName = this.sceneName) {
+    const spec = ((SCENES[sceneName] || {}).params || {})[name];
+    if (!spec) return undefined;
+    const held = (this._params[sceneName] || {})[name];
+    return held === undefined ? spec.default : held;
+  }
+
+  /**
+   * Turn one of a scene's dials.
+   *
+   * Values are held per scene, so leaving a visualisation and coming back finds
+   * it as you left it. Whether a change restarts the scene is the scene's own
+   * business: a grid has to be rebuilt when its cell size changes, a line
+   * length does not, and rebuilding on every drag of a slider would wipe the
+   * picture continuously while somebody is still deciding.
+   */
+  setParam(name, value, sceneName = this.sceneName) {
+    const spec = ((SCENES[sceneName] || {}).params || {})[name];
+    if (!spec) return this;
+    const n = Number(value);
+    if (!Number.isFinite(n)) return this;
+    const clamped = Math.max(spec.min, Math.min(spec.max, n));
+    if (!this._params[sceneName]) this._params[sceneName] = {};
+    this._params[sceneName][name] = clamped;
+    if (spec.rebuild && sceneName === this.sceneName) this._initScene();
+    return this;
+  }
+
+  /** Put a scene's dials back where they started. */
+  resetParams(sceneName = this.sceneName) {
+    delete this._params[sceneName];
+    if (sceneName === this.sceneName) this._initScene();
     return this;
   }
 

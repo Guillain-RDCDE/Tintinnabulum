@@ -396,10 +396,8 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. Twenty-one ship — the four
-below join Bloom, Constellation, Flow field, Ripples, Grid, Truchet, Orbits,
-Rain, Radar, Spiral, Tree rings, Terrain, Skyline, and four taken from the
-canon of generative art:
+A scene decides what a moment of data looks like. Twenty-two ship. Five of
+them are taken from the canon of generative art:
 
 | | |
 |---|---|
@@ -407,6 +405,7 @@ canon of generative art:
 | **10 PRINT** | `PRINT CHR$(205.5+RND(1))` — one line of Commodore BASIC from 1982, and the maze it draws forever. Truchet's sibling: each event flips one tile. |
 | **Substrate** | Cracks that travel until they meet another, then split off at right angles. After Jared Tarbell, 2003. The longer it runs the more it looks like a city nobody planned. |
 | **Reaction** | Gray-Scott: two substances, one feeding on the other. Turing's 1952 account of how a uniform thing becomes a patterned one. Each event drops reagent in and the pattern eats outward. |
+| **Wave field** | A grid of short strokes turned by a noise field, in the manner of the flow-field studies of the 1970s onward. Each event bends the field near where it lands, so the whole grid leans towards the news. |
 
 They were chosen on one criterion. Truchet is the scene people stop on, and the
 reason is that it **accumulates**: the picture is the history of the feed rather
@@ -426,6 +425,37 @@ The others:
 | **Threads** | Level threads pushed aside by each event, weaving a fabric |
 | **Lissajous** | Each event draws a figure whose two frequencies come from its size |
 | **Nebula** | Soft glows added on top of one another, so busy moments burn bright |
+
+#### Dials
+
+Ten scenes declare their own controls, and the panel draws whatever it finds —
+adding a visualisation with three sliders needs no interface change. A dial is
+a range with a default; values are clamped, held per scene, and forgotten only
+when you ask:
+
+```js
+sink.paramsOf('truchet');        // [{ name, label, min, max, step, value }, ...]
+sink.setParam('weight', 0.28);   // clamped into range
+sink.param('weight');            // 0.28
+sink.resetParams('truchet');     // back to the declared defaults
+```
+
+A scene declares them beside its drawing code and reads them through `api`:
+
+```js
+registerScene('truchet', {
+  params: {
+    cell:   { label: 'Tile size', min: 18, max: 140, step: 2, default: 64, rebuild: true },
+    weight: { label: 'Line weight', min: 0.04, max: 0.34, step: 0.01, default: 0.16 },
+  },
+  frame(ctx, api) { ctx.lineWidth = api.param('cell') * api.param('weight'); },
+});
+```
+
+`rebuild: true` marks a dial that changes the structure rather than the
+drawing -- a tile size is a different grid, not a different colour -- so
+turning it re-runs `init`. Those commit when the slider is released; the rest
+follow the finger.
 
 The full set:
 
@@ -461,7 +491,7 @@ registerScene('rain', {
 });
 ```
 
-`api` carries `{ w, h, palette, particles, shape, now, dt, scene }`. Every
+`api` carries `{ w, h, palette, particles, shape, now, dt, scene, param }`. Every
 scene reads the same particle model, so lifetimes, hit-testing and the event
 contract stay in one place.
 
@@ -469,6 +499,27 @@ contract stay in one place.
 uses, so importing it would cost about a megabyte and the offline guarantee
 while buying no capability. What was missing was not a library but this
 extension point.
+
+### The projection window
+
+An exhibition puts the work on a projector and the controls on a laptop, which
+are two screens. **Project** opens a second window that carries the picture and
+nothing else: the controls in it fade after three seconds of stillness, `f` is
+full screen, `c` clears.
+
+It runs **its own renderer** rather than mirroring the first. A mirror would
+mean copying a canvas between windows every frame -- slow, soft, and locked to
+the source's aspect ratio. Forwarding the events instead means a 4:3 projector,
+a portrait panel in a gallery and a 32:9 screen each get a composition made for
+their own shape, and re-lay it out when the window changes. The marks also live
+longer and run larger there, because a projection is watched from across a room.
+
+The channel is a `BroadcastChannel`, so it needs no server and works from a
+static host; it is same-origin, which is the whole intended scope. Events cross
+it stripped of `data` -- the producer's original payload can be a kilobyte of
+JSON per event and is of no use to a picture. Settings cross it too, so choosing
+a palette on the laptop changes the wall, and a window that has just opened asks
+for them rather than sitting on defaults.
 
 ### Shapes
 
@@ -555,6 +606,8 @@ tools/
   make-social-preview.mjs  regenerate the card in .github/, from the engine
 demo/
   demo.js               the sandbox page
+  project.html/.js      the projection window: the picture, full screen, alone
+  broadcast.js          forwarding events to that window
   connect.js            the "Your data" panel: the standard, without a server
   look.js               scenes, palettes, shapes, colour variety, the ceiling
   dom.js                picker, canvas sizing and caption helpers

@@ -962,6 +962,187 @@ ok('surf, fire and wind stay synthesised, which is what synthesis is good at',
    /Synth/.test(realVoices.shore.add) && Object.values(realVoices.fire).every((v) => /Synth/.test(v)),
    JSON.stringify(realVoices.fire));
 
+
+// --- a scene's own dials -------------------------------------------------
+// A scene declares its controls; the panel draws whatever it finds. Adding a
+// visualisation with three sliders should need no interface change at all, so
+// this asks the scene registry rather than naming any scene.
+const dials = await page.evaluate(async () => {
+  const { SCENES, previewScene, PALETTES } = await import('../src/index.js');
+  const sink = window.son.sinks.find((s) => s.particles);
+  const withParams = Object.entries(SCENES).filter(([, def]) => def.params);
+  const shapes = withParams.map(([name, def]) => ({
+    name,
+    dials: Object.entries(def.params).map(([k, d]) => ({
+      k,
+      ok: typeof d.label === 'string' && d.max > d.min && d.step > 0 &&
+          d.default >= d.min && d.default <= d.max,
+    })),
+  }));
+
+  // Values are clamped, held per scene, and defaulted when never touched.
+  sink.setScene('truchet');
+  const spec = SCENES.truchet.params.weight;
+  sink.setParam('weight', 999);
+  const high = sink.param('weight');
+  sink.setParam('weight', -999);
+  const low = sink.param('weight');
+  sink.setParam('weight', 0.2);
+  sink.setScene('flow');
+  const otherScene = sink.param('scale');
+  sink.setScene('truchet');
+  const remembered = sink.param('weight');
+  sink.resetParams('truchet');
+  const afterReset = sink.param('weight');
+
+  // A scene must actually read its dial, not merely declare it.
+  const draw = (weight) => {
+    const cv = document.createElement('canvas');
+    cv.width = 240;
+    cv.height = 140;
+    const ctx = cv.getContext('2d');
+    previewScene(ctx, 'truchet', { w: 240, h: 140, palette: PALETTES.marine.colors, params: { weight } });
+    const d = ctx.getImageData(0, 0, 240, 140).data;
+    let ink = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] + d[i + 1] + d[i + 2] > 120) ink++;
+    return ink;
+  };
+  const thin = draw(0.05);
+  const thick = draw(0.3);
+
+  return {
+    shapes,
+    high: high <= spec.max,
+    low: low >= spec.min,
+    remembered,
+    afterReset,
+    defaulted: afterReset === spec.default,
+    otherSceneUntouched: otherScene === SCENES.flow.params.scale.default,
+    thin,
+    thick,
+  };
+});
+
+const badDial = dials.shapes.flatMap((s) => s.dials.filter((d) => !d.ok).map((d) => `${s.name}.${d.k}`));
+ok('every declared dial is well formed', badDial.length === 0,
+   badDial.join(', ') || `${dials.shapes.length} scenes, ${dials.shapes.reduce((n, s) => n + s.dials.length, 0)} dials`);
+ok('a dial clamps rather than accepting nonsense', dials.high && dials.low);
+ok('dials are held per scene', dials.remembered === 0.2 && dials.otherSceneUntouched,
+   `truchet.weight=${dials.remembered}`);
+ok('and can be put back to their defaults', dials.defaulted, String(dials.afterReset));
+ok('a scene really reads its dial', dials.thick > dials.thin * 1.4,
+   `thin=${dials.thin} thick=${dials.thick} inked pixels`);
+
+const dialUi = await page.evaluate(async () => {
+  const sink = window.son.sinks.find((s) => s.particles);
+  const q = (s) => document.querySelector(s);
+  const shown = () => [...document.querySelectorAll('#scene-params .dial')].map((el) => ({
+    label: el.querySelector('.dial-head span').textContent,
+    value: el.querySelector('.dial-head span:last-child').textContent,
+  }));
+  q('[data-scene="wavefield"]').click();
+  await new Promise((r) => setTimeout(r, 80));
+  const onWave = shown();
+  const slider = document.querySelector('#scene-params input[data-param="length"]');
+  slider.value = '30';
+  slider.dispatchEvent(new Event('input', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 60));
+  const applied = sink.param('length');
+  q('[data-scene="bloom"]').click();
+  await new Promise((r) => setTimeout(r, 80));
+  const onBloom = shown();
+  q('[data-scene="wavefield"]').click();
+  await new Promise((r) => setTimeout(r, 80));
+  return { onWave, applied, onBloom, backOnWave: sink.param('length') };
+});
+ok('the panel draws the dials the scene declares', dialUi.onWave.length === 4,
+   dialUi.onWave.map((d) => d.label).join(', '));
+ok('moving one reaches the renderer', dialUi.applied === 30, String(dialUi.applied));
+ok('a scene with no dials of its own shows none', dialUi.onBloom.length === 0,
+   `${dialUi.onBloom.length} dials on bloom`);
+ok('coming back to a scene finds it as it was left', dialUi.backOnWave === 30, String(dialUi.backOnWave));
+
+// --- the projection window -----------------------------------------------
+// An exhibition puts the work on a projector and the controls on a laptop. The
+// second window runs its own renderer at its own size, so the composition is
+// made for that screen rather than letterboxed from this one.
+// Opened through the real button, as a popup of the sandbox: a second window
+// in the same browsing context, which is what BroadcastChannel needs and what
+// somebody setting up an exhibition actually does.
+const [wall] = await Promise.all([
+  page.waitForEvent('popup', { timeout: 20000 }),
+  page.evaluate(() => document.querySelector('#project-open').click()),
+]);
+const wallErrors = [];
+wall.on('pageerror', (e) => wallErrors.push(String(e.message)));
+await wall.setViewportSize({ width: 900, height: 506 }); // 16:9, unlike the sandbox
+await wall.waitForLoadState('domcontentloaded');
+await wall.waitForFunction(() => window.projection, null, { timeout: 20000 });
+ok('the projection window opens from the button and starts a renderer', true);
+await page.waitForTimeout(400);
+
+ok('it says it is waiting until something arrives',
+   (await wall.evaluate(() => document.getElementById('note').hidden)) === false);
+
+const sent = await page.evaluate(async () => {
+  const son = window.son;
+  for (let i = 0; i < 25; i++) son.emit({ magnitude: 100 + i * 40, id: 'wall-' + i, category: 'user' });
+  await new Promise((r) => setTimeout(r, 500));
+  return 25;
+});
+await wall.waitForTimeout(500);
+const wallState = await wall.evaluate(() => ({
+  particles: window.projection.sink.particles.length,
+  noteHidden: document.getElementById('note').hidden,
+  w: window.projection.sink.w,
+  h: window.projection.sink.h,
+}));
+ok('events reach the second window', wallState.particles >= 20,
+   `${wallState.particles} of ${sent} arrived`);
+ok('and the waiting notice gets out of the way', wallState.noteHidden === true);
+ok('it draws at its own size rather than the sandbox size',
+   wallState.w === 900 && wallState.h === 506, `${wallState.w}x${wallState.h}`);
+
+// Settings follow, so changing the look next door changes the wall.
+await page.evaluate(async () => {
+  document.querySelector('[data-palette="neon"]').click();
+  document.querySelector('[data-scene="truchet"]').click();
+  await new Promise((r) => setTimeout(r, 250));
+});
+await wall.waitForTimeout(500);
+const wallFollowed = await wall.evaluate(() => ({
+  palette: window.projection.sink.paletteName,
+  scene: window.projection.sink.sceneName,
+}));
+ok('the wall follows the palette chosen next door', wallFollowed.palette === 'neon', wallFollowed.palette);
+ok('and the visualisation too', wallFollowed.scene === 'truchet', wallFollowed.scene);
+
+const dialCrossed = await page.evaluate(async () => {
+  const slider = document.querySelector('#scene-params input[data-param="weight"]');
+  if (!slider) return null;
+  slider.value = '0.28';
+  slider.dispatchEvent(new Event('input', { bubbles: true }));
+  slider.dispatchEvent(new Event('change', { bubbles: true }));
+  await new Promise((r) => setTimeout(r, 300));
+  return 0.28;
+});
+await wall.waitForTimeout(500);
+const wallDial = await wall.evaluate(() => window.projection.sink.param('weight', 'truchet'));
+ok('a dial turned on the laptop reaches the wall', dialCrossed === null || wallDial === dialCrossed,
+   `${wallDial} on the wall`);
+
+// Reshaping the window reshapes the work, which is the whole point of it.
+await wall.setViewportSize({ width: 540, height: 960 }); // portrait, as a gallery panel
+await wall.waitForTimeout(500);
+const reshaped = await wall.evaluate(() => ({
+  w: window.projection.sink.w,
+  h: window.projection.sink.h,
+}));
+ok('it re-lays out for a portrait screen', reshaped.w === 540 && reshaped.h === 960,
+   `${reshaped.w}x${reshaped.h}`);
+ok('the projection window logged no errors', wallErrors.length === 0, wallErrors.join(' | '));
+await wall.close();
+
 // --- voice stealing under real load -------------------------------------
 const flood = await page.evaluate(async () => {
   const son = window.son;
@@ -1093,6 +1274,29 @@ ok('the title links back to the repository', homeHref === REPO, String(homeHref)
 ok('there is a visible source link too', srcHref === REPO, String(srcHref));
 
 // --- shape picker --------------------------------------------------------
+// Shapes are the geometry of one mark per event, so they belong to Bloom and to
+// no other scene; the picker says so by going dim and inert elsewhere. That is
+// also why this block chooses its own scene instead of inheriting whatever the
+// previous one left behind -- a choice that survives a reload.
+const pickerOff = await page.evaluate(async () => {
+  document.querySelector('[data-scene="threads"]').click();
+  await new Promise((r) => setTimeout(r, 100));
+  return {
+    pe: getComputedStyle(document.querySelector('#shapes')).pointerEvents,
+    label: document.querySelector('#shapes-label').textContent,
+  };
+});
+ok('the shape picker goes inert on a scene with no use for it',
+   pickerOff.pe === 'none' && /Bloom/.test(pickerOff.label),
+   `${pickerOff.pe} / ${pickerOff.label}`);
+
+await page.evaluate(async () => {
+  document.querySelector('[data-scene="bloom"]').click();
+  await new Promise((r) => setTimeout(r, 140));
+});
+ok('and comes back for the scene it belongs to',
+   (await page.evaluate(() => getComputedStyle(document.querySelector('#shapes')).pointerEvents)) !== 'none');
+
 const shapeCount = await page.locator('#shapes .sw').count();
 ok('every shape has a swatch', shapeCount >= 8, shapeCount + ' shapes');
 ok('the shape swatches are drawn, not empty', await page.evaluate(() => {

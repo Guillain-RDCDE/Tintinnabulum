@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Tintinnabulum — projection</title>
+<style>
+  /* Nothing but the picture. This window is meant to be thrown on a wall, so
+     every pixel that is not the work is a pixel of wall it is competing with. */
+  :root { color-scheme: dark; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+
+  /* The controls fade out and stay out. A cursor that has not moved for three
+     seconds is somebody watching, not somebody adjusting. */
+  #bar {
+    position: fixed; inset: auto 0 0 0; display: flex; gap: .5rem; justify-content: center;
+    padding: .9rem; background: linear-gradient(transparent, rgba(0,0,0,.72));
+    opacity: 0; transition: opacity .45s ease; pointer-events: none;
+    font: 13px/1 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  body.awake #bar { opacity: 1; pointer-events: auto; }
+  body.awake { cursor: default; }
+  body { cursor: none; }
+  #bar button {
+    font: inherit; color: #ddd; background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.18); border-radius: 7px;
+    padding: .5rem .85rem; cursor: pointer; min-height: 38px;
+  }
+  #bar button:hover { background: rgba(255,255,255,.13); }
+  #note {
+    position: fixed; inset: 0; display: grid; place-content: center; text-align: center;
+    color: #8a8a8a; padding: 2rem; line-height: 1.7;
+    font: 14px/1.7 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  #note b { color: #ddd; font-weight: 600; display: block; margin-bottom: .4rem; }
+  #note[hidden] { display: none; }
+</style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <p id="note"><b>Waiting for the sandbox</b>Leave the main window open and press Start there.<br>This window draws what it is listening to.</p>
+  <div id="bar">
+    <button type="button" id="full">Fullscreen</button>
+    <button type="button" id="clear">Clear</button>
+  </div>
+  <script type="module" src="project.js"></script>
+</body>
+</html>

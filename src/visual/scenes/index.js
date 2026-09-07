@@ -65,6 +65,9 @@ export function previewScene(
     // settings and builds the same per-event shades and gradients.
     richness = 0.45,
     depth = true,
+    // The dials, so a card shows the scene as it is currently tuned rather
+    // than as it ships.
+    params = {},
   } = {}
 ) {
   const scene = SCENES[name] || SCENES[DEFAULT_SCENE];
@@ -98,6 +101,11 @@ export function previewScene(
     // canvas runs under is irrelevant here; cap() has a floor that keeps every
     // scene from starving at this size.
     budget: 200,
+    param: (name) => {
+      const spec = (scene.params || {})[name];
+      if (!spec) return undefined;
+      return params[name] === undefined ? spec.default : params[name];
+    },
     colorFor: (c) => palette[c] || palette.default,
     // The same contract CanvasSink offers, including the per-particle cache:
     // a preview runs a hundred frames, and rebuilding a gradient for every

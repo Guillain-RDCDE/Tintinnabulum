@@ -23,6 +23,7 @@ import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { store } from './store.js';
 import { createFeedCatalog } from './feed-catalog.js';
 import { setupLook } from './look.js';
+import { createProjector } from './broadcast.js';
 import { setupConnect } from './connect.js';
 
 const storedPalette = store.pick('palette', PALETTES, DEFAULT_PALETTE_NAME);
@@ -346,10 +347,25 @@ $('#record').onclick = async (ev) => {
 // Look
 // =========================================================================
 
+// The projection window runs its own renderer, so it needs the look rather
+// than the pixels. Everything visual is gathered here in one place.
+const projector = createProjector({
+  settings: () => ({
+    palette: canvas.paletteName,
+    scene: canvas.sceneName,
+    shape: canvas.shape,
+    richness: canvas.richness,
+    depth: canvas.depth,
+    starfield: canvas.starfield,
+    params: canvas._params,
+  }),
+});
+
 const look = setupLook({
   canvas,
   updateSummaries: () => updateSummaries(),
   paintKitArts: () => paintKitArts(),
+  onLookChange: () => projector.sync(),
 });
 const { selectScene, selectPalette, selectShape, selectRichness, selectBudget, SHAPE_LABELS } = look;
 
@@ -423,6 +439,29 @@ function updateSummaries() {
     (cats.length === 4 ? 'Everything' : cats.join(', ') || 'Nothing') +
     (minmag > 0 ? ` · above ${minmag}` : '');
 }
+
+// Everything the engine accepts also goes to the wall, if a wall is listening.
+son.on((ev) => projector.send(ev));
+
+function refreshProjectState() {
+  const el = $('#project-state');
+  if (!projector.supported) {
+    el.textContent = 'This browser cannot talk between windows.';
+    $('#project-open').disabled = true;
+    return;
+  }
+  el.textContent = projector.listeners
+    ? `${projector.listeners} screen${projector.listeners > 1 ? 's' : ''} listening`
+    : 'No second screen yet.';
+}
+projector.onListeners(refreshProjectState);
+$('#project-open').addEventListener('click', () => {
+  const opened = projector.open();
+  $('#project-state').textContent = opened
+    ? 'Opening — put that window fullscreen on the screen you want.'
+    : 'The browser blocked the window. Allow pop-ups for this page and try again.';
+});
+refreshProjectState();
 
 const log = $('#log');
 son.on((ev) => {

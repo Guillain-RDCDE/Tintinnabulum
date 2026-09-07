@@ -41,8 +41,85 @@ const SHAPE_LABELS = {
  * @param {Function} io.updateSummaries refresh the folded panel headers
  * @param {Function} io.paintKitArts    the Sound panel's cards follow the palette
  */
-export function setupLook({ canvas, updateSummaries, paintKitArts }) {
+export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange = () => {} }) {
   let richnessWord = 'balanced';
+
+  /**
+   * Draw the dials the current scene declares.
+   *
+   * A scene owns its own controls, so this reads them rather than knowing any
+   * scene by name: adding a visualisation with three sliders needs no change
+   * here at all. Label left, value right, track underneath -- the reading order
+   * is what it is called, what it is set to, and only then how to change it.
+   */
+  function drawParams() {
+    const host = $('#scene-params');
+    host.textContent = '';
+    const dials = canvas.paramsOf();
+    $('#params-label').hidden = dials.length === 0;
+    if (!dials.length) return;
+
+    for (const d of dials) {
+      const wrap = document.createElement('label');
+      wrap.className = 'dial';
+      const head = document.createElement('span');
+      head.className = 'dial-head';
+      const name = document.createElement('span');
+      name.textContent = d.label;
+      const val = document.createElement('span');
+      const show = (v) => (Math.abs(v) >= 100 || Number.isInteger(v) ? String(v) : v.toFixed(d.step < 0.01 ? 4 : 2));
+      val.textContent = d.value === 0 && d.default === 0 ? 'auto' : show(d.value);
+      head.append(name, val);
+
+      const slider = document.createElement('input');
+      slider.type = 'range';
+      slider.min = String(d.min);
+      slider.max = String(d.max);
+      slider.step = String(d.step);
+      slider.value = String(d.value === 0 && d.default === 0 ? d.min : d.value);
+      slider.dataset.param = d.name;
+
+      // A dial that rebuilds the scene waits for the drag to finish: rebuilding
+      // on every pixel would wipe the picture continuously while somebody is
+      // still deciding where to put it.
+      const commit = (v) => {
+        canvas.setParam(d.name, v);
+        store.set(`p:${canvas.sceneName}:${d.name}`, String(v));
+        repaintScenePreviews();
+        onLookChange();
+      };
+      slider.addEventListener('input', (e) => {
+        const v = Number(e.target.value);
+        val.textContent = show(v);
+        if (!d.rebuild) commit(v);
+      });
+      slider.addEventListener('change', (e) => { if (d.rebuild) commit(Number(e.target.value)); });
+
+      wrap.append(head, slider);
+      host.append(wrap);
+    }
+
+    const reset = document.createElement('button');
+    reset.type = 'button';
+    reset.className = 'reset';
+    reset.textContent = 'Back to defaults';
+    reset.addEventListener('click', () => {
+      for (const d of canvas.paramsOf()) store.set(`p:${canvas.sceneName}:${d.name}`, '');
+      canvas.resetParams();
+      drawParams();
+      repaintScenePreviews();
+      onLookChange();
+    });
+    host.append(reset);
+  }
+
+  /** Dial positions survive a reload, per scene. */
+  function restoreParams(sceneName) {
+    for (const d of canvas.paramsOf(sceneName)) {
+      const held = store.get(`p:${sceneName}:${d.name}`);
+      if (held) canvas.setParam(d.name, Number(held), sceneName);
+    }
+  }
 
   // --- scenes -------------------------------------------------------------
   // Scenes are whole ways of drawing the same events. Shapes only apply to the
@@ -57,6 +134,9 @@ export function setupLook({ canvas, updateSummaries, paintKitArts }) {
     $('#shapes').style.pointerEvents = usesShapes ? '' : 'none';
     $('#shapes-label').textContent = usesShapes ? 'Shapes' : 'Shapes — used by Bloom only';
     if (persist) store.set('scene', name);
+    restoreParams(name);
+    drawParams();
+    onLookChange();
   }
 
   // Each card carries a still drawn by the scene itself, against synthetic
@@ -71,6 +151,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts }) {
       shape: canvas.shape,
       richness: canvas.richness,
       depth: canvas.depth,
+      params: Object.fromEntries(canvas.paramsOf(name).map((p) => [p.name, p.value])),
     });
   }
 
@@ -100,6 +181,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts }) {
     repaintShapeSwatches();
     repaintScenePreviews();
     paintKitArts();
+    onLookChange();
   }
 
   const palettePicker = createPicker($('#palettes'), Object.entries(PALETTES), {
@@ -205,10 +287,12 @@ export function setupLook({ canvas, updateSummaries, paintKitArts }) {
 
   requestAnimationFrame(repaintScenePreviews);
   requestAnimationFrame(repaintShapeSwatches);
+  restoreParams(canvas.sceneName);
+  drawParams();
 
   return {
     selectScene, selectPalette, selectShape, selectRichness, selectBudget,
-    repaintScenePreviews, repaintShapeSwatches,
+    repaintScenePreviews, repaintShapeSwatches, drawParams,
     SHAPE_LABELS,
     get richnessWord() {
       return richnessWord;
