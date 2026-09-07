@@ -29,7 +29,18 @@ export class SampleInstrument extends Instrument {
    * @param {string} o.baseUrl   Directory holding the samples.
    * @param {string[]} o.files   File names without extension, in ascending pitch.
    * @param {string[]} o.exts    Candidate extensions, best first.
-   * @param {number} o.step      Semitones between consecutive samples.
+   * @param {number} o.step      Semitones between consecutive samples. 0 marks
+   *                             an unpitched bank of one-shots.
+   * @param {number} o.jitter    Unpitched banks only: semitones of random
+   *                             resampling per hit. Three recordings of a gull
+   *                             played at exactly the same rate are heard as
+   *                             three loops within a minute; a little variation
+   *                             is what makes them a colony.
+   * @param {number} o.follow    Unpitched banks only, 0..1: how much of the
+   *                             mapped pitch still moves the sample. A gull
+   *                             does not change key with the size of an event,
+   *                             but throwing the mapping away entirely wastes
+   *                             it -- a small amount reads as distance.
    * @param {number} o.gain      Instrument trim.
    */
   constructor({
@@ -38,12 +49,14 @@ export class SampleInstrument extends Instrument {
     files = [],
     exts = ['ogg', 'mp3'],
     step = 1,
+    jitter = 0,
+    follow = 0,
     baseSemitone = 0,
     gain = 1,
     maxStretch = 12, // never resample further than this, to keep it musical
   } = {}) {
     super(name);
-    Object.assign(this, { baseUrl, files, exts, step, baseSemitone, gain, maxStretch });
+    Object.assign(this, { baseUrl, files, exts, step, jitter, follow, baseSemitone, gain, maxStretch });
     this._buffers = null;
     this._loaded = null;
     this._loading = null;
@@ -112,8 +125,13 @@ export class SampleInstrument extends Instrument {
     let idx;
     let rate = 1;
     if (this.step === 0) {
-      // Unpitched bank (one-shots): pick a variation at random.
+      // Unpitched bank (one-shots): pick a variation at random, and vary the
+      // playback a little so repeats are not heard as a loop.
       idx = this._loaded[Math.floor(Math.random() * this._loaded.length)];
+      const wobble = this.jitter ? (Math.random() * 2 - 1) * this.jitter : 0;
+      const carried = this.follow ? (semitone - this.baseSemitone) * this.follow : 0;
+      const semis = Math.max(-9, Math.min(9, wobble + carried));
+      rate = Math.pow(2, semis / 12);
     } else {
       const rel = (semitone - this.baseSemitone) / this.step;
       const want = Math.max(0, Math.min(this.files.length - 1, Math.round(rel)));

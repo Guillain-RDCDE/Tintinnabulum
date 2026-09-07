@@ -42,6 +42,27 @@ export function synthKit(opts = {}) {
   };
 }
 
+
+/**
+ * A recorded animal call: a small bank of one-shots, picked at random.
+ *
+ * Synthesis is genuinely good at surf, fire and wind -- they are filtered noise
+ * and nothing else. It is bad at animals, because a gull is a resonant body
+ * with a vocal tract and an FM pair is not. These are field recordings, all in
+ * the public domain or CC0; see NOTICE.
+ */
+function field(name, files, o = {}) {
+  return new SampleInstrument({
+    name,
+    baseUrl: DEFAULT_SOUND_URL + 'field/',
+    files,
+    step: 0, // unpitched: these are calls, not notes
+    jitter: o.jitter ?? 1.6,
+    follow: o.follow ?? 0.06,
+    gain: o.gain ?? 0.55,
+  });
+}
+
 /** Shorthand for a kit made of three presets. */
 function trio(addP, subP, accentP, o = {}) {
   return () => ({
@@ -57,8 +78,12 @@ function trio(addP, subP, accentP, o = {}) {
 }
 
 /**
- * Named kits for a picker. Every one but `hatnote` is pure synthesis: no audio
- * files, nothing to download, nothing to license, and it works offline.
+ * Named kits for a picker.
+ *
+ * Twelve of the fifteen are pure synthesis: no audio files, nothing to
+ * download, nothing to license, and they work offline. Three carry recordings
+ * -- `hatnote`'s celesta, and the animal calls in `shore` and `camargue`. Every
+ * recorded file is public domain or CC0, listed in NOTICE.
  */
 export const KITS = {
   hatnote: {
@@ -133,7 +158,14 @@ export const KITS = {
     note: AMBIENCES.shore.note,
     ambience: true,
     bed: 'shore',
-    make: trio('wave', 'undertow', 'gull', { add: 0.5, sub: 0.45, accent: 0.22 }),
+    sampled: true,
+    make: () => ({
+      add: new SynthInstrument({ name: 'wave', preset: 'wave', gain: 0.5 }),
+      sub: new SynthInstrument({ name: 'undertow', preset: 'undertow', gain: 0.45 }),
+      // A real herring gull, recorded at Carolles. The synthesised one was the
+      // worst thing in the project.
+      accent: field('gull', ['gull1', 'gull2', 'gull3'], { gain: 0.5 }),
+    }),
   },
   fire: {
     label: 'Forest fire',
@@ -147,7 +179,13 @@ export const KITS = {
     note: AMBIENCES.camargue.note,
     ambience: true,
     bed: 'camargue',
-    make: trio('croak', 'reed', 'heron', { add: 0.4, sub: 0.35, accent: 0.2 }),
+    sampled: true,
+    make: () => ({
+      // Edible frogs -- Pelophylax, the Camargue's own -- and a heron.
+      add: field('frog', ['frog1', 'frog2'], { gain: 0.5, jitter: 2.2 }),
+      sub: new SynthInstrument({ name: 'reed', preset: 'reed', gain: 0.35 }),
+      accent: field('heron', ['heron1', 'heron2'], { gain: 0.45 }),
+    }),
   },
 };
 

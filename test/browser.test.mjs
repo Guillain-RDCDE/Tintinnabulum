@@ -869,6 +869,99 @@ ok('choosing another swaps it rather than stacking', bedSwap.onFire === 'fire', 
 ok('choosing an ordinary kit silences it', bedSwap.afterPlain === null, String(bedSwap.afterPlain));
 
 
+
+// --- the field recordings ------------------------------------------------
+// Real calls, because synthesis is bad at animals. A sample bank that fails to
+// load is silent, and silent is exactly how this project has failed before, so
+// each one is fetched, decoded and measured rather than assumed.
+const field = await page.evaluate(async () => {
+  const { SampleInstrument, KITS } = await import('../src/index.js');
+  const ctx = new (window.AudioContext || window.webkitAudioContext)();
+  const files = ['gull1', 'gull2', 'gull3', 'frog1', 'frog2', 'heron1', 'heron2'];
+  const inst = new SampleInstrument({
+    name: 'field', baseUrl: new URL('../sounds/field/', location.href).href,
+    files, step: 0, jitter: 1.6,
+  });
+  await inst.load(ctx);
+  const measured = (inst._buffers || []).map((b, i) => {
+    if (!b) return { file: files[i], loaded: false };
+    const d = b.getChannelData(0);
+    let peak = 0;
+    let sum = 0;
+    for (let j = 0; j < d.length; j++) {
+      const v = Math.abs(d[j]);
+      peak = Math.max(peak, v);
+      sum += d[j] * d[j];
+    }
+    return {
+      file: files[i], loaded: true,
+      seconds: Number(b.duration.toFixed(2)),
+      rate: b.sampleRate,
+      channels: b.numberOfChannels,
+      peak: Number(peak.toFixed(3)),
+      rms: Number(Math.sqrt(sum / d.length).toFixed(4)),
+      // A clip that starts or ends away from zero clicks. Both ends are faded,
+      // so both ends must be near silent.
+      head: Number(Math.abs(d[0]).toFixed(4)),
+      tail: Number(Math.abs(d[d.length - 1]).toFixed(4)),
+    };
+  });
+
+  // Unpitched banks vary the playback so repeats are not heard as a loop.
+  const rates = new Set();
+  for (let i = 0; i < 24; i++) {
+    const off = new OfflineAudioContext(1, 4410, 44100);
+    const probe = new SampleInstrument({ name: 'p', baseUrl: inst.baseUrl, files, step: 0, jitter: 1.6 });
+    probe._buffers = inst._buffers;
+    probe._loaded = inst._loaded;
+    probe.ready = true;
+    const v = probe.play(off, off.destination, { semitone: 0, velocity: 1 });
+    rates.add(v ? Math.round(v.duration) : 0);
+  }
+  ctx.close();
+  return {
+    measured,
+    variations: rates.size,
+    sampledKits: Object.entries(KITS).filter(([, k]) => k.sampled).map(([n]) => n),
+  };
+});
+
+const notLoaded = field.measured.filter((m) => !m.loaded);
+ok('every field recording loads and decodes', notLoaded.length === 0 && field.measured.length === 7,
+   notLoaded.map((m) => m.file).join(', ') || `${field.measured.length} clips`);
+const tooQuiet = field.measured.filter((m) => m.loaded && m.peak < 0.15);
+ok('and every one of them is audible', tooQuiet.length === 0,
+   tooQuiet.map((m) => `${m.file}=${m.peak}`).join(', ') ||
+   field.measured.map((m) => `${m.file}:${m.peak}`).join(' '));
+const clicky = field.measured.filter((m) => m.loaded && (m.head > 0.02 || m.tail > 0.02));
+ok('and faded at both ends, so none of them clicks', clicky.length === 0,
+   clicky.map((m) => `${m.file} ${m.head}/${m.tail}`).join(', ') || '7 clips');
+const heavy = field.measured.filter((m) => m.loaded && (m.seconds > 2.5 || m.channels > 1));
+ok('they are short mono one-shots, not tracks', heavy.length === 0,
+   heavy.map((m) => `${m.file} ${m.seconds}s x${m.channels}`).join(', ') ||
+   `longest ${Math.max(...field.measured.map((m) => m.seconds))}s`);
+ok('repeats are varied rather than looped', field.variations > 3,
+   `${field.variations} distinct playback lengths in 24 hits`);
+ok('the kits carrying recordings say so', field.sampledKits.length === 3,
+   field.sampledKits.join(', '));
+
+// The ambiences must reach for the recordings, not the old synthetic calls.
+const realVoices = await page.evaluate(async () => {
+  const { KITS } = await import('../src/index.js');
+  const shape = (n) => Object.fromEntries(
+    Object.entries(KITS[n].make()).map(([role, i]) => [role, i.constructor.name + ':' + i.name])
+  );
+  return { shore: shape('shore'), camargue: shape('camargue'), fire: shape('fire') };
+});
+ok('the gull is a recording now', /SampleInstrument:gull/.test(realVoices.shore.accent),
+   realVoices.shore.accent);
+ok('the frog and the heron too',
+   /SampleInstrument:frog/.test(realVoices.camargue.add) && /SampleInstrument:heron/.test(realVoices.camargue.accent),
+   `${realVoices.camargue.add} / ${realVoices.camargue.accent}`);
+ok('surf, fire and wind stay synthesised, which is what synthesis is good at',
+   /Synth/.test(realVoices.shore.add) && Object.values(realVoices.fire).every((v) => /Synth/.test(v)),
+   JSON.stringify(realVoices.fire));
+
 // --- voice stealing under real load -------------------------------------
 const flood = await page.evaluate(async () => {
   const son = window.son;

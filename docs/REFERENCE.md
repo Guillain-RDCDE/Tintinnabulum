@@ -10,7 +10,7 @@ Open the sandbox and change one thing at a time.
 
 | | |
 |---|---|
-| **Sound → Water** | The same events as drops in a cavity. Fourteen of the fifteen kits are pure synthesis: no audio files at all. |
+| **Sound → Water** | The same events as drops in a cavity. Twelve of the fifteen kits are pure synthesis, with no audio files at all. |
 | **Sound → Gongs** | Pair it with Earthquakes. Long, slow, inharmonic. |
 | **Sound → Scale → pentatonic** | Notes snap to five. It stops sounding arbitrary and starts sounding composed. |
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
@@ -226,8 +226,9 @@ Fifteen kits ship, selectable at runtime. Three of them are places rather than i
 | **Dawn chorus** | Birdsong, built from swept whistles rather than recordings |
 | **Night** | Crickets and low wind. The quietest thing here |
 
-Only the first uses audio files. **The other fourteen are pure synthesis: nothing
-to download, nothing to license, and they work offline.**
+Only the first uses audio files. **Twelve of the fifteen are pure synthesis: nothing to download, nothing
+to license, and they work offline.** Three carry recordings — the celesta, and
+the animal calls in the two ambiences, all public domain or CC0.
 
 - `SampleInstrument` plays recorded banks, resampled through `playbackRate`, so
   pitch is continuous rather than limited to the number of recorded notes.
@@ -366,6 +367,18 @@ So the aggregate becomes texture and the individual event stays a detail inside
 it. The bed is told about every event, including ones restraint or voice
 stealing will not sound: a note that was dropped still happened, and the weather
 should know.
+
+**The animals are recordings; the weather is not.** Synthesis is convincing for
+surf, fire and wind, because they are filtered noise and nothing else. It is
+unconvincing for a gull, which is a resonant body with a vocal tract, and the
+synthesised one was frankly unpleasant. So the gull, the frog and the heron are
+real field recordings — a herring gull at Carolles, edible frogs in Poland, a
+heron — all public domain or CC0, cut to the call and encoded small. Seven
+clips, 76 kB in total, credited in [NOTICE](../NOTICE).
+
+Crickets, surf and fire were available only under CC BY-SA, whose share-alike
+term would attach to any adaptation. Those stay synthesised, which is the half
+synthesis does well anyway.
 
 This needed a third synthesis engine. Everything before it came from an
 oscillator — which is why the old `breeze` is a detuned sawtooth under a filter,
@@ -535,7 +548,8 @@ src/sources/
 server/
   ingest.mjs            zero-dependency ingest, fan-out and static server
   runner.mjs            drives descriptors: fetch or listen, de-duplicate, pace
-sounds/                 sampled celesta, clavichord and string swells
+sounds/                 the original sampled banks, and:
+  field/                real animal calls, public domain and CC0
 tools/
   render.mjs            drive the real visualiser headless, out to PNG
   make-social-preview.mjs  regenerate the card in .github/, from the engine

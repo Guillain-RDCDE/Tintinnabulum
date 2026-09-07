@@ -97,3 +97,43 @@ DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
 THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+
+3. Field recordings in sounds/field/
+------------------------------------
+
+The animal calls in the Seashore and Camargue night ambiences are real
+recordings, not synthesis. Synthesis is convincing for surf, fire and wind --
+they are filtered noise and nothing else -- and unconvincing for animals,
+because a gull is a resonant body with a vocal tract.
+
+All of them are public domain or CC0, so they carry no attribution
+requirement and no share-alike obligation. They are credited anyway, because
+somebody stood in a marsh at dawn to make them.
+
+  gull1.ogg, gull2.ogg, gull3.ogg
+      European Herring Gull (Larus argentatus), flight calls.
+      Recorded at Carolles, Manche, France by Sonothèque ADVL.
+      CC0 1.0 Universal (public domain dedication).
+      https://commons.wikimedia.org/wiki/File:XC707075_-_European_Herring_Gull_-_Larus_argentatus.mp3
+
+  frog1.ogg, frog2.ogg
+      Edible frogs (Pelophylax kl. esculentus), chorus.
+      Recorded in May at Krzemienica, Łódź Voivodeship, Poland by WrS.tm.pl.
+      Public domain.
+      https://commons.wikimedia.org/wiki/File:Edible_frogs,_sounds._May._The_Village_of_Krzemienica,_%C5%81%C3%B3d%C5%BA_Voivodeship,_Poland.ogg
+
+  heron1.ogg, heron2.ogg
+      Great Blue Heron (Ardea herodias), call.
+      Author unknown; published as public domain.
+      https://commons.wikimedia.org/wiki/File:Great_Blue_Heron.ogg
+
+Each file here is an excerpt of the original: cut to the call, made mono,
+high-passed to remove wind rumble, faded at both ends so it cannot click,
+level-matched, and encoded as Vorbis at 22.05 kHz. Seven clips, 76 kB in
+total. The originals are linked above and are unmodified at those addresses.
+
+A note on what is NOT here. Recordings of crickets, surf and fire were
+available only under CC BY-SA, whose share-alike term would attach to any
+adaptation of them. Those three are synthesised instead -- which is the half
+synthesis does well anyway.

@@ -336,7 +336,7 @@ The original project simply played one file per note and was therefore limited t
 including notes above and below anything that was recorded. `step: 0` marks an
 unpitched bank (the swells), which picks a variation at random instead.
 
-**`SynthInstrument`** needs no files at all, which is why fourteen of the fifteen kits
+**`SynthInstrument`** needs no files at all, which is why twelve of the fifteen kits
 are free of downloads and of licensing entirely. Two engines, plus a `sweep`
 parameter that bends the pitch during the attack: a falling water drop rings
 *upward* as the cavity closes, and that bend is the whole difference between a
