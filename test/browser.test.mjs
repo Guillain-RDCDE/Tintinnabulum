@@ -659,6 +659,14 @@ ok('no scene keeps a collection past the budget', unbounded.length === 0,
 // it rather than reshuffling the screen or dropping back to flat colour.
 const recolour = await page.evaluate(async () => {
   const sink = window.son.sinks.find((s) => s.particles);
+  // Make the marks this inspects rather than inheriting whatever survived the
+  // block above: a mark has a lifetime, and on a slow connection the previous
+  // ones have long since faded, which left this reading an empty array and
+  // passing on vacuous truth.
+  sink.setScene('bloom');
+  sink.clear();
+  for (let i = 0; i < 8; i++) window.son.emit({ magnitude: 200 + i * 90, id: 'tint-' + i });
+  await new Promise((r) => setTimeout(r, 120));
   const was = sink.paletteName;
   const before = sink.particles.slice(0, 8).map((p) => ({ tint: p.tint, color: p.color }));
   sink.setPalette('neon');
@@ -672,6 +680,7 @@ const recolour = await page.evaluate(async () => {
     n: before.length,
   };
 });
+ok('the recolour check has marks to look at', recolour.n >= 8, `n=${recolour.n}`);
 ok('a palette change re-derives shades from the same per-event tint',
    recolour.n > 0 && recolour.tintsKept && recolour.changed && recolour.restored,
    `n=${recolour.n} tints kept=${recolour.tintsKept} changed=${recolour.changed} restored=${recolour.restored}`);
@@ -1132,12 +1141,19 @@ ok('a dial turned on the laptop reaches the wall', dialCrossed === null || wallD
    `${wallDial} on the wall`);
 
 // Reshaping the window reshapes the work, which is the whole point of it.
+// A resize is delivered as an event and acted on when the window next gets a
+// turn, which a background popup may not get promptly -- so wait for the size
+// to arrive rather than for a fixed delay that only holds on a fast machine.
 await wall.setViewportSize({ width: 540, height: 960 }); // portrait, as a gallery panel
-await wall.waitForTimeout(500);
-const reshaped = await wall.evaluate(() => ({
-  w: window.projection.sink.w,
-  h: window.projection.sink.h,
-}));
+let reshaped = { w: 0, h: 0 };
+try {
+  await wall.waitForFunction(
+    () => window.projection.sink.w === 540 && window.projection.sink.h === 960,
+    null,
+    { timeout: 8000 }
+  );
+} catch { /* report the size it settled on, below */ }
+reshaped = await wall.evaluate(() => ({ w: window.projection.sink.w, h: window.projection.sink.h }));
 ok('it re-lays out for a portrait screen', reshaped.w === 540 && reshaped.h === 960,
    `${reshaped.w}x${reshaped.h}`);
 ok('the projection window logged no errors', wallErrors.length === 0, wallErrors.join(' | '));
