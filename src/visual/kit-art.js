@@ -117,6 +117,129 @@ const PLATES = {
     ctx.globalAlpha = 1;
   },
 
+  // A handbell: the same body as the tower bell, with the handle that makes it
+  // one you could hold.
+  handbells(ctx, w, h, c) {
+    const cx = w * 0.46;
+    const cy = h * 0.6;
+    const R = h * 0.26;
+    const half = (v) => R * (0.3 + Math.pow(v, 1.9) * 0.74);
+    const top = cy - R * 1.05;
+    const bottom = cy + R * 0.66;
+    contour(ctx, (u, v) => {
+      const hw = half(v);
+      const a = (u - 0.5) * Math.PI;
+      return [cx + Math.sin(a) * hw, top + v * (bottom - top) + Math.cos(a) * hw * 0.2];
+    }, cylinderTone(cx - R, cx + R, { lit: 0.3, ambient: 0.14 }),
+      { lines: 11, steps: 30, weight: 2 });
+    burin(ctx, (t) => {
+      const a = (t - 0.5) * Math.PI;
+      return [cx + Math.sin(a) * R * 1.04, bottom + Math.cos(a) * R * 0.2];
+    }, flat(0.95), { weight: 2.4, steps: 28 });
+    // The handle, and the clapper hanging below the lip.
+    burin(ctx, (t) => {
+      const a = Math.PI * (1.15 + t * 0.7);
+      return [cx + Math.cos(a) * R * 0.42, top - h * 0.02 + Math.sin(a) * R * 0.5];
+    }, flat(0.85), { weight: 2.6, steps: 20 });
+    ctx.fillStyle = c.accent;
+    ctx.beginPath();
+    ctx.arc(cx + R * 0.1, bottom + h * 0.05, h * 0.035, 0, TAU);
+    ctx.fill();
+    ctx.fillStyle = c.line;
+    // A second bell, further off and smaller: a set, not a bell.
+    ctx.globalAlpha = 0.5;
+    contour(ctx, (u, v) => {
+      const hw = R * 0.55 * (0.3 + Math.pow(v, 1.9) * 0.74);
+      const a = (u - 0.5) * Math.PI;
+      return [w * 0.81 + Math.sin(a) * hw, h * 0.3 + v * R * 0.95 + Math.cos(a) * hw * 0.2];
+    }, flat(0.7), { lines: 8, steps: 22, weight: 1.5 });
+    ctx.globalAlpha = 1;
+  },
+
+  // A thrown pot and a tuned bar: the two things in the kit, side by side, the
+  // way a plate of specimens would show them.
+  clay(ctx, w, h, c) {
+    hatch(ctx, { x: 0, y: h * 0.74, w, h: h * 0.26 }, 0,
+      (x, y) => (y < h * 0.74 ? 0 : 0.3 + (y - h * 0.74) / h * 1.2), { spacing: 4, weight: 1.7 });
+    // The pot: a profile, wide at the shoulder and drawn in at the neck.
+    const px = w * 0.33;
+    const top = h * 0.24;
+    const foot = h * 0.76;
+    const half = (v) => w * 0.15 * (0.42 + Math.sin(Math.pow(v, 0.85) * Math.PI * 0.92) * 0.62);
+    contour(ctx, (u, v) => {
+      const hw = half(v);
+      const a = (u - 0.5) * Math.PI;
+      return [px + Math.sin(a) * hw, top + v * (foot - top) + Math.cos(a) * hw * 0.24];
+    }, cylinderTone(px - w * 0.16, px + w * 0.16, { lit: 0.28, ambient: 0.2 }),
+      { lines: 13, steps: 30, weight: 2 });
+    burin(ctx, (t) => {
+      const a = (t - 0.5) * Math.PI * 2;
+      return [px + Math.cos(a) * half(0) , top + Math.sin(a) * h * 0.035];
+    }, flat(0.9), { weight: 1.8, steps: 34 });
+    // The bar, on its two cords, with the arch cut out underneath.
+    const bx = w * 0.72;
+    tube(ctx, bx - w * 0.09, h * 0.42, w * 0.18, h * 0.16, { lit: 0.3, spacing: 2.6, weight: 1.9 });
+    ctx.globalAlpha = 0.85;
+    burin(ctx, (t) => [bx - w * 0.09 + t * w * 0.18, h * 0.42], flat(0.95), { weight: 1.6, steps: 12 });
+    burin(ctx, (t) => [bx - w * 0.09 + t * w * 0.18, h * 0.58 + Math.sin(t * Math.PI) * h * 0.05],
+      flat(0.8), { weight: 1.4, steps: 20 });
+    ctx.globalAlpha = 0.5;
+    for (const dx of [-0.06, 0.06]) burin(ctx, (t) => [bx + w * dx, h * 0.3 + t * h * 0.12],
+      flat(0.6), { weight: 1, steps: 6 });
+    ctx.globalAlpha = 1;
+  },
+
+  // A koto: long strings over movable bridges, seen down the length of it.
+  koto(ctx, w, h, c) {
+    hatch(ctx, { x: 0, y: h * 0.2, w, h: h * 0.62 }, Math.PI * 0.5,
+      vignette((x, y) => (y < h * 0.2 || y > h * 0.82 ? 0 : 0.26), w, h, { inset: 0.03, soft: 0.12 }),
+      { spacing: 4.4, weight: 1.5 });
+    // The body, in perspective: wider at the near end.
+    ctx.globalAlpha = 0.9;
+    burin(ctx, (t) => [t * w, h * 0.2 + t * h * 0.04], flat(0.85), { weight: 2, steps: 24 });
+    burin(ctx, (t) => [t * w, h * 0.82 - t * h * 0.06], flat(0.85), { weight: 2.4, steps: 24 });
+    ctx.globalAlpha = 1;
+    // Thirteen strings is the instrument; seven is what reads at this size.
+    for (let i = 0; i < 7; i++) {
+      const v = i / 6;
+      const y = h * (0.28 + v * 0.46);
+      burin(ctx, (t) => [t * w, y + t * h * 0.02 * (1 - v * 2)],
+        (x) => 0.35 + 0.55 * Math.sin((x / w) * Math.PI), { weight: 0.8 + v * 0.9, steps: 50 });
+      // The bridge under each: a koto is tuned by sliding them, so they are
+      // deliberately not in a line.
+      const bx = w * (0.3 + ((i * 1.618033988749895) % 1) * 0.42);
+      ctx.globalAlpha = 0.95;
+      burin(ctx, (t) => [bx + (t - 0.5) * w * 0.02, y - t * h * 0.06], flat(0.9),
+        { weight: 2, steps: 8 });
+      ctx.globalAlpha = 1;
+    }
+  },
+
+  // The dawn chorus taken apart: many small birds, none of them the subject.
+  aviary(ctx, w, h, c) {
+    sky(ctx, w, h, h * 0.98, { spacing: 7, from: 0.3, to: 0.03 });
+    const rnd = seeded(61);
+    const gull = (cx, cy, s2, alpha) => {
+      ctx.globalAlpha = alpha;
+      for (const dir of [-1, 1]) {
+        const lead = (t) => [cx + dir * t * s2,
+          cy - Math.sin(Math.pow(t, 0.75) * Math.PI * 0.85) * s2 * 0.46];
+        contour(ctx, (t, v) => {
+          const [x, y] = lead(t);
+          return [x, y + v * s2 * 0.16 * (1 - t)];
+        }, flat(0.7), { lines: 3, steps: 18, weight: 1.5 });
+        burin(ctx, lead, flat(0.95), { weight: 1.7, steps: 20 });
+      }
+      ctx.globalAlpha = 1;
+    };
+    // Scattered by size and height, so the flock has depth rather than being
+    // a row of the same bird.
+    for (let i = 0; i < 11; i++) {
+      const s2 = Math.min(w, h) * (0.07 + rnd() * 0.16);
+      gull(w * (0.06 + rnd() * 0.88), h * (0.14 + rnd() * 0.72), s2, 0.35 + rnd() * 0.6);
+    }
+  },
+
   // A physics plate: an oscillogram ruled on a hatched ground, the way a
   // vibrating-plate figure was published in 1870.
   synth(ctx, w, h, c) {

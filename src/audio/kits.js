@@ -3,6 +3,7 @@
 import { SampleInstrument } from './sample-instrument.js';
 import { SynthInstrument } from './synth-instrument.js';
 import { AMBIENCES } from './ambiences.js';
+import { GranularInstrument } from './granular.js';
 
 
 // Resolved from this module's own location rather than the site root, so the
@@ -134,8 +135,45 @@ export const KITS = {
   },
   strings: {
     label: 'Plucked strings',
-    note: 'Harp above, deep pizzicato below. The warmest of the set.',
-    make: trio('harp', 'bass', 'pad'),
+    note: 'A real plucked string: a burst of noise in a loop that loses its highs, which is what a string does. Where it is plucked along its length decides the whole character.',
+    make: trio('harpstring', 'bassstring', 'nylon', { add: 0.45, sub: 0.4, accent: 0.4 }),
+  },
+
+  // --- struck bodies -------------------------------------------------------
+  handbells: {
+    label: 'Handbells',
+    note: 'Bells modelled as bodies rather than as timbres: seven partials, each dying at its own rate, with the minor-third tierce that founders have tuned in since the seventeenth century.',
+    make: trio('handbell', 'tubular', 'singingbowl', { add: 0.32, sub: 0.28, accent: 0.22 }),
+  },
+  clay: {
+    label: 'Clay and wood',
+    note: 'Fired clay and tuned bars. Almost no sustain, which is what tells the ear it is not metal. The quietest kit here, and the one that suits a busy feed.',
+    make: trio('claypot', 'bar', 'woody', { add: 0.42, sub: 0.4, accent: 0.42 }),
+  },
+  aviary: {
+    label: 'Aviary',
+    note: 'The same recordings, taken apart. Each event scatters nine fifty-millisecond grains of birdsong across the stereo field at slightly different pitches, so a busy feed is a hedgerow rather than a queue of birds.',
+    sampled: true,
+    make: () => ({
+      add: new GranularInstrument({
+        name: 'cloud', baseUrl: DEFAULT_SOUND_URL + 'field/',
+        files: ['tit1', 'finch1', 'wren1', 'chiff1', 'chiff2'],
+        grains: 9, grain: 0.075, spray: 0.5, pitch: 6, follow: 0.35, gain: 0.34,
+      }),
+      sub: new GranularInstrument({
+        name: 'undergrowth', baseUrl: DEFAULT_SOUND_URL + 'field/',
+        // Longer grains, pitched down and barely spread: the same material
+        // heard as a body rather than as birds.
+        files: ['frog1', 'frog2', 'heron1'],
+        grains: 5, grain: 0.16, spray: 0.28, pitch: 3, follow: 0.2, gain: 0.3,
+      }),
+      accent: field('gull', ['gull1', 'gull2', 'gull3'], { gain: 0.42 }),
+    }),
+  },
+  koto: {
+    label: 'Koto',
+    note: 'Plucked near the bridge, so thin and bright, over a low string plucked in the middle. The body under them is a resonance, not a filter sweep.',
+    make: trio('koto', 'bassstring', 'harpstring', { add: 0.4, sub: 0.38, accent: 0.36 }),
   },
   birds: {
     label: 'Dawn chorus',

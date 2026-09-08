@@ -55,6 +55,97 @@ export const SYNTH_PRESETS = {
     cutoff: 3200, cutoffDecay: 0.12, q: 11, sweep: 2.4, sweepTime: 0.02,
   },
 
+  // --- struck bodies, by their modes ---------------------------------------
+  //
+  // A real object rings at a set of frequencies that are its own, not multiples
+  // of a fundamental, and each of them dies at its own rate. The ratios below
+  // are measured properties of the things they name, and they are the reason
+  // these read as objects rather than as timbres.
+  handbell: {
+    // A tuned bell's partials, and the strange one is the tierce: a MINOR
+    // third above the prime. Founders have tuned that interval in since the
+    // seventeenth century, and it is the whole reason a bell sounds like grief.
+    engine: 'modal', attack: 0.002, decay: 3.4, colour: 'white', strike: 0.005,
+    modes: [
+      { ratio: 0.5, gain: 0.7, decay: 1.3, q: 60 },   // hum, an octave down
+      { ratio: 1, gain: 1, decay: 1, q: 70 },         // prime
+      { ratio: 1.2, gain: 0.75, decay: 0.8, q: 65 },  // tierce -- the minor third
+      { ratio: 1.5, gain: 0.5, decay: 0.6, q: 60 },   // quint
+      { ratio: 2, gain: 0.6, decay: 0.5, q: 55 },     // nominal
+      { ratio: 2.5, gain: 0.24, decay: 0.28, q: 50 },
+      { ratio: 3.35, gain: 0.16, decay: 0.18, q: 45 },
+    ],
+  },
+  tubular: {
+    // A free-free bar in transverse vibration: 1 : 2.76 : 5.40 : 8.93. Nothing
+    // near a harmonic series, which is why an orchestral tubular bell has no
+    // pitch of its own until the ear invents one from the 2:3 of the upper two.
+    engine: 'modal', attack: 0.002, decay: 4.5, colour: 'white', strike: 0.004,
+    modes: [
+      { ratio: 1, gain: 0.55, decay: 1, q: 80 },
+      { ratio: 2.76, gain: 1, decay: 0.9, q: 90 },
+      { ratio: 5.4, gain: 0.6, decay: 0.55, q: 80 },
+      { ratio: 8.93, gain: 0.3, decay: 0.3, q: 70 },
+      { ratio: 13.34, gain: 0.12, decay: 0.16, q: 60 },
+    ],
+  },
+  singingbowl: {
+    // A standing bowl: nearly harmonic, slightly stretched, and it rings for
+    // an unreasonably long time.
+    engine: 'modal', attack: 0.01, decay: 6, colour: 'pink', strike: 0.03,
+    modes: [
+      { ratio: 1, gain: 1, decay: 1, q: 120 },
+      { ratio: 2.32, gain: 0.5, decay: 0.7, q: 130 },
+      { ratio: 4.25, gain: 0.28, decay: 0.42, q: 120 },
+      { ratio: 6.63, gain: 0.14, decay: 0.24, q: 100 },
+    ],
+  },
+  claypot: {
+    // Fired clay: dense, inharmonic, and dead within a second. A pot is a
+    // body with almost no sustain, which is what tells you it is not metal.
+    engine: 'modal', attack: 0.001, decay: 0.85, colour: 'white', strike: 0.003,
+    modes: [
+      { ratio: 1, gain: 1, decay: 1, q: 26 },
+      { ratio: 1.59, gain: 0.7, decay: 0.7, q: 24 },
+      { ratio: 2.14, gain: 0.5, decay: 0.5, q: 22 },
+      { ratio: 2.65, gain: 0.34, decay: 0.34, q: 20 },
+      { ratio: 3.3, gain: 0.2, decay: 0.22, q: 18 },
+    ],
+  },
+  bar: {
+    // A tuned marimba bar. The underside is cut in an arch to pull the second
+    // and third modes to exactly four and ten times the first, which is why a
+    // marimba sings where a xylophone knocks.
+    engine: 'modal', attack: 0.001, decay: 1.1, colour: 'white', strike: 0.0035,
+    modes: [
+      { ratio: 1, gain: 1, decay: 1, q: 45 },
+      { ratio: 4, gain: 0.3, decay: 0.3, q: 55 },
+      { ratio: 10, gain: 0.1, decay: 0.12, q: 60 },
+    ],
+  },
+
+  // --- plucked strings -----------------------------------------------------
+  //
+  // Karplus-Strong. `pick` is where along the string it was plucked, and it is
+  // most of the character: near the bridge is thin and bright, near the middle
+  // is round. `body` is the box it is glued to.
+  koto: {
+    engine: 'string', attack: 0.002, decay: 2.6,
+    damping: 0.36, loop: 0.9965, pick: 0.11, tone: 0.85, body: 420, bodyGain: 5,
+  },
+  nylon: {
+    engine: 'string', attack: 0.003, decay: 2.2,
+    damping: 0.62, loop: 0.9955, pick: 0.3, tone: 0.4, body: 210, bodyGain: 7,
+  },
+  harpstring: {
+    engine: 'string', attack: 0.002, decay: 3.4,
+    damping: 0.42, loop: 0.997, pick: 0.2, tone: 0.62, body: 320, bodyGain: 4,
+  },
+  bassstring: {
+    engine: 'string', attack: 0.004, decay: 4.2, octave: -12,
+    damping: 0.7, loop: 0.998, pick: 0.24, tone: 0.28, body: 110, bodyGain: 8,
+  },
+
   // A falling drop rings *upward* as the cavity closes: the pitch rises fast
   // and the whole thing is over in a fifth of a second.
   drop: {

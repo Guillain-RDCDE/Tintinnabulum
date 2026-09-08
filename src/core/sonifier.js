@@ -146,6 +146,20 @@ export class Sonifier {
     return this;
   }
 
+  /**
+   * The room everything is played into.
+   *
+   * A property rather than a method, because it is a setting and not an
+   * action: there is nothing to await and nothing to fail.
+   */
+  get space() {
+    return this.engine.space;
+  }
+
+  set space(name) {
+    this.engine.space = name;
+  }
+
   // --- the hot path -------------------------------------------------------
 
   emit(raw) {

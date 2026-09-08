@@ -18,7 +18,7 @@
 // of an hour is hundreds of thousands of marks and no machine will redraw that
 // sixty times a second.
 
-import { scratch, hexToRgb } from './paint.js';
+import { scratch, toRgb } from './paint.js';
 
 const TAU = Math.PI * 2;
 
@@ -507,9 +507,9 @@ export const RECURSIVE_SCENES = {
         s.img = g.createImageData(gw, gh);
       }
       const d = s.img.data;
-      const bg = hexToRgb(api.palette.background);
-      const ink = hexToRgb(api.palette.user || api.palette.default);
-      const hot = hexToRgb(api.palette.alert || api.palette.user);
+      const bg = toRgb(api.palette.background);
+      const ink = toRgb(api.palette.user || api.palette.default);
+      const hot = toRgb(api.palette.alert || api.palette.user);
 
       // The wave directions, evenly spread over half a turn. Sines and cosines
       // are hoisted: they are the same for every one of the sixty thousand

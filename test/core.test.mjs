@@ -479,15 +479,28 @@ ok('there are twelve keys', KEYS.length === 12, KEYS.join(' '));
 ok('there is a broad choice of scales', Object.keys(SCALES).length >= 15,
    Object.keys(SCALES).length + ' scales');
 
+// A degree need not be a whole semitone, and the tunings are the reason: just
+// intonation, the harmonic series and a bell's partials all come from
+// whole-number frequency RATIOS, which land between the twelve equal steps.
+// The requirement is that a degree is a real position inside one octave and
+// that no two are so close together that they are a beat rather than an
+// interval.
 let scalesValid = true;
 for (const [name, degrees] of Object.entries(SCALES)) {
-  if (!degrees.length || degrees.some((d) => !Number.isInteger(d) || d < 0 || d > 11)) {
+  if (!degrees.length || degrees.some((d) => !Number.isFinite(d) || d < 0 || d >= 12)) {
     scalesValid = false;
     console.log('   bad scale: ' + name);
   }
-  if (new Set(degrees).size !== degrees.length) {
+  const sorted = [...degrees].sort((a, b) => a - b);
+  if (String(sorted) !== String(degrees)) {
     scalesValid = false;
-    console.log('   duplicate degrees in: ' + name);
+    console.log('   degrees out of order in: ' + name);
+  }
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] - sorted[i - 1] < 0.9) {
+      scalesValid = false;
+      console.log(`   degrees too close in ${name}: ${sorted[i - 1]} and ${sorted[i]}`);
+    }
   }
 }
 ok('every scale is a valid set of degrees', scalesValid);
@@ -499,7 +512,12 @@ for (const name of Object.keys(SCALES)) {
   const m = new Mapper({ scale: name, mode: 'log', range: 36, warmup: 1e9 });
   for (let v = 1; v < 4000; v += 37) {
     const deg = (((m.map(v).semitone % 12) + 12) % 12);
-    if (!SCALES[name].includes(deg)) offScale = `${name} produced ${deg}`;
+    // Compared with a tolerance, because a fractional degree comes back from
+    // an octave's worth of addition and subtraction: 3.156 leaves as
+    // 3.1560000000000006, which is the same note and a different number.
+    if (!SCALES[name].some((d) => Math.abs(d - deg) < 1e-6)) {
+      offScale = `${name} produced ${deg}`;
+    }
   }
 }
 ok('no scale ever emits a note outside itself', !offScale, offScale || 'all clean');

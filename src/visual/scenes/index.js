@@ -30,6 +30,7 @@ import { PHYSICAL_SCENES } from './physical.js';
 import { GENERATIVE_SCENES } from './generative.js';
 import { GEOMETRY_SCENES } from './geometry.js';
 import { RECURSIVE_SCENES } from './recursive.js';
+import { SYSTEM_SCENES } from './systems.js';
 
 export { noise2 } from './noise.js';
 
@@ -41,6 +42,7 @@ export const SCENES = {
   ...GENERATIVE_SCENES,
   ...GEOMETRY_SCENES,
   ...RECURSIVE_SCENES,
+  ...SYSTEM_SCENES,
 };
 
 export const SCENE_NAMES = Object.keys(SCENES);

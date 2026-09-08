@@ -245,6 +245,124 @@ sets and are interchangeable at runtime; nothing is swapped in until it can
 actually play. Sample banks resolve relative to the library itself, so the
 project runs from any mount point.
 
+### Synthesis engines
+
+Five, and the preset table is the only thing that chooses between them.
+
+| | |
+|---|---|
+| `fm` | An operator pair. Cheap, and the honest way to get the inharmonic clang of struck metal out of two oscillators. |
+| `sub` | An oscillator through a filter. Everything pitched and ordinary. |
+| `noise` | Filtered noise. Surf, fire, wind: things with no pitch at all. |
+| `modal` | A struck body, as the sum of its modes. |
+| `string` | Karplus-Strong. A real plucked string. |
+
+**Modal** ([`src/audio/modal.js`](../src/audio/modal.js)) is what a bell, a bar
+or a clay pot actually is: a set of frequencies belonging to the shape rather
+than to a fundamental, each dying at its own rate. Write that down and it is
+
+```
+s(t) = Σ aᵢ · e^(−t/τᵢ) · sin(2π fᵢ t + φᵢ)
+```
+
+The ratios are measured properties of the objects. A tuned bell's tierce is a
+**minor** third above its prime, which founders have tuned in since the
+seventeenth century and is the whole reason a bell sounds like grief. A tubular
+bell is a free-free bar: 1 : 2.76 : 5.40 : 8.93, nothing near a harmonic
+series. A marimba bar has its underside cut in an arch to pull the second and
+third modes to exactly four and ten times the first, which is why a marimba
+sings where a xylophone knocks.
+
+The obvious Web Audio implementation — a noise burst through a bank of high-Q
+bandpass filters — was tried first and **does not work**, which is worth
+recording because it looks right. A biquad rings for about `Q / (π f)` seconds,
+so a three-second bell at 300 Hz needs a Q near three thousand: past the API's
+limit of a thousand, and unstable well before it. Measured, that version gave a
+peak of 0.002 and a quarter-second ring where three and a half were asked for.
+Summing the sinusoids directly is exact rather than an approximation of the
+exact thing, and it can be cached.
+
+**String** ([`src/audio/string.js`](../src/audio/string.js)) fills a buffer one
+wavelength long with noise and reads it round, averaging each sample with the
+one before. The noise is the pluck; the averaging is the string losing its high
+partials first, which is what a real one does. Where along the string it was
+plucked is a comb filter on the excitation and is most of the character —
+near the bridge thin and bright, near the middle round.
+
+It is rendered into a buffer rather than built from a `DelayNode` with
+feedback, which is the obvious way and also does not work: a feedback loop
+through a `DelayNode` is quantised to one render quantum in every browser, so
+the shortest loop is 128 samples and the highest note about 340 Hz.
+
+### The room
+
+Everything plays into a bus that goes two ways: straight through, and through a
+convolver. The dry path is never touched — a reverb that lowers the direct
+sound as it comes up moves the instrument away from you instead of putting a
+room around it, and that is the commonest way to make one sound bad.
+
+| | |
+|---|---|
+| **Dry** | No room at all. |
+| **Room** | Small and soft, with the walls close enough to hear. |
+| **Hall** | Long enough to notice, short enough to stay out of the way of the next note. |
+| **Cathedral** | Five seconds of stone. Everything above two kilohertz is gone within one. |
+| **Cistern** | Hard wet walls very close: the early reflections are nearly as loud as the sound. |
+| **Plate** | A sheet of steel under tension, as the studios of the 1960s used. No early reflections at all, deliberately — there are no walls. |
+| **Canyon** | Reflections far enough apart to be heard one at a time. |
+
+```js
+son.space = 'cathedral';
+```
+
+The impulse responses are **built, not recorded**
+([`src/audio/space.js`](../src/audio/space.js)), which for this purpose is not
+a compromise: an impulse response is noise with an envelope on it plus a
+handful of discrete early reflections, and both are two loops. Recordings would
+be large files with awkward licences and this project ships neither.
+
+Three things separate a room from a wash of noise, and all three are in there:
+the **early reflections**, whose spacing tells the ear how big the place is;
+**frequency-dependent decay**, because air absorbs treble faster than bass, so
+a cathedral goes dark as it dies; and **two different channels**, because the
+same noise in both ears is a sound inside your head rather than a space around
+it.
+
+They are normalised **by energy, not by peak**, and the difference is not
+academic. Convolution sums the whole impulse, so a five-second tail has ten
+times the energy of a half-second one at the same peak. The first version
+normalised the peak and measured output peaks of 7.9 against a dry 0.48: every
+room clipped, and the long ones clipped hardest, so the reverb got worse
+exactly as the room got bigger.
+
+### Granular
+
+`GranularInstrument` ([`src/audio/granular.js`](../src/audio/granular.js)) cuts
+a sample bank into fifty-millisecond grains and scatters them in time, pitch
+and stereo position. It is the one technique that turns a small set of
+recordings into an unbounded amount of sound, which is exactly this project's
+constraint: twelve field recordings become a hedgerow rather than a queue of
+birds.
+
+The envelope matters more than anything else. A grain cut with hard edges is a
+click at each end, and a cloud of clicks is not a texture — so each is faded in
+over a third of its length and out over the rest. The grains are spread with a
+bias towards the start, because a cloud spread evenly has no onset, and an
+event with no onset is not heard as an event at all.
+
+### Tunings
+
+Thirteen of the scales are selections from the twelve equal semitones. Three
+are not: **just**, **harmonic** and **bell** have degrees that are fractions of
+a semitone, because they come from whole-number frequency ratios rather than
+from dividing an octave into twelve equal parts. A degree may be a float and
+always could be — the mapper only ever raises two to it.
+
+Equal temperament is a compromise that lets a keyboard play in every key.
+Nothing here changes key, so there is nothing to buy with it, and what it costs
+is real: an equal-tempered major third is fourteen cents sharp of the 5:4 the
+ear is listening for, and on a long-ringing bell that is a beat you can count.
+
 ### Palettes
 
 Seventeen, selectable at runtime and stored as plain data in
@@ -418,9 +536,9 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. Thirty-four ship, and
-seventeen of them are constructions anyone can look up: nodal figures, polar
-curves, space-filling curves, recursive packings. None of that is anyone's
+A scene decides what a moment of data looks like. Forty ship, and
+twenty-three of them are constructions anyone can look up: nodal figures, polar
+curves, space-filling curves, recursive packings, growths and physics. None of that is anyone's
 property and none of it is engineering, so what each scene actually has to
 decide is the part that belongs to this project -- which of the construction's
 parameters the live data turns.
@@ -490,9 +608,34 @@ they draw at minute ten is not what they drew at minute one.
 | **Circle packing** | Each event drops a circle where it landed and lets it grow until it touches another. What is left is the shape of the space nothing has used. |
 | **Quasicrystal** | Plane waves at angles that share no common measure, so the interference never repeats. Shechtman, 1982, and a Nobel eight years after the ridicule. |
 
+
+#### Systems
+
+Six that are run rather than drawn. A drawing machine traces a curve and stops;
+these are simulations, and the feed is not choosing a picture from them but
+disturbing something that then goes on by itself.
+
+| | |
+|---|---|
+| **Coral** | Diffusion-limited aggregation, after Witten and Sander, 1981. A particle wanders until it touches what is there, and sticks. It is how frost, soot, copper and coral all grow, and the branching is not in the rule — it emerges because the tips reach the wanderers first. |
+| **Sandpile** | Drop grains on a square; any square holding four gives one to each neighbour, which may push those over too. Bak, Tang and Wiesenfeld called it self-organised criticality in 1987: the next grain may do nothing, or set off an avalanche across the whole field. |
+| **Ripple tank** | The wave equation on a grid. Two events near each other interfere, and what is between them is what a ripple tank makes in a lecture theatre. |
+| **Attractor** | Clifford Pickover's map, iterated. Four numbers decide the whole of it, and events move them. |
+| **Voronoi** | Every point takes the colour of the nearest event. The boundary is where the first and second nearest are equally far, so it needs no edge detection — it falls out of the distance. |
+| **Burin** | The canvas engraved, with event density as the tone, cut by the same engine as the kit cards. |
+
+The sandpile topples in **sweeps over the whole grid** rather than from a work
+queue, and that is not an optimisation. A queue is the obvious way and it is
+unbounded: one avalanche pushes a cell for every topple, and a busy feed
+measured twenty thousand entries against a ceiling of eight hundred. A sweep is
+O(cells) and costs less — and because the pile is Abelian, toppling every ready
+cell at once reaches exactly the same final state as toppling them one at a
+time.
+
 #### Dials
 
-Twenty-two scenes declare their own controls, and the panel draws whatever it finds —
+Twenty-eight scenes declare their own controls -- a hundred and three dials
+between them -- and the panel draws whatever it finds --
 adding a visualisation with three sliders needs no interface change. A dial is
 a range with a default; values are clamped, held per scene, and forgotten only
 when you ask:
@@ -698,6 +841,10 @@ src/audio/
   kits.js               named kits, and makeKit for your own
   noise.js              white, pink and brown buffers, made once per context
   loop-wave.js          the repeating swell, as a Fourier series
+  string.js             Karplus-Strong, rendered to a buffer
+  modal.js              a struck body, as the sum of its modes
+  granular.js           a recording taken apart and put back as a cloud
+  space.js              the room: impulse responses, built not recorded
   bed.js                the continuous layer, driven by event density
   ambiences.js          the three places, described as layers
   instruments.js        the barrel the rest of the library imports
@@ -708,7 +855,7 @@ src/visual/
   engrave.js            the burin: hatching, contour, stipple, white line
   kit-art.js            eighteen engraved plates, one per kit
   scenes/               marks, fields, structures, physical, generative,
-                        geometry, recursive, budget, paint
+                        geometry, recursive, systems, budget, paint
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation
   shapes.js             mark geometry

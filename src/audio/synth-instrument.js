@@ -1,8 +1,21 @@
-// Two synthesis engines, driven entirely by the preset table.
+// Four synthesis engines, driven entirely by the preset table.
+//
+//   fm      an operator pair. Cheap, and the only honest way to get the
+//           inharmonic clang of struck metal out of two oscillators.
+//   sub     an oscillator through a filter. Everything pitched and ordinary.
+//   noise   filtered noise. Surf, fire, wind: things with no pitch at all.
+//   modal   a bank of tuned resonators struck with a burst. This is how a
+//           bell or a glass actually works -- a body with modes, each ringing
+//           at its own frequency and dying at its own rate -- and it is the
+//           difference between something that sounds struck and something
+//           that sounds synthesised.
+//   string  Karplus-Strong, in string.js. A real plucked string.
 
 import { Instrument } from './instrument.js';
 import { SYNTH_PRESETS } from './presets.js';
 import { noiseSource } from './noise.js';
+import { pluck } from './string.js';
+import { strike } from './modal.js';
 
 export class SynthInstrument extends Instrument {
   constructor({ name = 'synth', preset = 'bell', baseFreq = 261.63, gain = 0.35, ...overrides } = {}) {
@@ -57,7 +70,48 @@ export class SynthInstrument extends Instrument {
       nodes.push(lfo);
     };
 
-    if (p.engine === 'noise') {
+    if (p.engine === 'string') {
+      // The whole note is rendered as a buffer and played back; the amplitude
+      // envelope above only shapes its ends. See string.js for why it is not
+      // built from a DelayNode.
+      const src = ctx.createBufferSource();
+      src.buffer = pluck(ctx, freq, {
+        seconds: Math.min(6, p.attack + decay + 0.2),
+        damping: p.damping ?? 0.5,
+        // Longer strings ring longer, exactly as they do on an instrument, so
+        // the loop gain follows the pitch rather than being one number.
+        decay: Math.min(0.9995, (p.loop ?? 0.995) + (1 - Math.min(1, freq / 900)) * 0.003),
+        pick: p.pick ?? 0.22,
+        tone: p.tone ?? 0.6,
+      });
+      // A body: a string on its own is thin, and every real one is glued to
+      // something that resonates.
+      if (p.body) {
+        const body = ctx.createBiquadFilter();
+        body.type = 'peaking';
+        body.frequency.value = p.body;
+        body.Q.value = p.bodyQ ?? 1.2;
+        body.gain.value = p.bodyGain ?? 6;
+        src.connect(body).connect(amp);
+      } else {
+        src.connect(amp);
+      }
+      nodes.push(src);
+    } else if (p.engine === 'modal') {
+      // Summed decaying sinusoids, rendered in modal.js. The bank-of-biquads
+      // version is in the comment at the top of that file, along with the
+      // measurement that killed it.
+      const src = ctx.createBufferSource();
+      src.buffer = strike(ctx, freq, {
+        modes: p.modes,
+        seconds: Math.min(8, p.attack + decay + 0.3),
+        decay,
+        strike: p.strike,
+        hardness: p.hardness ?? 0.5,
+      });
+      src.connect(amp);
+      nodes.push(src);
+    } else if (p.engine === 'noise') {
       // Filtered noise: a wave breaking, an ember cracking, a gust. The note's
       // pitch still matters -- it moves the filter, not an oscillator -- so a
       // large event is a deeper break and a small one a lighter tick, and the

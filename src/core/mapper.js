@@ -30,6 +30,30 @@ export const SCALES = {
   fourths: [0, 5, 10],
   fifths: [0, 7],
   octaves: [0],
+
+  // --- tunings, not modes ---------------------------------------------------
+  //
+  // Everything above is a selection of the twelve equal semitones. These are
+  // not: their degrees are fractions of a semitone, because they come from
+  // whole-number frequency ratios rather than from dividing an octave into
+  // twelve equal parts. A degree may be a float and always could be -- the
+  // mapper only ever raises two to it.
+  //
+  // Equal temperament is a compromise that lets a keyboard play in every key.
+  // Nothing here changes key, so there is nothing to buy with it, and what it
+  // costs is real: an equal-tempered major third is fourteen cents sharp of
+  // the 5:4 the ear is listening for, and on a long-ringing bell that is a
+  // beat you can count.
+  just: [0.000, 2.039, 3.863, 4.980, 7.020, 8.844, 10.883],
+  // The harmonic series folded into one octave, partials 8 through 15. The
+  // seventh and eleventh are the two that sound wrong on a piano and right on
+  // anything that rings.
+  harmonic: [0.000, 2.039, 3.863, 5.513, 7.020, 8.405, 9.688, 10.883],
+  // The partials of a tuned bell, folded the same way: hum, prime, tierce,
+  // quint, nominal. Play a carillon in this and it stops fighting itself.
+  // The fifth partial folds to within a semitone of the tierce and is left
+  // out: two degrees that close are not an interval, they are a beat.
+  bell: [0.000, 3.156, 7.020, 8.930],
 };
 
 /** Note names for a key selector, in semitones from C. */

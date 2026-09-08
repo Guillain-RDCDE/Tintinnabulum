@@ -18,7 +18,7 @@
 // this budget. They are computed when they change and blitted when they do not.
 
 import { noise2 } from './noise.js';
-import { scratch, hexToRgb } from './paint.js';
+import { scratch, toRgb } from './paint.js';
 
 const TAU = Math.PI * 2;
 
@@ -152,7 +152,7 @@ export const GENERATIVE_SCENES = {
         const { n, m } = s;
         const sharp = api.param('sharpness');
         // The colour of the lines comes from the palette like everything else.
-        const rgb = hexToRgb(api.palette.user || api.palette.default);
+        const rgb = toRgb(api.palette.user || api.palette.default);
         for (let y = 0; y < h; y++) {
           const v = y / h;
           for (let x = 0; x < w; x++) {
@@ -493,9 +493,9 @@ export const GENERATIVE_SCENES = {
       // The palette's own category colour, not the last event's shade: with
       // colour variety on, that shade can be a near-white, and a Turing pattern
       // rendered in bathroom-tile grey is a waste of a palette.
-      const ink = hexToRgb(api.palette.user || api.palette.default);
-      const hot = hexToRgb(api.palette.alert || api.palette.user);
-      const bg = hexToRgb(api.palette.background);
+      const ink = toRgb(api.palette.user || api.palette.default);
+      const hot = toRgb(api.palette.alert || api.palette.user);
+      const bg = toRgb(api.palette.background);
       for (let i = 0; i < gw * gh; i++) {
         const raw = s.b[i];
         const v = Math.min(1, raw * 2.4);

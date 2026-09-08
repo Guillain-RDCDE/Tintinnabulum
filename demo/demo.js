@@ -14,6 +14,8 @@ import {
   drawShape,
   SCENES,
   DEFAULT_SCENE,
+  SPACES,
+  DEFAULT_SPACE,
   previewScene,
   WIKIPEDIA_LANGUAGES,
   WIKIPEDIA_FLAG_CC,
@@ -413,6 +415,34 @@ function selectRestraint(ms, persist = true) {
 }
 
 $('#restraint').addEventListener('input', (e) => selectRestraint(Number(e.target.value)));
+
+// --- the room ------------------------------------------------------------
+// A send to a convolver, and the impulse response is built rather than
+// recorded: see src/audio/space.js for why that is not a compromise.
+let spaceWord = SPACES[DEFAULT_SPACE].label;
+
+function selectSpace(name, persist = true) {
+  if (!SPACES[name]) return;
+  son.space = name;
+  spaceWord = SPACES[name].label;
+  $('#space-note').textContent = SPACES[name].note;
+  spacePicker.mark(name);
+  if (persist) store.set('space', name);
+  updateSummaries();
+}
+
+const spacePicker = createPicker($('#spaces'), Object.entries(SPACES), {
+  key: 'space',
+  className: 'sw',
+  title: (sp) => sp.note,
+  render: (btn, sp) => {
+    const b = document.createElement('b');
+    b.textContent = sp.label;
+    btn.append(b);
+  },
+  onPick: (name) => selectSpace(name),
+});
+selectSpace(store.pick('space', SPACES, DEFAULT_SPACE), false);
 // =========================================================================
 // Filter
 // =========================================================================
@@ -443,6 +473,7 @@ function updateSummaries() {
   $('#sum-sound').textContent =
     KITS[currentKit].label +
     ` · ${restraintWord}` +
+    (son.space === DEFAULT_SPACE ? '' : ` · ${spaceWord}`) +
     (son.audio.tempo.bpm ? ` · ${son.audio.tempo.bpm} bpm` : '');
   $('#sum-look').textContent =
     `${SCENES[canvas.sceneName].label} · ${PALETTES[canvas.paletteName].label}` +
