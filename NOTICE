@@ -168,3 +168,21 @@ word "cricket" in Jerriais, and a search for blackbirds returns De-Amsel.ogg,
 which is the German word for one. Both are public domain, both would have
 shipped on a check of the filename, and neither is an animal. Take the licence
 from the file's own metadata and the content from its description.
+
+5. Generated kit plates -- demo/plates/
+---------------------------------------
+
+This directory is empty in the repository and may stay that way. The kit cards
+are drawn by src/visual/engrave.js, which needs nothing and depends on nothing.
+
+tools/make-plates.mjs can instead produce them with an image model, and anyone
+who runs it should know what that means. The images are made by a third-party
+service from prompts held in that file; their terms, not this project's,
+govern what may be done with the results. Nothing generated is redistributed
+here, and the tool is inert without an API key.
+
+What is stored, if they are generated, is not the returned image: it is a mask
+carrying the line work in its alpha channel, so that the plate takes its colour
+from the palette at draw time. The originals are left in art/plates-raw/, which
+is not published.
+

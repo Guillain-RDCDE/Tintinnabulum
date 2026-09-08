@@ -1,0 +1,6 @@
+{
+  "note": "Which kits have a generated plate. Empty is the normal state: the cards are cut by src/visual/engrave.js and need nothing. Run tools/make-plates.mjs to fill this, or leave it alone.",
+  "width": 444,
+  "height": 252,
+  "kits": []
+}

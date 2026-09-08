@@ -94,9 +94,10 @@ const context = await browser.newContext();
 const page = await context.newPage();
 const consoleErrors = [];
 const badResponses = [];
-// One check below deliberately requests files that do not exist, to prove a
-// partly-broken sample bank still plays. Those failures are expected, so page
-// hygiene is not recorded while that probe runs.
+// Two checks below deliberately request files that do not exist -- one to
+// prove a partly-broken sample bank still plays, one to prove a missing plates
+// folder costs nothing. Those failures are expected, so page hygiene is not
+// recorded while either probe runs.
 let probing = false;
 page.on('console', (m) => {
   if (!probing && m.type() === 'error') consoleErrors.push(m.text());
@@ -1015,6 +1016,117 @@ ok('repeats are varied rather than looped', field.variations > 3,
    `${field.variations} distinct playback lengths in 24 hits`);
 // A property, not a list. Pinning the names meant that giving the dawn chorus
 // real birds failed a check about whether kits declare themselves honestly.
+// --- generated plates ------------------------------------------------------
+// The kit cards can be cut by the burin or drawn from an image a model made
+// (tools/make-plates.mjs). Two things have to hold, and they pull in opposite
+// directions: an installed plate must be USED and must take the palette's ink
+// like everything else, and a kit without one must still get a card. The
+// fixture installs exactly one, which is what makes both testable at once.
+const plates = await page.evaluate(async () => {
+  const { drawKitArt } = await import('../src/visual/kit-art.js');
+  const { loadPlates, platedKits, forgetPlates } = await import('../src/visual/kit-plates.js');
+  const { PALETTES } = await import('../src/index.js');
+
+  const paint = (kit, pal) => {
+    const cv = document.createElement('canvas');
+    cv.width = 296;
+    cv.height = 168;
+    const ctx = cv.getContext('2d');
+    const ok = drawKitArt(ctx, kit, { w: 296, h: 168, palette: PALETTES[pal].colors });
+    const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    // Everything that is not the ground, and what colour it is. A plate that
+    // ignored the palette would give the same answer for both palettes.
+    const bg = PALETTES[pal].colors.background;
+    let ink = 0;
+    let n = 0;
+    let r = 0;
+    let g = 0;
+    let b = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      n++;
+      const lit = Math.abs(d[i] - 4) + Math.abs(d[i + 1] - 20) + Math.abs(d[i + 2] - 28);
+      if (d[i + 3] > 8 && lit > 40) {
+        ink++;
+        r += d[i];
+        g += d[i + 1];
+        b += d[i + 2];
+      }
+    }
+    return {
+      ok,
+      coverage: ink / n,
+      mean: ink ? [Math.round(r / ink), Math.round(g / ink), Math.round(b / ink)] : null,
+      bg,
+    };
+  };
+
+  // Before: nothing installed, so everything is cut.
+  forgetPlates();
+  const cutOnly = paint('hatnote', 'marine');
+
+  const found = await loadPlates({ base: new URL('../test/fixtures/plates/', location.href).href });
+  const listed = platedKits();
+  const installedMarine = paint('hatnote', 'marine');
+  const installedEmber = paint('hatnote', 'ember');
+  // A kit the fixture does not carry: this one has to fall back to the burin.
+  const stillCut = paint('glassy', 'marine');
+
+  return { found, listed, cutOnly, installedMarine, installedEmber, stillCut };
+});
+
+// A base that is not there at all -- which is the commonest case, since the
+// plates are optional. The request is deliberately made to a folder that does
+// not exist, so page hygiene is not recorded while it happens.
+probing = true;
+const missingPlates = await page.evaluate(async () => {
+  const { drawKitArt } = await import('../src/visual/kit-art.js');
+  const { loadPlates, forgetPlates } = await import('../src/visual/kit-plates.js');
+  const { PALETTES } = await import('../src/index.js');
+  forgetPlates();
+  const missing = await loadPlates({ base: new URL('../test/fixtures/no-such-folder/', location.href).href });
+  const cv = document.createElement('canvas');
+  cv.width = 296;
+  cv.height = 168;
+  const ctx = cv.getContext('2d');
+  const ok = drawKitArt(ctx, 'hatnote', { w: 296, h: 168, palette: PALETTES.marine.colors });
+  const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+  let ink = 0;
+  let n = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    n++;
+    const lit = Math.abs(d[i] - 4) + Math.abs(d[i + 1] - 20) + Math.abs(d[i + 2] - 28);
+    if (d[i + 3] > 8 && lit > 40) ink++;
+  }
+  forgetPlates();
+  return { missing, ok, coverage: ink / n };
+});
+probing = false;
+
+ok('a generated plate is found and listed',
+   plates.found.length === 1 && plates.listed.join() === 'hatnote',
+   plates.listed.join(', ') || 'none');
+ok('and it is what gets drawn, not the cut one',
+   plates.installedMarine.ok === true &&
+   Math.abs(plates.installedMarine.coverage - plates.cutOnly.coverage) > 0.01,
+   `installed ${(plates.installedMarine.coverage * 100).toFixed(1)}% vs cut ` +
+   `${(plates.cutOnly.coverage * 100).toFixed(1)}%`);
+// The point of storing a mask rather than a picture: a plate that carried its
+// own colours would give the same answer in both palettes, and seventeen
+// palettes would then have one set of colours for the cards and another for
+// everything else.
+const dist = plates.installedMarine.mean && plates.installedEmber.mean
+  ? Math.hypot(...plates.installedMarine.mean.map((v, i) => v - plates.installedEmber.mean[i]))
+  : 0;
+ok('a generated plate takes the palette ink', dist > 40,
+   `${JSON.stringify(plates.installedMarine.mean)} vs ${JSON.stringify(plates.installedEmber.mean)}`);
+ok('a kit with no generated plate is still cut',
+   plates.stillCut.ok === true && plates.stillCut.coverage > 0.01,
+   `${(plates.stillCut.coverage * 100).toFixed(1)}% ink`);
+ok('a missing plates folder costs nothing',
+   missingPlates.missing.length === 0 && missingPlates.ok === true &&
+   missingPlates.coverage > 0.01,
+   `${(missingPlates.coverage * 100).toFixed(1)}% ink with no plates installed`);
+
 ok('every kit that declares recordings actually carries them',
    field.sampledKits.length >= 3 && field.sampledKits.every((k) => k.banks > 0),
    field.sampledKits.map((k) => `${k.name}:${k.banks}`).join(', '));

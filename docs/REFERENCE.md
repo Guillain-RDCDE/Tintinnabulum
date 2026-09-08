@@ -775,11 +775,34 @@ the accent used for at most one thing per card, and **the light always comes
 from the upper left** — nothing looks more like clip art than a collection of
 objects each lit from its own direction.
 
-**On generating them with an image model:** it was considered and it is the
-wrong trade here. A generated plate is a raster that cannot follow the palette,
-cannot be re-cut when a kit changes, and can quietly stop depicting what it
-claims to — three properties this project spends real effort keeping. Cutting
-them costs two to twenty milliseconds a card.
+**Two sets of plates, and either may be installed.** The cards above are cut by
+the burin. They can also be drawn from images an image model made, which is
+what [`tools/make-plates.mjs`](../tools/make-plates.mjs) is for:
+
+```bash
+OPENAI_API_KEY=sk-... node tools/make-plates.mjs        # all twenty-two
+OPENAI_API_KEY=sk-... node tools/make-plates.mjs koto   # or a few
+node tools/make-plates.mjs --dry                        # the prompts, no calls
+```
+
+One style paragraph is shared by every subject, verbatim. Describing the style
+differently per plate is exactly how a set of generated images stops being a
+set, and it is the only thing worth being strict about here.
+
+**What is stored is a mask, not a picture.** The model is asked for black line
+work on plain white; what is saved is white pixels carrying the drawing in
+their *alpha* channel. At draw time the mask is filled with the palette's ink,
+so a generated plate follows the palette exactly as a cut one does. Without
+that, seventeen palettes would have one set of colours for the cards and
+another for everything else — which was the whole objection to generated art
+here, and this is what answers it.
+
+**The burin stays, and stays the fallback.** A kit with no generated plate is
+cut as before. So a kit added tomorrow is never blocked on an API key, the
+project still works offline with none of this installed, and a missing folder
+or a file that will not decode costs that one card its picture and nothing
+else. A project that needs somebody else's service to draw its own buttons is
+a project that stops working when that service does.
 
 ### Shapes
 
@@ -853,7 +876,8 @@ src/audio/
 src/visual/
   canvas-sink.js        the canvas loop
   engrave.js            the burin: hatching, contour, stipple, white line
-  kit-art.js            eighteen engraved plates, one per kit
+  kit-art.js            twenty-two cut plates, one per kit
+  kit-plates.js         generated plates, if any are installed
   scenes/               marks, fields, structures, physical, generative,
                         geometry, recursive, systems, budget, paint
   palettes.js           colour schemes
@@ -872,6 +896,7 @@ sounds/                 the original sampled banks, and:
 tools/
   render.mjs            drive the real visualiser headless, out to PNG
   contact-sheet.mjs     every scene on one sheet, to look at them
+  make-plates.mjs       the kit plates, from an image model, as masks
   make-social-preview.mjs  regenerate the card in .github/, from the engine
 demo/
   demo.js               the sandbox page

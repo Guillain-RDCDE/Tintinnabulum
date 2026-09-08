@@ -8,3 +8,6 @@ Thumbs.db
 *.webm
 *.wav
 !sounds/**/*.wav
+
+# The model's originals: kept for regenerating masks, not published.
+art/plates-raw/

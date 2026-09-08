@@ -9,6 +9,7 @@ import {
   swatchOf,
   KITS,
   drawKitArt,
+  loadPlates,
   SHAPES,
   DEFAULT_SHAPE,
   drawShape,
@@ -288,6 +289,13 @@ const kitPicker = createPicker($('#kits'), Object.entries(KITS), {
 
 const paintKitArts = () => kitPicker.repaint(paintKitArt);
 requestAnimationFrame(paintKitArts);
+
+// Generated plates, if any are installed. Nothing waits on this: the cards are
+// cut first and redrawn if a plate turns up, so a missing folder, a missing
+// network or a file that will not decode costs nothing at all.
+loadPlates().then((kits) => {
+  if (kits.length) paintKitArts();
+});
 
 
 const scaleSel = $('#scale');

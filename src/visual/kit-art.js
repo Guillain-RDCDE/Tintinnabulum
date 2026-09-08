@@ -20,6 +20,7 @@
 //   more like clip art than a collection of objects each lit from its own
 //   direction.
 
+import { plateFor } from './kit-plates.js';
 import {
   burin, hatch, crossHatch, contour, stipple, whiteLine,
   sphereTone, cylinderTone, gradientTone, flat, inside, over, scale, vignette, plate,
@@ -771,6 +772,33 @@ function fallback(ctx, w, h, c) {
 export const KIT_ART_NAMES = Object.keys(PLATES);
 
 /**
+ * Draw an installed plate, tinted with the palette's ink.
+ *
+ * The file is white pixels carrying the drawing in their alpha channel, so
+ * filling it through `source-in` replaces that white with the ink and leaves
+ * the ground bare -- which is what keeps a generated plate following the
+ * palette. Compositing happens on a scratch canvas because `source-in` on the
+ * card's own context would erase whatever was under it, including the ground.
+ */
+function drawInstalled(ctx, img, w, h, c) {
+  const cv = document.createElement('canvas');
+  cv.width = Math.max(1, Math.round(w));
+  cv.height = Math.max(1, Math.round(h));
+  const g = cv.getContext('2d');
+  // Fitted by covering rather than by stretching: a plate squashed to a
+  // different aspect ratio is the one thing that reads as a mistake.
+  const scale = Math.max(cv.width / img.naturalWidth, cv.height / img.naturalHeight);
+  const dw = img.naturalWidth * scale;
+  const dh = img.naturalHeight * scale;
+  g.drawImage(img, (cv.width - dw) / 2, (cv.height - dh) / 2, dw, dh);
+  g.globalCompositeOperation = 'source-in';
+  g.fillStyle = c.line;
+  g.fillRect(0, 0, cv.width, cv.height);
+  ctx.globalAlpha = 1;
+  ctx.drawImage(cv, 0, 0, w, h);
+}
+
+/**
  * Cut a kit's plate onto a context. Synchronous, and never throws.
  *
  * Everything is drawn in one ink -- `fillStyle` is set once by each subject and
@@ -783,7 +811,12 @@ export function drawKitArt(ctx, kitName, { w, h, palette } = {}) {
   try {
     plate(ctx, w, h, { ground: c.bg, ink: c.line });
     ctx.fillStyle = c.line;
-    (PLATES[kitName] || fallback)(ctx, w, h, c);
+    // A generated plate if one is installed, the burin if not. The fallback is
+    // not a degraded mode: a kit added tomorrow has no generated plate and is
+    // cut, and the whole set works with none of them installed and no network.
+    const installed = plateFor(kitName);
+    if (installed) drawInstalled(ctx, installed, w, h, c);
+    else (PLATES[kitName] || fallback)(ctx, w, h, c);
   } catch (e) {
     ctx.restore();
     ctx.globalAlpha = 1;
