@@ -225,15 +225,25 @@ for (const name of names) {
 // The manifest is what the renderer reads. A kit absent from it is cut rather
 // than drawn, so a half-finished run degrades to the engine instead of to
 // missing cards.
+//
+// Built from what is ON DISK, not from what this run produced. Running for one
+// kit is a normal thing to do -- one plate came back truncated and needed
+// redoing -- and the first version then rewrote the manifest with just that
+// kit, quietly unlisting the other twenty-one. Reading the folder cannot get
+// out of step with the folder.
+const onDisk = [];
+for (const name of Object.keys(SUBJECTS)) {
+  if (await exists(join(OUT, name + '.png'))) onDisk.push(name);
+}
 const manifest = {
   note: 'Kits with a generated plate. Anything not listed is cut by src/visual/engrave.js.',
   width: W,
   height: H,
-  kits: made.sort(),
+  kits: onDisk.sort(),
 };
 await writeFile(join(OUT, 'index.json'), JSON.stringify(manifest, null, 2) + '\n');
 
-console.log(`\n${made.length} plates in demo/plates/, ${failed.length} failed.`);
+console.log(`\n${made.length} handled this run; ${onDisk.length} installed, ${failed.length} failed.`);
 if (failed.length) {
   for (const f of failed) console.error('  ' + f);
   process.exit(1);

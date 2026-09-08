@@ -775,9 +775,11 @@ the accent used for at most one thing per card, and **the light always comes
 from the upper left** — nothing looks more like clip art than a collection of
 objects each lit from its own direction.
 
-**Two sets of plates, and either may be installed.** The cards above are cut by
-the burin. They can also be drawn from images an image model made, which is
-what [`tools/make-plates.mjs`](../tools/make-plates.mjs) is for:
+**Two sets of plates, and both are here.** The twenty-two in
+[`demo/plates/`](../demo/plates) were made by an image model and are what the
+cards show; the same twenty-two subjects are also cut by the burin, and that is
+what they fall back to. [`tools/make-plates.mjs`](../tools/make-plates.mjs) is
+what made them:
 
 ```bash
 OPENAI_API_KEY=sk-... node tools/make-plates.mjs        # all twenty-two

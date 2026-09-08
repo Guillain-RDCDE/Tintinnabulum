@@ -1,6 +1,29 @@
 {
-  "note": "Which kits have a generated plate. Empty is the normal state: the cards are cut by src/visual/engrave.js and need nothing. Run tools/make-plates.mjs to fill this, or leave it alone.",
+  "note": "Kits with a generated plate. Anything not listed is cut by src/visual/engrave.js.",
   "width": 444,
   "height": 252,
-  "kits": []
+  "kits": [
+    "airports",
+    "aviary",
+    "birds",
+    "camargue",
+    "cathedral",
+    "chimes",
+    "clay",
+    "fire",
+    "glacier",
+    "glassy",
+    "gongs",
+    "handbells",
+    "hatnote",
+    "koto",
+    "marimba",
+    "musicbox",
+    "night",
+    "shore",
+    "steelpan",
+    "strings",
+    "synth",
+    "water"
+  ]
 }

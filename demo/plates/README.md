@@ -1,13 +1,14 @@
 # Generated kit plates
 
-Empty, and that is the normal state.
+Twenty-two, made by an image model. See [NOTICE](../../NOTICE) for what that
+means for anyone redistributing them.
 
-The kit cards are cut by [`src/visual/engrave.js`](../../src/visual/engrave.js).
-They need no files, no network and no API key, and a kit added tomorrow gets a
-card without anything here changing.
+None of it is required. The same subjects are cut by
+[`src/visual/engrave.js`](../../src/visual/engrave.js), which needs no files,
+no network and no API key: delete this folder and every card is engraved
+instead. A kit added later gets a card without anything here changing.
 
-[`tools/make-plates.mjs`](../../tools/make-plates.mjs) can instead draw them
-with an image model:
+[`tools/make-plates.mjs`](../../tools/make-plates.mjs) is what made them:
 
 ```bash
 node tools/make-plates.mjs --dry                  # the prompts, calling nothing
@@ -21,7 +22,9 @@ plate follow the seventeen palettes exactly as a cut one does.
 
 `index.json` is the manifest, and it is the only thing the renderer reads. A
 kit that is not listed is cut instead, so a half-finished run degrades to the
-burin rather than to missing cards.
+burin rather than to missing cards. It is rebuilt from what is actually in this
+folder on every run, because running for one kit is a normal thing to do and
+the first version then unlisted the other twenty-one.
 
 The originals from the model are left in `art/plates-raw/`, which is not
 published.
