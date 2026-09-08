@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://guillain-rdcde.github.io/tintinnabulum/spec/source.schema.json",
+  "$id": "https://guillain-rdcde.github.io/Tintinnabulum/spec/source.schema.json",
   "title": "Tintinnabulum source descriptor",
   "version": "tintinnabulum.source/1",
   "description": "Where live data comes from, how often to fetch it, and which mapping turns it into events. Together with a mapping profile this is a complete connector, as a document rather than as code.",

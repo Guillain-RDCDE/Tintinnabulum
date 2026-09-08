@@ -22,10 +22,31 @@ export function scratch(api, key = 'buf', readBack = false) {
   const w = Math.max(1, Math.round(api.w));
   const h = Math.max(1, Math.round(api.h));
   if (s[key] && s[key].width === w && s[key].height === h) return s[key];
-  const cv = document.createElement('canvas');
-  cv.width = w;
-  cv.height = h;
+
+  // Taken from a pool that belongs to the RENDERER, not to the scene.
+  //
+  // A scene's state is thrown away and rebuilt every time the scene changes,
+  // and an offscreen canvas the size of the visible one is several megabytes.
+  // Allocating a fresh one per scene change meant that walking the forty
+  // scenes -- which the suite does, and which anyone clicking through the
+  // picker does -- asked for a couple of hundred megabytes in a few seconds.
+  // The browser tab did not survive it: "Target crashed", twice, in the block
+  // that iterates every scene.
+  //
+  // Every consumer either clears the buffer on its first frame or overwrites
+  // it whole, so handing the same canvas to the next scene is safe.
+  const pool = api.buffers;
+  let cv = pool ? pool[key] : null;
+  if (!cv || cv.width !== w || cv.height !== h) {
+    cv = document.createElement('canvas');
+    cv.width = w;
+    cv.height = h;
+    if (pool) pool[key] = cv;
+  }
   s[key] = cv;
+  // `willReadFrequently` is only honoured on the first getContext for a
+  // canvas, and a given key is always used the same way, so pooling by key
+  // keeps that consistent.
   s[key + 'Ctx'] = cv.getContext('2d', { willReadFrequently: readBack });
   return cv;
 }

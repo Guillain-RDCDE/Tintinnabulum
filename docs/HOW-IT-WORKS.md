@@ -549,4 +549,4 @@ pipeline.
 ---
 
 *Back to the [README](../README.md) · try it in the
-[sandbox](https://guillain-rdcde.github.io/tintinnabulum/).*
+[sandbox](https://guillain-rdcde.github.io/Tintinnabulum/).*

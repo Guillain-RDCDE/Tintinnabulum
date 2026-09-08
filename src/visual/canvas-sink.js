@@ -64,6 +64,10 @@ export class CanvasSink {
     // and coming back finds it as you left it.
     this._params = { ...(opts.params || {}) };
     this._scene = {}; // scratch space owned by the active scene
+    // Offscreen canvases, which outlive the scene that asked for one. They
+    // are several megabytes each and a scene change must not buy a new set:
+    // see the note in scenes/paint.js for what that cost.
+    this._buffers = {};
     this._lastFrame = 0;
 
     this.particles = [];
@@ -180,6 +184,9 @@ export class CanvasSink {
       now,
       dt: this._dt || 16,
       scene: this._scene,
+      // Offscreen canvases, pooled per renderer rather than per scene: see
+      // the note in scenes/paint.js.
+      buffers: this._buffers,
       depth: this.depth,
       richness: this.richness,
       darkGround: this._darkGround,

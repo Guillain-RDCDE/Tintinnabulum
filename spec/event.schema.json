@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://guillain-rdcde.github.io/tintinnabulum/spec/event.schema.json",
+  "$id": "https://guillain-rdcde.github.io/Tintinnabulum/spec/event.schema.json",
   "title": "Tintinnabulum event",
   "version": "tintinnabulum.event/1",
   "description": "One thing that happened, described so it can be heard and seen. Only `magnitude` is required: everything else has a defined default, because a source that cannot supply a field should not be forced to invent one.",

@@ -617,6 +617,45 @@ ok('scene cards reflect the colour settings',
    previewFollows.rich > previewFollows.flat * 1.5,
    `flat=${previewFollows.flat} rich=${previewFollows.rich}`);
 
+// --- offscreen canvases are pooled, not bought ---------------------------
+// A buffer the size of the visible canvas is several megabytes, and a scene's
+// state is thrown away every time the scene changes. Allocating a fresh one
+// per change crashed the tab -- "Target crashed" -- when the block below walked
+// all forty scenes. Counting them is the check; the picture is not the point.
+const pooled = await page.evaluate(async () => {
+  const { SCENES } = await import('../src/index.js');
+  const sink = window.son.sinks.find((s) => s.particles);
+  const seen = new Set();
+  let made = 0;
+  const real = document.createElement.bind(document);
+  document.createElement = (tag, ...rest) => {
+    const el = real(tag, ...rest);
+    if (String(tag).toLowerCase() === 'canvas') made++;
+    return el;
+  };
+  try {
+    // Twice round, so the second lap can only reuse what the first made.
+    for (let lap = 0; lap < 2; lap++) {
+      for (const name of Object.keys(SCENES)) {
+        sink.setScene(name);
+        window.son.emit({ magnitude: 500, id: `pool-${lap}-${name}` });
+        await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+        for (const k of Object.keys(sink._buffers)) seen.add(k);
+      }
+    }
+  } finally {
+    document.createElement = real;
+  }
+  sink.setScene('bloom');
+  return { made, keys: Object.keys(sink._buffers).length, distinct: seen.size, scenes: Object.keys(SCENES).length };
+});
+// One canvas per distinct buffer name, whatever the scene, however many laps.
+// Some slack: the previews and the picker make their own.
+ok('offscreen buffers are reused across scene changes',
+   pooled.made <= pooled.distinct + 4 && pooled.keys === pooled.distinct,
+   `${pooled.made} canvases made for ${pooled.distinct} buffer names over ` +
+   `${pooled.scenes * 2} scene changes`);
+
 // --- nothing may grow without a ceiling ---------------------------------
 // A burst of data must cost frames, never the tab. Everything that accumulates
 // is checked against the budget by flooding it well past that budget.
@@ -1027,6 +1066,11 @@ const plates = await page.evaluate(async () => {
   const { loadPlates, platedKits, forgetPlates } = await import('../src/visual/kit-plates.js');
   const { PALETTES } = await import('../src/index.js');
 
+  // The whole card, kept as pixels. What has to be asserted about a plate is
+  // how it differs from another rendering of the same plate, and picking out
+  // "the ink" first begs the question: an earlier version of this decided ink
+  // was anything not the dark background, which stopped meaning anything the
+  // moment the plates were printed on light paper.
   const paint = (kit, pal) => {
     const cv = document.createElement('canvas');
     cv.width = 296;
@@ -1034,30 +1078,42 @@ const plates = await page.evaluate(async () => {
     const ctx = cv.getContext('2d');
     const ok = drawKitArt(ctx, kit, { w: 296, h: 168, palette: PALETTES[pal].colors });
     const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
-    // Everything that is not the ground, and what colour it is. A plate that
-    // ignored the palette would give the same answer for both palettes.
-    const bg = PALETTES[pal].colors.background;
-    let ink = 0;
+    const lum = [];
+    let painted = 0;
     let n = 0;
-    let r = 0;
-    let g = 0;
-    let b = 0;
     for (let i = 0; i < d.length; i += 4) {
       n++;
-      const lit = Math.abs(d[i] - 4) + Math.abs(d[i + 1] - 20) + Math.abs(d[i + 2] - 28);
-      if (d[i + 3] > 8 && lit > 40) {
-        ink++;
-        r += d[i];
-        g += d[i + 1];
-        b += d[i + 2];
-      }
+      if (d[i + 3] > 8) painted++;
+      lum.push(0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]);
     }
+    lum.sort((a, b) => a - b);
+    const at = (q) => lum[Math.min(lum.length - 1, Math.floor(lum.length * q))];
+    const median = at(0.5);
     return {
       ok,
-      coverage: ink / n,
-      mean: ink ? [Math.round(r / ink), Math.round(g / ink), Math.round(b / ink)] : null,
-      bg,
+      coverage: painted / n,
+      pixels: Array.from(d),
+      // The darkest tenth and the lightest tenth. A print has dark marks on a
+      // light ground; a negative has the two the other way round.
+      // The darkest mark on the plate against the tone of the ground. A
+      // percentile does not do here: a plate may be nine tenths paper, and
+      // then the fifth percentile is paper too.
+      dark: Math.round(lum[0]),
+      ground: Math.round(median),
     };
+  };
+
+  /** Mean absolute difference, per channel, between two renderings. */
+  const differ = (a, b) => {
+    let sum = 0;
+    let n = 0;
+    for (let i = 0; i < a.pixels.length; i += 4) {
+      sum += Math.abs(a.pixels[i] - b.pixels[i]) +
+             Math.abs(a.pixels[i + 1] - b.pixels[i + 1]) +
+             Math.abs(a.pixels[i + 2] - b.pixels[i + 2]);
+      n += 3;
+    }
+    return sum / n;
   };
 
   // Before: nothing installed, so everything is cut.
@@ -1071,7 +1127,15 @@ const plates = await page.evaluate(async () => {
   // A kit the fixture does not carry: this one has to fall back to the burin.
   const stillCut = paint('glassy', 'marine');
 
-  return { found, listed, cutOnly, installedMarine, installedEmber, stillCut };
+  const paletteShift = differ(installedMarine, installedEmber);
+  const installedVsCut = differ(installedMarine, cutOnly);
+  // Big enough to hold, not so big as to keep the pixels: two full cards is
+  // half a megabyte through the bridge and nothing below needs them.
+  for (const r of [cutOnly, installedMarine, installedEmber, stillCut]) delete r.pixels;
+  return {
+    found, listed, cutOnly, installedMarine, installedEmber, stillCut,
+    paletteShift, installedVsCut,
+  };
 });
 
 // A base that is not there at all -- which is the commonest case, since the
@@ -1105,20 +1169,23 @@ probing = false;
 ok('a generated plate is found and listed',
    plates.found.length === 1 && plates.listed.join() === 'hatnote',
    plates.listed.join(', ') || 'none');
+// Compared as pixels, not as a coverage figure: both fill the card, so what
+// separates them is what they put there.
 ok('and it is what gets drawn, not the cut one',
-   plates.installedMarine.ok === true &&
-   Math.abs(plates.installedMarine.coverage - plates.cutOnly.coverage) > 0.01,
-   `installed ${(plates.installedMarine.coverage * 100).toFixed(1)}% vs cut ` +
-   `${(plates.cutOnly.coverage * 100).toFixed(1)}%`);
+   plates.installedMarine.ok === true && plates.installedVsCut > 40,
+   `${plates.installedVsCut.toFixed(0)} per channel from the cut plate`);
 // The point of storing a mask rather than a picture: a plate that carried its
-// own colours would give the same answer in both palettes, and seventeen
+// own colours would render identically in both palettes, and seventeen
 // palettes would then have one set of colours for the cards and another for
 // everything else.
-const dist = plates.installedMarine.mean && plates.installedEmber.mean
-  ? Math.hypot(...plates.installedMarine.mean.map((v, i) => v - plates.installedEmber.mean[i]))
-  : 0;
-ok('a generated plate takes the palette ink', dist > 40,
-   `${JSON.stringify(plates.installedMarine.mean)} vs ${JSON.stringify(plates.installedEmber.mean)}`);
+ok('a generated plate takes the palette ink', plates.paletteShift > 4,
+   `${plates.paletteShift.toFixed(1)} per channel between marine and ember`);
+// A print, not a negative. Filling the mask with a light ink over the dark
+// ground was the first version and every subject glowed white out of the
+// dark, which is the one thing an engraving never looks like.
+ok('and it is printed dark on light, as an engraving is',
+   plates.installedMarine.dark < 120 && plates.installedMarine.ground > 170,
+   `darkest mark ${plates.installedMarine.dark}, ground ${plates.installedMarine.ground}`);
 ok('a kit with no generated plate is still cut',
    plates.stillCut.ok === true && plates.stillCut.coverage > 0.01,
    `${(plates.stillCut.coverage * 100).toFixed(1)}% ink`);
@@ -1541,7 +1608,7 @@ ok('tapping the overlay still tries after an earlier failure',
 // Without this a shared link is a dead end: no way to reach the project.
 const homeHref = await page.getAttribute('#home', 'href');
 const srcHref = await page.getAttribute('#source-link', 'href');
-const REPO = 'https://github.com/Guillain-RDCDE/tintinnabulum';
+const REPO = 'https://github.com/Guillain-RDCDE/Tintinnabulum';
 ok('the title links back to the repository', homeHref === REPO, String(homeHref));
 ok('there is a visible source link too', srcHref === REPO, String(srcHref));
 

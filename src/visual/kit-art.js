@@ -21,6 +21,7 @@
 //   direction.
 
 import { plateFor } from './kit-plates.js';
+import { lighten } from './color.js';
 import {
   burin, hatch, crossHatch, contour, stipple, whiteLine,
   sphereTone, cylinderTone, gradientTone, flat, inside, over, scale, vignette, plate,
@@ -809,14 +810,28 @@ export function drawKitArt(ctx, kitName, { w, h, palette } = {}) {
   const c = ink(palette);
   ctx.save();
   try {
-    plate(ctx, w, h, { ground: c.bg, ink: c.line });
-    ctx.fillStyle = c.line;
     // A generated plate if one is installed, the burin if not. The fallback is
     // not a degraded mode: a kit added tomorrow has no generated plate and is
     // cut, and the whole set works with none of them installed and no network.
     const installed = plateFor(kitName);
-    if (installed) drawInstalled(ctx, installed, w, h, c);
-    else (PLATES[kitName] || fallback)(ctx, w, h, c);
+    if (installed) {
+      // A generated plate is printed the way an engraving is printed: dark ink
+      // on paper. Filling the mask with a light ink over the dark ground gave
+      // a photographic negative -- every subject glowing white out of the
+      // dark, which is the one thing an engraving never looks like.
+      //
+      // The paper and the ink are both derived from the palette rather than
+      // fixed, so the card still belongs to whatever scheme is chosen: a warm
+      // palette prints on warm paper.
+      const paper = lighten(c.line, 0.52);
+      const dark = lighten(c.line, -0.58);
+      plate(ctx, w, h, { ground: paper, ink: dark });
+      drawInstalled(ctx, installed, w, h, { line: dark });
+    } else {
+      plate(ctx, w, h, { ground: c.bg, ink: c.line });
+      ctx.fillStyle = c.line;
+      (PLATES[kitName] || fallback)(ctx, w, h, c);
+    }
   } catch (e) {
     ctx.restore();
     ctx.globalAlpha = 1;

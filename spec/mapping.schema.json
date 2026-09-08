@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://guillain-rdcde.github.io/tintinnabulum/spec/mapping.schema.json",
+  "$id": "https://guillain-rdcde.github.io/Tintinnabulum/spec/mapping.schema.json",
   "title": "Tintinnabulum mapping profile",
   "version": "tintinnabulum.mapping/1",
   "description": "How one kind of data becomes events. A profile is a document, not code: it can be committed, reviewed, diffed and shared, so a producer adopting Tintinnabulum writes one instead of writing a transformer.",

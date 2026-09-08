@@ -13,7 +13,7 @@ that shrink are plucked.
 
 That is the whole idea.
 
-**[Open the sandbox →](https://guillain-rdcde.github.io/tintinnabulum/)**
+**[Open the sandbox →](https://guillain-rdcde.github.io/Tintinnabulum/)**
 
 Press **Start**. You are listening to Wikipedia: every circle is somebody
 editing an article, somewhere, at that moment. Click one to open it.

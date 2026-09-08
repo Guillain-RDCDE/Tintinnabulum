@@ -26,7 +26,7 @@ const COPY = {
   title: 'Tintinnabulum',
   tagline: 'Turn any stream of events into sound.',
   examples: 'Latencies, trades, commits, quakes, sensors — heard, not read.',
-  url: 'github.com/Guillain-RDCDE/tintinnabulum',
+  url: 'github.com/Guillain-RDCDE/Tintinnabulum',
 };
 
 const { srv, base } = await startServer(8892);

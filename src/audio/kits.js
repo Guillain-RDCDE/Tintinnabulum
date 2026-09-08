@@ -88,52 +88,62 @@ function trio(addP, subP, accentP, o = {}) {
  */
 export const KITS = {
   hatnote: {
+    level: 0.577,
     label: 'Bells',
     note: 'The recorded celesta and clavichord. The original sound of the project.',
     make: () => hatnoteKit(),
     sampled: true,
   },
   synth: {
+    level: 1.373,
     label: 'Synth bell',
     note: 'An FM bell and a plucked string, generated rather than recorded.',
     make: () => synthKit(),
   },
   water: {
+    level: 2.081,
     label: 'Water',
     note: 'Drops in a cavity. The rising pitch is what makes it read as water rather than a beep.',
     make: trio('drop', 'wood', 'well'),
   },
   musicbox: {
+    level: 1.767,
     label: 'Music box',
     note: 'Plucked metal tines, bright and short, with a kalimba underneath.',
     make: trio('musicbox', 'kalimba', 'glass'),
   },
   marimba: {
+    level: 2.083,
     label: 'Marimba',
     note: 'Tuned wooden bars. Warm, and the least tiring over a long session.',
     make: trio('marimba', 'wood', 'kalimba'),
   },
   gongs: {
+    level: 1.13,
     label: 'Gongs',
     note: 'Large and slow, deliberately inharmonic. Best with a sparse feed.',
     make: trio('gong', 'glass', 'gong', { baseFreq: 130.81 }),
   },
   glassy: {
+    level: 1.271,
     label: 'Glass',
     note: 'Long, clear and ringing. Turns a busy feed into a wash.',
     make: trio('glass', 'blip', 'pad'),
   },
   chimes: {
+    level: 1.256,
     label: 'Wind chimes',
     note: 'Tubes rather than bars, with a long tail. Best on a slow feed.',
     make: trio('chime', 'harp', 'glass'),
   },
   steelpan: {
+    level: 1.642,
     label: 'Steel pan',
     note: 'Nearly harmonic partials, so it sings where a gong clangs.',
     make: trio('steelpan', 'wood', 'gong'),
   },
   strings: {
+    level: 1.853,
     label: 'Plucked strings',
     note: 'A real plucked string: a burst of noise in a loop that loses its highs, which is what a string does. Where it is plucked along its length decides the whole character.',
     make: trio('harpstring', 'bassstring', 'nylon', { add: 0.45, sub: 0.4, accent: 0.4 }),
@@ -141,16 +151,19 @@ export const KITS = {
 
   // --- struck bodies -------------------------------------------------------
   handbells: {
+    level: 2.031,
     label: 'Handbells',
     note: 'Bells modelled as bodies rather than as timbres: seven partials, each dying at its own rate, with the minor-third tierce that founders have tuned in since the seventeenth century.',
     make: trio('handbell', 'tubular', 'singingbowl', { add: 0.32, sub: 0.28, accent: 0.22 }),
   },
   clay: {
+    level: 1.593,
     label: 'Clay and wood',
     note: 'Fired clay and tuned bars. Almost no sustain, which is what tells the ear it is not metal. The quietest kit here, and the one that suits a busy feed.',
     make: trio('claypot', 'bar', 'woody', { add: 0.42, sub: 0.4, accent: 0.42 }),
   },
   aviary: {
+    level: 4.107,
     label: 'Aviary',
     note: 'The same recordings, taken apart. Each event scatters nine fifty-millisecond grains of birdsong across the stereo field at slightly different pitches, so a busy feed is a hedgerow rather than a queue of birds.',
     sampled: true,
@@ -171,11 +184,13 @@ export const KITS = {
     }),
   },
   koto: {
+    level: 1.89,
     label: 'Koto',
     note: 'Plucked near the bridge, so thin and bright, over a low string plucked in the middle. The body under them is a resonance, not a filter sweep.',
     make: trio('koto', 'bassstring', 'harpstring', { add: 0.4, sub: 0.38, accent: 0.36 }),
   },
   birds: {
+    level: 1.837,
     label: 'Dawn chorus',
     note: 'Real birds: a great tit and a chaffinch on the events, a chiffchaff on the small ones, an owl for the rare ones. Busy feeds turn into a hedgerow.',
     sampled: true,
@@ -193,6 +208,7 @@ export const KITS = {
     }),
   },
   night: {
+    level: 1.07,
     label: 'Night',
     note: 'Crickets ticking over a low owl, with the wind for the rare events. Sparse feeds suit it best.',
     // Synthesised throughout, and the two reasons are different. Crickets and
@@ -207,6 +223,7 @@ export const KITS = {
   // read the same data, which is what makes an ambience a second reading of it
   // rather than a costume over the first.
   shore: {
+    level: 2.142,
     label: 'Seashore',
     note: AMBIENCES.shore.note,
     ambience: true,
@@ -221,6 +238,7 @@ export const KITS = {
     }),
   },
   fire: {
+    level: 2.393,
     label: 'Forest fire',
     note: AMBIENCES.fire.note,
     ambience: true,
@@ -228,6 +246,7 @@ export const KITS = {
     make: trio('crackle', 'logfall', 'gust', { add: 0.5, sub: 0.6, accent: 0.3 }),
   },
   camargue: {
+    level: 1.229,
     label: 'Camargue night',
     note: AMBIENCES.camargue.note,
     ambience: true,
@@ -246,6 +265,7 @@ export const KITS = {
   // and an event adds a voice to it rather than a sound on top of it. That is
   // why every instrument here has an attack measured in seconds.
   cathedral: {
+    level: 0.488,
     label: 'Cathedral',
     note: AMBIENCES.cathedral.note,
     ambience: true,
@@ -258,6 +278,7 @@ export const KITS = {
     }),
   },
   airports: {
+    level: 0.813,
     label: 'Airports',
     note: AMBIENCES.airports.note,
     ambience: true,
@@ -271,6 +292,7 @@ export const KITS = {
     }),
   },
   glacier: {
+    level: 0.443,
     label: 'Glacier',
     note: AMBIENCES.glacier.note,
     ambience: true,
@@ -287,5 +309,19 @@ export const KIT_NAMES = Object.keys(KITS);
 
 /** Build a kit by name; unknown names fall back to synthesis. */
 export function makeKit(name) {
-  return (KITS[name] || KITS.synth).make();
+  const def = KITS[name] || KITS.synth;
+  const kit = def.make();
+  // `level` is a loudness correction, measured rather than chosen: see
+  // tools/level-kits.mjs. Twenty-two kits written at different times were not
+  // the same loudness and were not close -- Handbells came out forty-seven
+  // times quieter than the Hatnote bells, and the Hatnote bells clipped. So
+  // choosing a kit meant choosing the volume too, and two of them could not be
+  // heard after it.
+  const level = def.level ?? 1;
+  if (level !== 1) {
+    for (const inst of Object.values(kit)) {
+      if (inst && typeof inst.gain === 'number') inst.gain *= level;
+    }
+  }
+  return kit;
 }

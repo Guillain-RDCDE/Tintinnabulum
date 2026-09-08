@@ -294,6 +294,35 @@ feedback, which is the obvious way and also does not work: a feedback loop
 through a `DelayNode` is quantised to one render quantum in every browser, so
 the shortest loop is 128 samples and the highest note about 340 Hz.
 
+### How loud is each kit
+
+Twenty-two kits written at different times were not the same loudness and were
+not close. Measured through the real engine on one stream of events, Handbells
+came out **forty-seven times quieter** than the Hatnote bells, and the Hatnote
+bells peaked at 3.2 — clipping hard. Choosing a kit meant choosing the volume
+too, and two of them could not be heard after it.
+
+Each kit now carries a `level`, and none of them was chosen by ear:
+[`tools/level-kits.mjs`](../tools/level-kits.mjs) plays every kit the same
+seeded stream through the same engine, measures it, and writes the correction.
+
+```bash
+node tools/level-kits.mjs            # measure and print
+node tools/level-kits.mjs --write    # measure and write the levels in
+```
+
+**Two constraints, and whichever binds wins.** Matching loudness alone was the
+first attempt and it made things worse: RMS says nothing about crest factor, so
+a kit of sharp transients — water drops, clay, a koto — has a low RMS and tall
+peaks, and multiplying it up to the loudness target pushed twelve kits past
+one. They were level with each other and clipping. A kit is brought to the
+loudness target unless that would put its peaks over the ceiling, in which case
+the ceiling decides, and a peaky kit ends up quieter than the target. That is
+correct: it is what a peaky kit is.
+
+The measured spread went from fourteen to one down to about three to one, with
+nothing clipping. A kit added later starts at 1 and is measured with the rest.
+
 ### The room
 
 Everything plays into a bus that goes two ways: straight through, and through a
@@ -799,6 +828,20 @@ that, seventeen palettes would have one set of colours for the cards and
 another for everything else — which was the whole objection to generated art
 here, and this is what answers it.
 
+**It is printed dark on light**, as an engraving is: the paper and the ink are
+both derived from the palette, so a warm scheme prints on warm paper. Filling
+the mask with a light ink over the dark ground was the first version, and every
+subject glowed white out of the dark — a photographic negative, which is the
+one thing an engraving never looks like.
+
+**It is fitted, not cropped.** The model returns 3:2 and the card is 16:9, so
+covering the card cut fifteen per cent off the top and the bottom: it took the
+heads off the birds and the top off the rose window. The plate is padded to the
+card's shape instead, and because the padding is white it becomes transparent
+in the mask and nothing shows. `--remask` redoes that step from the images
+already downloaded, so adjusting how a plate is fitted never means buying the
+images again.
+
 **The burin stays, and stays the fallback.** A kit with no generated plate is
 cut as before. So a kit added tomorrow is never blocked on an API key, the
 project still works offline with none of this installed, and a missing folder
@@ -898,6 +941,7 @@ sounds/                 the original sampled banks, and:
 tools/
   render.mjs            drive the real visualiser headless, out to PNG
   contact-sheet.mjs     every scene on one sheet, to look at them
+  level-kits.mjs        measure every kit and write the loudness corrections
   make-plates.mjs       the kit plates, from an image model, as masks
   make-social-preview.mjs  regenerate the card in .github/, from the engine
 demo/

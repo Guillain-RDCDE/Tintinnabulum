@@ -41,12 +41,12 @@
   "author": "Guillain d'Erceville",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Guillain-RDCDE/tintinnabulum.git"
+    "url": "git+https://github.com/Guillain-RDCDE/Tintinnabulum.git"
   },
   "bugs": {
-    "url": "https://github.com/Guillain-RDCDE/tintinnabulum/issues"
+    "url": "https://github.com/Guillain-RDCDE/Tintinnabulum/issues"
   },
-  "homepage": "https://github.com/Guillain-RDCDE/tintinnabulum#readme",
+  "homepage": "https://github.com/Guillain-RDCDE/Tintinnabulum#readme",
   "engines": {
     "node": ">=18"
   },

@@ -4,6 +4,7 @@
 //   OPENAI_API_KEY=sk-... node tools/make-plates.mjs handbells koto
 //   ... --dry            print the prompts and call nothing
 //   ... --force          regenerate plates that already exist
+//   ... --remask         redo the masks from art/plates-raw/, calling nothing
 //
 // The plates cut by src/visual/engrave.js are honest engravings and they read
 // as diagrams. This asks a model for the same subjects instead, with one style
@@ -108,7 +109,7 @@ if (flag('dry')) {
 }
 
 const KEY = process.env.OPENAI_API_KEY;
-if (!KEY) {
+if (!KEY && !flag('remask')) {
   console.error('OPENAI_API_KEY is not set.');
   console.error('');
   console.error('  OPENAI_API_KEY=sk-... node tools/make-plates.mjs');
@@ -186,8 +187,13 @@ async function generate(name) {
  */
 async function toMask(from, to) {
   const chain = [
-    `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase`,
-    `crop=${W}:${H}`,
+    // FIT, not fill. The model returns 3:2 and the card is 16:9, so covering
+    // the card meant cutting fifteen per cent off the top and the bottom --
+    // which took the heads off the birds and the top off the rose window.
+    // Padding with white costs a margin at the sides; the padding is white, so
+    // after the negate it is alpha zero and nothing shows.
+    `[0:v]scale=${W}:${H}:force_original_aspect_ratio=decrease`,
+    `pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2:color=white`,
     'format=gray',
     'eq=contrast=1.35:brightness=-0.06',
     'negate[a]',
@@ -203,12 +209,20 @@ for (const name of names) {
   const raw = join(RAW, name + '.png');
   const out = join(OUT, name + '.png');
   try {
-    if (!flag('force') && (await exists(out))) {
+    if (!flag('force') && !flag('remask') && (await exists(out))) {
       console.log(name.padEnd(12) + 'already there, skipped');
       made.push(name);
       continue;
     }
-    if (flag('force') || !(await exists(raw))) {
+    if (flag('remask')) {
+      // Redo the mask from the image already downloaded. The masking is the
+      // part that gets adjusted -- how it is fitted, how hard the contrast is
+      // -- and adjusting it must not mean buying the images again.
+      if (!(await exists(raw))) {
+        console.log(name.padEnd(12) + 'no original in art/plates-raw/, skipped');
+        continue;
+      }
+    } else if (flag('force') || !(await exists(raw))) {
       const bytes = await generate(name);
       await writeFile(raw, bytes);
     }
