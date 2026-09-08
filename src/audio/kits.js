@@ -139,12 +139,27 @@ export const KITS = {
   },
   birds: {
     label: 'Dawn chorus',
-    note: 'Chirps and warbles high above the register, with an owl underneath. Busy feeds turn into a hedgerow.',
-    make: trio('chirp', 'warble', 'owl'),
+    note: 'Real birds: a great tit and a chaffinch on the events, a chiffchaff on the small ones, an owl for the rare ones. Busy feeds turn into a hedgerow.',
+    sampled: true,
+    make: () => ({
+      // Recorded, not synthesised. The FM version of a songbird was the worst
+      // sound in the project after the synthesised gull: birdsong is a syrinx
+      // -- two independent sound sources in one throat -- and a pair of
+      // oscillators is not going to get there.
+      add: field('songbird', ['tit1', 'finch1', 'wren1'], { gain: 0.42, jitter: 1.8 }),
+      sub: field('warbler', ['chiff1', 'chiff2'], { gain: 0.32, jitter: 2.4 }),
+      // Still synthesised, and not for want of looking: Wikimedia Commons has
+      // no owl call under CC0 or public domain. Everything there is CC BY-SA,
+      // whose share-alike term would attach to any adaptation.
+      accent: new SynthInstrument({ name: 'owl', preset: 'owl', gain: 0.3 }),
+    }),
   },
   night: {
     label: 'Night',
     note: 'Crickets ticking over a low owl, with the wind for the rare events. Sparse feeds suit it best.',
+    // Synthesised throughout, and the two reasons are different. Crickets and
+    // owls have no free recording to be had. Wind genuinely is filtered noise,
+    // so synthesis is not a compromise for it at all.
     make: trio('cricket', 'owl', 'breeze'),
   },
 

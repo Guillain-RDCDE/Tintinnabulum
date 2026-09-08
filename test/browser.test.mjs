@@ -42,8 +42,28 @@ const ok = (n, c, x = '') => {
 
 let srv = null;
 if (USE_LOCAL_SERVER) {
-  srv = spawn(process.execPath, [SERVER, '--port', String(PORT)], {
+  // --no-maglev is not a preference. On Node 25.9 the static server dies part
+  // way through this suite with a V8 internal assertion --
+  // "Check failed: ValueRepresentationIs(...)" -- which is a fault in the
+  // engine's mid-tier compiler, not in anything here. When it happens every
+  // sample bank afterwards reports itself silent, which looks exactly like
+  // seven broken kits. Remove this once the runtime stops doing it.
+  srv = spawn(process.execPath, ['--no-maglev', SERVER, '--port', String(PORT)], {
     stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  // If the server dies, everything that depended on it fails as something
+  // else: seven sample banks reported themselves silent and it took a
+  // connection-refused twenty checks later to reveal that nothing was
+  // serving them. Say it the moment it happens.
+  srv.stderr.on('data', (d) => process.stderr.write('[server] ' + d));
+  srv.on('exit', (code, signal) => {
+    if (code !== 0 && code !== null) {
+      process.stderr.write(`[server] exited with code ${code}
+`);
+    } else if (signal && signal !== 'SIGTERM') {
+      process.stderr.write(`[server] killed by ${signal}
+`);
+    }
   });
   for (let i = 0; i < 60; i++) {
     try {
@@ -301,7 +321,13 @@ const kitPeaks = await page.evaluate(async () => {
         if (inst.load) await inst.load(off);
         const v = inst.play(off, off.destination, { semitone: 9, velocity: 1 });
         if (!v) {
-          out[name][role] = -1;
+          // Say why. A bare -1 means "silent" and nothing else, and the two
+          // causes -- a bank that never downloaded and a preset that renders
+          // nothing -- want completely different fixes.
+          const why = (inst.failures || []).length
+            ? 'no sample: ' + inst.failures[0]
+            : 'played nothing';
+          out[name][role] = why;
           continue;
         }
         const buf = await off.startRendering();
@@ -898,7 +924,16 @@ ok('choosing an ordinary kit silences it', bedSwap.afterPlain === null, String(b
 const field = await page.evaluate(async () => {
   const { SampleInstrument, KITS } = await import('../src/index.js');
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
-  const files = ['gull1', 'gull2', 'gull3', 'frog1', 'frog2', 'heron1', 'heron2'];
+  // Derived from the kits rather than typed here. A list in the test is a
+  // second place to keep in step, and it was already out of step once: five
+  // bird recordings were added and this went on measuring the seven it knew.
+  const files = [...new Set(
+    Object.entries(KITS)
+      .filter(([, k]) => k.sampled)
+      .flatMap(([, k]) => Object.values(k.make()))
+      .filter((i) => i && typeof i.baseUrl === 'string' && i.baseUrl.endsWith('field/'))
+      .flatMap((i) => i.files || [])
+  )];
   const inst = new SampleInstrument({
     name: 'field', baseUrl: new URL('../sounds/field/', location.href).href,
     files, step: 0, jitter: 1.6,
@@ -943,12 +978,27 @@ const field = await page.evaluate(async () => {
   return {
     measured,
     variations: rates.size,
-    sampledKits: Object.entries(KITS).filter(([, k]) => k.sampled).map(([n]) => n),
+    sampledKits: Object.entries(KITS)
+      .filter(([, k]) => k.sampled)
+      .map(([n, k]) => ({
+        name: n,
+        banks: Object.values(k.make()).filter((i) => i && Array.isArray(i.files)).length,
+      })),
+    // The other direction, which is the one that actually goes wrong: a kit
+    // given recordings and never marked, so nothing tells anyone they are there.
+    undeclared: Object.entries(KITS)
+      .filter(([, k]) => !k.sampled)
+      .filter(([, k]) => Object.values(k.make()).some((i) => i && Array.isArray(i.files)))
+      .map(([n]) => n),
   };
 });
 
 const notLoaded = field.measured.filter((m) => !m.loaded);
-ok('every field recording loads and decodes', notLoaded.length === 0 && field.measured.length === 7,
+// Every clip the kits reference, whatever that turns out to be. The count was
+// pinned at seven here too, so adding five birds failed a check about whether
+// recordings decode.
+ok('every field recording loads and decodes',
+   notLoaded.length === 0 && field.measured.length >= 7,
    notLoaded.map((m) => m.file).join(', ') || `${field.measured.length} clips`);
 const tooQuiet = field.measured.filter((m) => m.loaded && m.peak < 0.15);
 ok('and every one of them is audible', tooQuiet.length === 0,
@@ -956,15 +1006,20 @@ ok('and every one of them is audible', tooQuiet.length === 0,
    field.measured.map((m) => `${m.file}:${m.peak}`).join(' '));
 const clicky = field.measured.filter((m) => m.loaded && (m.head > 0.02 || m.tail > 0.02));
 ok('and faded at both ends, so none of them clicks', clicky.length === 0,
-   clicky.map((m) => `${m.file} ${m.head}/${m.tail}`).join(', ') || '7 clips');
+   clicky.map((m) => `${m.file} ${m.head}/${m.tail}`).join(', ') || `${field.measured.length} clips`);
 const heavy = field.measured.filter((m) => m.loaded && (m.seconds > 2.5 || m.channels > 1));
 ok('they are short mono one-shots, not tracks', heavy.length === 0,
    heavy.map((m) => `${m.file} ${m.seconds}s x${m.channels}`).join(', ') ||
    `longest ${Math.max(...field.measured.map((m) => m.seconds))}s`);
 ok('repeats are varied rather than looped', field.variations > 3,
    `${field.variations} distinct playback lengths in 24 hits`);
-ok('the kits carrying recordings say so', field.sampledKits.length === 3,
-   field.sampledKits.join(', '));
+// A property, not a list. Pinning the names meant that giving the dawn chorus
+// real birds failed a check about whether kits declare themselves honestly.
+ok('every kit that declares recordings actually carries them',
+   field.sampledKits.length >= 3 && field.sampledKits.every((k) => k.banks > 0),
+   field.sampledKits.map((k) => `${k.name}:${k.banks}`).join(', '));
+ok('and no kit carries recordings without declaring them',
+   field.undeclared.length === 0, field.undeclared.join(', ') || 'none');
 
 // The ambiences must reach for the recordings, not the old synthetic calls.
 const realVoices = await page.evaluate(async () => {

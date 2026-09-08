@@ -102,10 +102,11 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 3. Field recordings in sounds/field/
 ------------------------------------
 
-The animal calls in the Seashore and Camargue night ambiences are real
-recordings, not synthesis. Synthesis is convincing for surf, fire and wind --
-they are filtered noise and nothing else -- and unconvincing for animals,
-because a gull is a resonant body with a vocal tract.
+The animal calls in the Dawn chorus kit and in the Seashore and Camargue
+night ambiences are real recordings, not synthesis. Synthesis is convincing
+for surf, fire and wind -- they are filtered noise and nothing else -- and
+unconvincing for animals: a gull is a resonant body with a vocal tract, and
+a songbird is a syrinx, which is two independent sound sources in one throat.
 
 All of them are public domain or CC0, so they carry no attribution
 requirement and no share-alike obligation. They are credited anyway, because
@@ -116,6 +117,26 @@ somebody stood in a marsh at dawn to make them.
       Recorded at Carolles, Manche, France by Sonothèque ADVL.
       CC0 1.0 Universal (public domain dedication).
       https://commons.wikimedia.org/wiki/File:XC707075_-_European_Herring_Gull_-_Larus_argentatus.mp3
+
+  tit1.ogg
+      Great Tit (Parus major), song, recorded in a birch in Southern Finland
+      by Oona Raisanen (Mysid). Public domain.
+      https://commons.wikimedia.org/wiki/File:Parus_major.ogg
+
+  finch1.ogg
+      Common Chaffinch (Fringilla coelebs), song, recorded in a spruce in
+      Southern Finland by Oona Raisanen (Mysid). Public domain.
+      https://commons.wikimedia.org/wiki/File:Fringilla_coelebs_short.ogg
+
+  chiff1.ogg, chiff2.ogg
+      Common Chiffchaff (Phylloscopus collybita), song, Southern Finland,
+      by Oona Raisanen (Mysid). Public domain.
+      https://commons.wikimedia.org/wiki/File:Phylloscopus_collybita.ogg
+
+  wren1.ogg
+      Eurasian Wren (Troglodytes troglodytes), song, by Sogning Norway.
+      Public domain.
+      https://commons.wikimedia.org/wiki/File:Troglodytes_troglodytes.ogg
 
   frog1.ogg, frog2.ogg
       Edible frogs (Pelophylax kl. esculentus), chorus.
@@ -130,10 +151,20 @@ somebody stood in a marsh at dawn to make them.
 
 Each file here is an excerpt of the original: cut to the call, made mono,
 high-passed to remove wind rumble, faded at both ends so it cannot click,
-level-matched, and encoded as Vorbis at 22.05 kHz. Seven clips, 76 kB in
+level-matched, and encoded as Vorbis at 22.05 kHz. Twelve clips, 120 kB in
 total. The originals are linked above and are unmodified at those addresses.
 
-A note on what is NOT here. Recordings of crickets, surf and fire were
+A note on what is NOT here. Recordings of crickets, owls, surf and fire were
 available only under CC BY-SA, whose share-alike term would attach to any
-adaptation of them. Those three are synthesised instead -- which is the half
-synthesis does well anyway.
+adaptation of them. Those are synthesised instead. For surf and fire that is
+no loss -- they are filtered noise and nothing else, which is the half
+synthesis does well. For the cricket and the owl it is a compromise, and it is
+named here rather than hidden.
+
+A warning for anyone repeating this search. Commons is full of
+word-pronunciation recordings whose titles read like species names: a search
+for "Gryllidae" returns Jer-Cricket.ogg, which is somebody saying the English
+word "cricket" in Jerriais, and a search for blackbirds returns De-Amsel.ogg,
+which is the German word for one. Both are public domain, both would have
+shipped on a check of the filename, and neither is an animal. Take the licence
+from the file's own metadata and the content from its description.
