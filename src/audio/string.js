@@ -18,7 +18,11 @@
 // buffer has no such floor, costs a few thousand multiplications, and is
 // identical every time -- which means it can be cached.
 
-const cache = new Map();
+import { BufferCache, pitchKey } from './buffer-cache.js';
+
+// Bounded by memory, not by entry count, and keyed by pitch rather than by
+// hertz. See buffer-cache.js for what the first version of this cost.
+const cache = new BufferCache(10);
 
 /**
  * Render one plucked note.
@@ -36,13 +40,17 @@ const cache = new Map();
 export function pluck(ctx, freq, {
   seconds = 2.4, damping = 0.5, decay = 0.996, pick = 0.22, tone = 0.6,
 } = {}) {
-  const rate = ctx.sampleRate;
-  // Cached by everything that changes the result, rounded, so a feed that
-  // plays the same note repeatedly renders it once. A quarter of a cent is
-  // far finer than anyone can hear and keeps the table small.
+  // Half the context's rate: a BufferSource resamples it on playback, it
+  // halves what a cached note costs, and a plucked string has nothing above
+  // 11 kHz worth keeping.
+  const rate = Math.max(11025, Math.round(ctx.sampleRate / 2));
+  // Cached by everything that changes the result. The pitch is quantised to an
+  // eighth of a semitone: keyed any finer -- and it was keyed to a fortieth of
+  // a hertz -- the cache has an entry per pitch the mapper ever produces, so
+  // it never hits and only ever grows.
   const key = [
-    rate, Math.round(freq * 40), Math.round(seconds * 20), Math.round(damping * 100),
-    Math.round(decay * 10000), Math.round(pick * 50), Math.round(tone * 50),
+    rate, pitchKey(freq), Math.round(seconds * 4), Math.round(damping * 40),
+    Math.round(decay * 2000), Math.round(pick * 20), Math.round(tone * 20),
   ].join(':');
   const hit = cache.get(key);
   if (hit) return hit;
@@ -94,14 +102,15 @@ export function pluck(ctx, freq, {
     for (let i = 0; i < total; i++) out[i] /= peak;
   }
 
-  // Bounded, because a busy feed at many pitches would otherwise grow this
-  // for the length of the session.
-  if (cache.size > 240) cache.clear();
-  cache.set(key, buf);
-  return buf;
+  return cache.set(key, buf);
 }
 
 /** Drop everything cached. Contexts do not outlive a page, but tests do. */
 export function forgetPlucks() {
   cache.clear();
+}
+
+/** How much audio the pluck cache is holding, in megabytes. */
+export function plucksHeldMB() {
+  return cache.megabytes;
 }

@@ -20,7 +20,11 @@
 // Summing the sinusoids directly has none of those problems, is exact rather
 // than an approximation of the exact thing, and can be cached.
 
-const cache = new Map();
+import { BufferCache, pitchKey } from './buffer-cache.js';
+
+// Bounded by memory, not by entry count, and keyed by pitch rather than by
+// hertz. See buffer-cache.js for what the first version of this cost.
+const cache = new BufferCache(12);
 
 /**
  * Render one struck note.
@@ -39,10 +43,14 @@ export function strike(ctx, freq, {
   modes = [{ ratio: 1, gain: 1, decay: 1 }],
   seconds = 3, decay = 2, strike: hit = 0.004, hardness = 0.5,
 } = {}) {
-  const rate = ctx.sampleRate;
+  // Rendered at half the context's rate, which a BufferSource resamples on
+  // playback. It halves what every cached note costs and takes nothing
+  // audible: the highest partial here is a tubular bell's thirteenth, and
+  // at any pitch this instrument plays that is far under 11 kHz.
+  const rate = Math.max(11025, Math.round(ctx.sampleRate / 2));
   const key = [
-    rate, Math.round(freq * 20), Math.round(seconds * 10), Math.round(decay * 100),
-    Math.round(hit * 2000), Math.round(hardness * 50),
+    rate, pitchKey(freq), Math.round(seconds * 4), Math.round(decay * 20),
+    Math.round(hit * 500), Math.round(hardness * 20),
     modes.map((m) => `${m.ratio}/${m.gain ?? 1}/${m.decay ?? 1}`).join(','),
   ].join(':');
   const found = cache.get(key);
@@ -95,12 +103,15 @@ export function strike(ctx, freq, {
   }
   if (peak > 1e-6) for (let i = 0; i < total; i++) out[i] /= peak;
 
-  if (cache.size > 240) cache.clear();
-  cache.set(key, buf);
-  return buf;
+  return cache.set(key, buf);
 }
 
 /** Drop everything cached. */
 export function forgetStrikes() {
   cache.clear();
+}
+
+/** How much audio the strike cache is holding, in megabytes. */
+export function strikesHeldMB() {
+  return cache.megabytes;
 }

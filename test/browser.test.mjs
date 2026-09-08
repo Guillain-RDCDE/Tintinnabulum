@@ -1528,6 +1528,73 @@ ok('circles already on screen are recoloured by a palette change',
    recoloured.born !== recoloured.after, `${recoloured.born} -> ${recoloured.after}`);
 ok('the sink reports the palette it is using', recoloured.name === 'ultraviolet', recoloured.name);
 
+// --- changing palette on its own ----------------------------------------
+//
+// The rotation walks from one palette to the next rather than switching, so
+// what has to be true is that the ground passes through grounds that are
+// neither end. Sampling only the two ends would pass on a hard cut.
+const walk = await page.evaluate(async () => {
+  const sink = window.son.sinks.find((s) => s.particles);
+  const ctx = document.querySelector('#canvas').getContext('2d');
+  const ground = () => {
+    const d = ctx.getImageData(2, 2, 1, 1).data;
+    return `${d[0]},${d[1]},${d[2]}`;
+  };
+  sink.setPalette('marine');
+  await new Promise((r) => setTimeout(r, 120));
+  const from = ground();
+  sink.fadePalette('linen', 1600);
+  const seen = new Set();
+  for (let i = 0; i < 16; i++) {
+    await new Promise((r) => setTimeout(r, 120));
+    seen.add(ground());
+  }
+  await new Promise((r) => setTimeout(r, 400));
+  return { from, arrived: sink.paletteName, steps: seen.size, ends: seen.has(from) };
+});
+ok('a palette walk passes through grounds that are neither end',
+   walk.steps >= 4, `${walk.steps} distinct grounds`);
+ok('a palette walk arrives where it was sent', walk.arrived === 'linen', walk.arrived);
+
+// A click has to win over a timer, or the piece would fight the person using it.
+const cancelled = await page.evaluate(async () => {
+  const sink = window.son.sinks.find((s) => s.particles);
+  sink.setPalette('marine');
+  sink.fadePalette('daylight', 6000);
+  await new Promise((r) => setTimeout(r, 400));
+  sink.setPalette('neon');
+  await new Promise((r) => setTimeout(r, 700));
+  return sink.paletteName;
+});
+ok('a chosen palette cancels a walk already under way', cancelled === 'neon', cancelled);
+
+const rotateUi = await page.evaluate(async () => {
+  const look = window.son.look;
+  const before = { word: look.rotateWord, val: document.querySelector('#rotate-val').textContent };
+  look.selectRotate(1, false);
+  const armed = { word: look.rotateWord, note: document.querySelector('#rotate-note').textContent };
+  // Driven directly rather than waiting out the shortest interval.
+  const sink = window.son.sinks.find((s) => s.particles);
+  sink.setPalette('marine');
+  const seen = [];
+  for (let i = 0; i < 3; i++) {
+    look.stepPalette();
+    await new Promise((r) => setTimeout(r, 4500));
+    seen.push(sink.paletteName);
+  }
+  look.selectRotate(0, false);
+  return { before, armed, seen, after: look.rotateWord };
+});
+ok('the rotation is off until it is asked for',
+   rotateUi.before.word === 'never' && rotateUi.before.val === 'never', rotateUi.before.word);
+ok('choosing an interval says which one', rotateUi.armed.word === 'every 45 seconds',
+   rotateUi.armed.word);
+ok('every interval explains what it is for', rotateUi.armed.note.length > 20, rotateUi.armed.note);
+ok('each step lands on a palette that is not the one before it',
+   rotateUi.seen.length === 3 && new Set(rotateUi.seen).size === 3 && !rotateUi.seen.includes('marine'),
+   rotateUi.seen.join(' -> '));
+ok('the rotation can be turned off again', rotateUi.after === 'never', rotateUi.after);
+
 // The choice must survive a reload, and must not break when storage is denied.
 await page.click('#palettes .sw[data-palette="bronze"]');
 await page.waitForTimeout(100);

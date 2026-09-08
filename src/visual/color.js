@@ -175,6 +175,32 @@ export function shadeOf(base, [t1, t2, t3], richness = 0.45) {
  * A lighter version of a colour, for the highlight side of a gradient.
  * Raising L in OKLab lightens without the wash-out of blending towards white.
  */
+/**
+ * Blend two colours, in OKLab.
+ *
+ * Not in sRGB, and the difference is the whole point: sRGB's midpoint between
+ * a saturated blue and a saturated orange is a dead grey, because the two run
+ * through the middle of the cube. In OKLab they pass through the colours the
+ * eye expects between them, so a slow crossfade between two palettes reads as
+ * one turning into the other rather than as both dying and coming back.
+ *
+ * @param {string} from
+ * @param {string} to
+ * @param {number} t   0 gives `from`, 1 gives `to`
+ */
+export function mixColors(from, to, t) {
+  const k = clamp(t, 0, 1);
+  const a = parseColor(from);
+  const b = parseColor(to);
+  const la = rgbToOklab({ r: a.r, g: a.g, b: a.b });
+  const lb = rgbToOklab({ r: b.r, g: b.g, b: b.b });
+  const mix = (x, y) => x + (y - x) * k;
+  return toCss(
+    oklabToRgb({ L: mix(la.L, lb.L), a: mix(la.a, lb.a), b: mix(la.b, lb.b) }),
+    mix(a.a, b.a)
+  );
+}
+
 export function lighten(base, amount = 0.14) {
   const { r, g, b, a } = parseColor(base);
   const c = toOklch(rgbToOklab({ r, g, b }));

@@ -39,8 +39,8 @@ export {
 export { Bed } from './audio/bed.js';
 export { GranularInstrument } from './audio/granular.js';
 export { SPACES, SPACE_NAMES, DEFAULT_SPACE, impulse } from './audio/space.js';
-export { pluck } from './audio/string.js';
-export { strike } from './audio/modal.js';
+export { pluck, plucksHeldMB } from './audio/string.js';
+export { strike, strikesHeldMB } from './audio/modal.js';
 export { AMBIENCES, AMBIENCE_NAMES } from './audio/ambiences.js';
 export { noiseBuffer, noiseSource } from './audio/noise.js';
 export { drawKitArt, KIT_ART_NAMES } from './visual/kit-art.js';

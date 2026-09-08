@@ -1,6 +1,6 @@
 import { rngFrom } from '../core/event.js';
 import { PALETTES, DEFAULT_PALETTE_NAME, resolvePalette } from './palettes.js';
-import { shadeOf, lighten, lightnessOf } from './color.js';
+import { shadeOf, lighten, lightnessOf, mixColors } from './color.js';
 import { SHAPES, DEFAULT_SHAPE } from './shapes.js';
 import { SCENES, DEFAULT_SCENE } from './scenes/index.js';
 
@@ -68,6 +68,8 @@ export class CanvasSink {
     // are several megabytes each and a scene change must not buy a new set:
     // see the note in scenes/paint.js for what that cost.
     this._buffers = {};
+    // A palette change under way, if one is: see fadePalette.
+    this._fade = null;
     this._lastFrame = 0;
 
     this.particles = [];
@@ -304,6 +306,12 @@ export class CanvasSink {
    * of waiting for the canvas to turn over.
    */
   setPalette(nameOrColors) {
+    // A hard change wins over a walk that is still going, or the walk would
+    // finish afterwards and put the old destination back.
+    if (this._fade && nameOrColors !== this._fade.name) {
+      clearInterval(this._fade.timer);
+      this._fade = null;
+    }
     this.palette = resolvePalette(nameOrColors);
     this.paletteName =
       typeof nameOrColors === 'string' && PALETTES[nameOrColors]
@@ -312,6 +320,57 @@ export class CanvasSink {
     this._darkGround = lightnessOf(this.palette.background) < 0.5;
     this._recolor();
     return this;
+  }
+
+  /**
+   * Change palette gradually rather than at once.
+   *
+   * A hard swap recolours every mark on the same frame, which reads as a fault
+   * even when it is not -- the screen blinks. This walks from one palette to
+   * the other in OKLab, where the colours between two colours are the ones the
+   * eye expects.
+   *
+   * It steps a few times a second rather than every frame, deliberately.
+   * Recolouring is an OKLab round trip per mark, and at sixty frames with a
+   * full canvas that is fifty thousand conversions a second to make a change
+   * nobody could see happening any faster.
+   *
+   * @param {string} name
+   * @param {number} [ms] how long the walk takes
+   */
+  fadePalette(name, ms = 3500) {
+    const target = PALETTES[name];
+    if (!target || name === this.paletteName) return this;
+    if (this._fade) clearInterval(this._fade.timer);
+    const from = { ...this.palette };
+    const to = target.colors;
+    const started = performance.now();
+    const step = () => {
+      const t = Math.min(1, (performance.now() - started) / Math.max(1, ms));
+      const blended = {};
+      for (const key of Object.keys(to)) {
+        blended[key] = from[key] ? mixColors(from[key], to[key], t) : to[key];
+      }
+      this.palette = blended;
+      this._darkGround = lightnessOf(this.palette.background) < 0.5;
+      this._recolor();
+      if (t >= 1) {
+        clearInterval(this._fade.timer);
+        this._fade = null;
+        // Land on the palette itself rather than on a blend that rounds to it,
+        // so `paletteName` and the colours cannot disagree.
+        this.setPalette(name);
+      }
+    };
+    this.paletteName = name;
+    this._fade = { timer: setInterval(step, 180), name };
+    step();
+    return this;
+  }
+
+  /** True while a palette change is still under way. */
+  get fading() {
+    return Boolean(this._fade);
   }
 
   /**

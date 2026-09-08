@@ -10,13 +10,13 @@ Open the sandbox and change one thing at a time.
 
 | | |
 |---|---|
-| **Sound → Water** | The same events as drops in a cavity. Twelve of the fifteen kits are pure synthesis, with no audio files at all. |
+| **Sound → Water** | The same events as drops in a cavity. Seventeen of the twenty-two kits are pure synthesis, with no audio files at all. |
 | **Sound → Gongs** | Pair it with Earthquakes. Long, slow, inharmonic. |
 | **Sound → Scale → pentatonic** | Notes snap to five. It stops sounding arbitrary and starts sounding composed. |
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Look** | Twenty-one visualisations and seventeen palettes. Marks already on screen recolour at once. |
+| **Look** | Forty visualisations and twenty-six palettes. Marks already on screen recolour at once, and the palette can be left to change on its own. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -226,9 +226,10 @@ Fifteen kits ship, selectable at runtime. Three of them are places rather than i
 | **Dawn chorus** | Birdsong, built from swept whistles rather than recordings |
 | **Night** | Crickets and low wind. The quietest thing here |
 
-Only the first uses audio files. **Twelve of the fifteen are pure synthesis: nothing to download, nothing
-to license, and they work offline.** Three carry recordings — the celesta, and
-the animal calls in the two ambiences, all public domain or CC0.
+Only five use audio files. **Seventeen of the twenty-two are pure synthesis: nothing to download, nothing
+to license, and they work offline.** Five carry recordings — the celesta, the
+two birdsong banks and the animal calls in the two ambiences, all public
+domain or CC0.
 
 - `SampleInstrument` plays recorded banks, resampled through `playbackRate`, so
   pitch is continuous rather than limited to the number of recorded notes.
@@ -293,6 +294,35 @@ It is rendered into a buffer rather than built from a `DelayNode` with
 feedback, which is the obvious way and also does not work: a feedback loop
 through a `DelayNode` is quantised to one render quantum in every browser, so
 the shortest loop is 128 samples and the highest note about 340 Hz.
+
+### Keeping the rendered notes
+
+Both of those render a note into an `AudioBuffer`, so both cache. The first
+version of that cache is the reason
+[`src/audio/buffer-cache.js`](../src/audio/buffer-cache.js) exists as its own
+file, because it got the two hardest things about a cache wrong at once and
+they compounded.
+
+It was bounded at **240 entries**, and each entry is about a megabyte of
+`Float32Array`. Two hundred and forty megabytes is not a bound, it is a leak
+with a ceiling. It was also keyed on frequency rounded to a twentieth of a
+hertz — with an adaptive mapper, that is a fresh key per event, so it never
+hit once: it only ever grew. Switching kit mid-session (Glacier to Airports)
+built a second cache next to the first, and the audio thread went with it.
+
+Both are fixed by the same file. Entries are keyed to an eighth of a semitone,
+which is finer than the ear resolves on a struck body and coarse enough that a
+run of events lands on the same key. The bound is **bytes, not entries**: the
+oldest is evicted until the total is under budget, with one entry always kept
+so a note longer than the whole budget still plays. Notes render at half the
+context's sample rate — a plucked string and a bell have nothing above 11 kHz
+worth keeping, and a `BufferSource` resamples on playback — which halves the
+cost of every entry. Retained memory settles around 21 MB and stays there.
+
+```js
+strikesHeldMB();   // what the modal cache is holding
+plucksHeldMB();    // and the string one
+```
 
 ### How loud is each kit
 
@@ -394,8 +424,30 @@ ear is listening for, and on a long-ringing bell that is a beat you can count.
 
 ### Palettes
 
-Seventeen, selectable at runtime and stored as plain data in
-[`src/visual/palettes.js`](../src/visual/palettes.js):
+Twenty-six, selectable at runtime and stored as plain data in
+[`src/visual/palettes.js`](../src/visual/palettes.js).
+
+They are grouped by the one thing a palette decides before it decides anything
+else: how light the ground is. For a long time that was not a choice at all —
+of the first seventeen, two were on paper and fifteen shared a near-black whose
+relative luminance ran from 0.002 to 0.019. Measured, that is not a range. It
+is one colour with the hue changed, offered seventeen times.
+
+**On paper** — relative luminance 0.80 to 0.90
+
+| | | |
+|---|---|---|
+| **Daylight** — ink on paper | **Papyrus** — a warmer light option | **Chalk** — graphite and coloured pencil |
+| **Linen** — cream and sepia | **Porcelain** — cobalt on white | |
+
+**Neither paper nor night** — 0.06 to 0.09, grounds that are themselves a colour
+
+| | | |
+|---|---|---|
+| **Slate** — the tone of a wet roof | **Terracotta** — fired clay | **Sage** — lichen on stone |
+| **Dusk** — the half hour after sunset | | |
+
+**Dark** — under 0.03
 
 | | | |
 |---|---|---|
@@ -403,14 +455,21 @@ Seventeen, selectable at runtime and stored as plain data in
 | **Bronze** — brass and copper | **Aurora** — mint and violet | **Ember** — banked fire |
 | **Ultraviolet** — magenta and cyan | **Sakura** — blossom on plum | **Nordic** — ice and steel |
 | **Lacquer** — vermilion and gold on black | **Solar** — daylight on deep navy | **Sunset** — coral, teal and gold |
-| **Neon** — arcade colours on black | **Rust** — weathered iron and sand | **Daylight** — ink on paper |
-| **Papyrus** — a warmer light option | **Monochrome** — lightness only | |
+| **Neon** — arcade colours on black | **Rust** — weathered iron and sand | **Cobalt** — saturated blue, not black |
+| **Oxblood** — a bound ledger, warm | **Monochrome** — lightness only | |
 
 ```js
 new CanvasSink('#canvas', { palette: 'bronze' });
 sink.setPalette('aurora');                    // circles already drawn recolour
 sink.setPalette({ anon: '#00ffcc' });         // or override individual roles
+sink.fadePalette('linen', 4000);              // or walk there over four seconds
 ```
+
+`fadePalette` interpolates every role in OKLab
+([`mixColors`](../src/visual/color.js)) and steps about five times a second.
+That rate is deliberate: it is fast enough that the change reads as a drift
+rather than a sequence of jumps, and slow enough that it costs nothing. A hard
+`setPalette` during a walk cancels it, so a click always wins over a timer.
 
 Adding one means adding an entry to that file. The test suite holds them to
 measured standards rather than taste: label text must clear WCAG AA (4.5:1)
@@ -420,6 +479,25 @@ luminance contrast, because two colours can differ obviously to the eye while
 sharing a luminance band. *Monochrome* is the deliberate exception, held to a
 lightness floor instead, since its purpose is to remain readable without colour
 vision.
+
+### Letting the palette change on its own
+
+Twenty-six palettes is twenty-five nobody sees, because choosing one is a
+decision and watching is not. Left to itself the piece walks through them, at
+one of seven intervals from forty-five seconds to three hours — long enough at
+the top end for a screen that is opened in the morning and closed at night.
+
+The order is shuffled once per session rather than being the order they are
+declared in. Down the list the neighbours are related — the five papers sit
+together — and a walk through those in order would read as a fault rather than
+as a change.
+
+Each step is a `fadePalette`, not a `setPalette`. The difference is the whole
+point of the feature: a cut announces itself and interrupts, and a four-second
+walk in OKLab is something you notice having happened rather than something you
+watch happen. The rest of the panel — the scene cards, the swatches — follows
+once the walk has arrived, because repainting forty preview canvases five times
+a second for a colour change nobody is looking at is not a thing to do.
 
 ### Colour variety
 
@@ -491,7 +569,7 @@ asserts that nothing exceeds its budget.
 
 ### Ambiences
 
-Twelve of the kits are instruments: one event, one note. Six are not.
+Sixteen of the kits are instruments: one event, one note. Six are not.
 
 | | |
 |---|---|
@@ -824,7 +902,7 @@ set, and it is the only thing worth being strict about here.
 work on plain white; what is saved is white pixels carrying the drawing in
 their *alpha* channel. At draw time the mask is filled with the palette's ink,
 so a generated plate follows the palette exactly as a cut one does. Without
-that, seventeen palettes would have one set of colours for the cards and
+that, twenty-six palettes would have one set of colours for the cards and
 another for everything else — which was the whole objection to generated art
 here, and this is what answers it.
 
@@ -913,6 +991,7 @@ src/audio/
   modal.js              a struck body, as the sum of its modes
   granular.js           a recording taken apart and put back as a cloud
   space.js              the room: impulse responses, built not recorded
+  buffer-cache.js       rendered notes, kept to a memory budget rather than a count
   bed.js                the continuous layer, driven by event density
   ambiences.js          the three places, described as layers
   instruments.js        the barrel the rest of the library imports

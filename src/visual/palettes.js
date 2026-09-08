@@ -284,6 +284,160 @@ export const PALETTES = {
       hud: 'rgba(120, 120, 120, 0.45)',
     },
   },
+
+  // --- paper -----------------------------------------------------------
+  //
+  // Two of the seventeen were on a light ground and fifteen were on the same
+  // near-black: every dark one measured between 0.002 and 0.019 in relative
+  // luminance, which is not a range, it is one colour with the hue changed.
+  // These fill the two gaps -- more paper, and grounds that are neither paper
+  // nor night.
+  chalk: {
+    label: 'Chalk',
+    note: 'Graphite and coloured pencil on cartridge paper. The coolest of the light grounds.',
+    colors: {
+      background: '#eef0f2',
+      default: '#3c4750',
+      user: '#1a6fbf',
+      anon: '#0d6b3f',
+      bot: '#8a4a10',
+      alert: '#c0203a',
+      text: '#222a30',
+      banner: 'rgba(60, 71, 80, 0.85)',
+      hud: 'rgba(60, 71, 80, 0.45)',
+    },
+  },
+
+  linen: {
+    label: 'Linen',
+    note: 'Warm cream and sepia, the colours of a book left in the sun.',
+    colors: {
+      background: '#efe6d5',
+      default: '#4a3d2e',
+      user: '#9a5a10',
+      anon: '#1f6f5a',
+      bot: '#334f8a',
+      alert: '#b02418',
+      text: '#3a2f24',
+      banner: 'rgba(74, 61, 46, 0.85)',
+      hud: 'rgba(74, 61, 46, 0.45)',
+    },
+  },
+
+  porcelain: {
+    label: 'Porcelain',
+    note: 'Cobalt on white, after Delft and Jingdezhen. Blue leads it, but not alone: four categories have to stay apart, and two shades of one blue cannot both be distinct from each other and legible on white.',
+    colors: {
+      background: '#f2f4f7',
+      default: '#2b4a7a',
+      user: '#0f2c63',
+      anon: '#1d7f76',
+      bot: '#8a5a1c',
+      alert: '#a8202c',
+      text: '#22304a',
+      banner: 'rgba(43, 74, 122, 0.85)',
+      hud: 'rgba(43, 74, 122, 0.45)',
+    },
+  },
+
+  // --- grounds that are neither paper nor night --------------------------
+  slate: {
+    label: 'Slate',
+    note: 'A mid grey-blue ground, the tone of a wet roof. Marks read as light on it without glaring.',
+    colors: {
+      background: '#48545e',
+      default: '#e8edf1',
+      user: '#ffc75f',
+      anon: '#5fe0c8',
+      bot: '#e08a9a',
+      alert: '#ff7a4a',
+      text: '#f2f6f9',
+      banner: 'rgba(232, 237, 241, 0.32)',
+      hud: 'rgba(232, 237, 241, 0.20)',
+    },
+  },
+
+  terracotta: {
+    label: 'Terracotta',
+    note: 'Fired clay: a warm mid ground with slip and glaze over it.',
+    colors: {
+      background: '#6b3628',
+      default: '#f7e8dc',
+      user: '#ffc247',
+      anon: '#5fd8c0',
+      bot: '#d4707f',
+      alert: '#fff0d0',
+      text: '#fdf1e8',
+      banner: 'rgba(247, 232, 220, 0.32)',
+      hud: 'rgba(247, 232, 220, 0.20)',
+    },
+  },
+
+  sage: {
+    label: 'Sage',
+    note: 'A grey-green ground, the colour of lichen on stone. Quiet, and the easiest of the set on a long session.',
+    colors: {
+      background: '#3f4a3c',
+      default: '#f0f2e6',
+      user: '#f2c14e',
+      anon: '#7fe0c6',
+      bot: '#e8a0b8',
+      alert: '#ff7a45',
+      text: '#f5f7ec',
+      banner: 'rgba(240, 242, 230, 0.32)',
+      hud: 'rgba(240, 242, 230, 0.20)',
+    },
+  },
+
+  dusk: {
+    label: 'Dusk',
+    note: 'The half hour after sunset: a blue ground light enough to see, dark enough to be evening.',
+    colors: {
+      background: '#3d4a63',
+      default: '#eef1f7',
+      user: '#ffb26b',
+      anon: '#6ec8ee',
+      bot: '#e0a0d0',
+      alert: '#ff5f7a',
+      text: '#f3f6fb',
+      banner: 'rgba(238, 241, 247, 0.32)',
+      hud: 'rgba(238, 241, 247, 0.20)',
+    },
+  },
+
+  // --- deep, but not black -----------------------------------------------
+  cobalt: {
+    label: 'Cobalt',
+    note: 'Saturated blue rather than the usual near-black, so the ground itself is a colour.',
+    colors: {
+      background: '#10245c',
+      default: '#dfe7ff',
+      user: '#ffcf5c',
+      anon: '#4fd6c4',
+      bot: '#7a8fd0',
+      alert: '#ff6f61',
+      text: '#eaf0ff',
+      banner: 'rgba(79, 214, 196, 0.75)',
+      hud: 'rgba(79, 214, 196, 0.45)',
+    },
+  },
+
+  oxblood: {
+    label: 'Oxblood',
+    note: 'Deep red-brown, the colour of a bound ledger. Warm where the other dark grounds are cold.',
+    colors: {
+      background: '#2a1416',
+      default: '#f3ded6',
+      user: '#e8a33d',
+      anon: '#6fb3a0',
+      bot: '#a85c50',
+      alert: '#ff5a4d',
+      text: '#f8e9e3',
+      banner: 'rgba(232, 163, 61, 0.75)',
+      hud: 'rgba(232, 163, 61, 0.45)',
+    },
+  },
+
 };
 
 export const DEFAULT_PALETTE_NAME = 'marine';

@@ -626,7 +626,7 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
       }
     }
   }
-  ok('no palette colour collapses when shaded', collapsed === null, collapsed || '17 palettes');
+  ok('no palette colour collapses when shaded', collapsed === null, collapsed || `${names.length} palettes`);
 
   ok('lighten stays in gamut on an extreme colour',
      Number.isFinite(parseColor(lighten('#1c1a17', 0.9)).r) && lightnessOf(lighten('#1c1a17', 0.4)) > lightnessOf('#1c1a17'));
@@ -638,7 +638,24 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
     ([name, p]) => name !== 'monochrome' && lightnessOf(p.colors.user) > 0.88
   );
   ok('no palette paints the commonest category as a near-white',
-     pale.length === 0, pale.map(([n]) => n).join(', ') || '16 palettes carry a real hue');
+     pale.length === 0, pale.map(([n]) => n).join(', ') || `${names.length - 1} palettes carry a real hue`);
+
+  // The first thing a palette decides is how light the ground is, and for a
+  // long time it did not decide it: two were on paper and fifteen shared a
+  // near-black spanning 0.118 to 0.268 in OKLab lightness -- one colour with
+  // the hue changed, offered fifteen times. Counting palettes is no guard
+  // against that, so this counts bands instead.
+  const bands = { dark: [], mid: [], light: [] };
+  for (const [name, p] of Object.entries(PALETTES)) {
+    const L = lightnessOf(p.colors.background);
+    bands[L < 0.3 ? 'dark' : L < 0.7 ? 'mid' : 'light'].push(name);
+  }
+  const thin = Object.entries(bands).filter(([, list]) => list.length < 3);
+  ok('grounds are spread across dark, mid and light, not crowded into one',
+     thin.length === 0,
+     thin.length
+       ? thin.map(([b, list]) => `${b}: ${list.length}`).join(', ')
+       : `${bands.dark.length} dark, ${bands.mid.length} mid, ${bands.light.length} light`);
 }
 
 console.log(fails ? `\n${fails} FAILURE(S): ${failedNames.join(' | ')}` : '\nall core checks passed');

@@ -372,6 +372,14 @@ const projector = createProjector({
   }),
 });
 
+// Declared before setupLook, and that matters. updateSummaries is handed to
+// the Look panel and read from inside it, so anything it touches has to exist
+// by the time the panel restores a setting -- otherwise the whole page dies on
+// a temporal dead zone before it has drawn anything. It did: adding one
+// control that refreshed the summary took the sandbox down.
+let restraintWord = 'everything';
+let connectSummary = 'Paste JSON, hear it';
+
 const look = setupLook({
   canvas,
   updateSummaries: () => updateSummaries(),
@@ -379,6 +387,10 @@ const look = setupLook({
   onLookChange: () => projector.sync(),
 });
 const { selectScene, selectPalette, selectShape, selectRichness, selectBudget, SHAPE_LABELS } = look;
+
+// Restored here rather than inside setupLook, because it refreshes the panel
+// summary and the summary reads `look`.
+look.selectRotate(Number(store.get('rotate') || 0), false);
 
 // A card inside a folded panel is skipped rather than drawn -- see the note on
 // `repaint` in dom.js -- so unfolding a panel is when the cards inside it get
@@ -405,10 +417,6 @@ const RESTRAINT_STEPS = [
   [1201, 'ascetic', 'Roughly one note a second. Nearly all of the stream is passed over, and what is left is the shape of its peaks.'],
 ];
 
-// Off by default: this changes what everyone hears, so it is offered rather
-// than imposed.
-let restraintWord = 'everything';
-let connectSummary = 'Paste JSON, hear it';
 
 function selectRestraint(ms, persist = true) {
   const v = Math.max(0, Math.min(1200, Math.round(ms)));
@@ -485,6 +493,7 @@ function updateSummaries() {
     (son.audio.tempo.bpm ? ` · ${son.audio.tempo.bpm} bpm` : '');
   $('#sum-look').textContent =
     `${SCENES[canvas.sceneName].label} · ${PALETTES[canvas.paletteName].label}` +
+    (look.rotateWord === 'never' ? '' : ` · ${look.rotateWord}`) +
     (look.richnessWord === 'balanced' ? '' : ` · ${look.richnessWord} colour`);
   $('#sum-connect').textContent = connectSummary;
   $('#sum-filter').textContent =
@@ -594,3 +603,6 @@ setAudioStatus('');
 
 // Handy from the console: window.son.emit({magnitude: 5000, id: 'test'})
 window.son = son;
+// The look panel with it, so a setting can be driven from the console the same
+// way a click drives it.
+son.look = look;
