@@ -842,6 +842,7 @@ const ambience = await page.evaluate(async () => {
     busy: Number(rms(bb).toFixed(5)),
     fromRate: Number(fromRate.toFixed(3)),
     ambienceKits: Object.entries(KITS).filter(([, k]) => k.ambience).map(([n, k]) => [n, k.bed]),
+    bedNames: Object.keys(AMBIENCES),
     rateNow: counter.eventsPerSecond,
     // Same counter, told about something an hour old: it must not count it.
     rateStale: (() => { counter.observe(now - 3600000); return counter.eventsPerSecond; })(),
@@ -863,9 +864,14 @@ ok('density is derived from the event rate',
 // once busy would keep the sea up for the rest of the session.
 ok('and the rate window forgets what has passed',
    ambience.forgets, `${ambience.rateNow.toFixed(1)}/s now, ${ambience.rateStale.toFixed(1)}/s after a minute`);
-ok('three ambiences ship, each naming its bed',
-   ambience.ambienceKits.length === 3 && ambience.ambienceKits.every(([, b]) => b),
-   JSON.stringify(ambience.ambienceKits));
+// The count is a floor, not a number to keep in step: what has to hold is
+// that every ambience kit names a bed and that the bed exists. Pinning the
+// count meant adding a piece failed a check about a property it did not touch.
+const namedBeds = ambience.ambienceKits.filter(([, b]) => b && ambience.bedNames.includes(b));
+ok('every ambience names a bed that exists',
+   ambience.ambienceKits.length >= 3 && namedBeds.length === ambience.ambienceKits.length,
+   `${namedBeds.length} of ${ambience.ambienceKits.length}: ` +
+   ambience.ambienceKits.map(([k, b]) => `${k}->${b}`).join(', '));
 
 // Choosing an ambience starts its bed; choosing an ordinary kit stops it.
 const bedSwap = await page.evaluate(async () => {

@@ -187,6 +187,47 @@ export const KITS = {
       accent: field('heron', ['heron1', 'heron2'], { gain: 0.45 }),
     }),
   },
+
+  // --- the pieces ----------------------------------------------------------
+  // The three above are places. These are compositions: the bed is the piece,
+  // and an event adds a voice to it rather than a sound on top of it. That is
+  // why every instrument here has an attack measured in seconds.
+  cathedral: {
+    label: 'Cathedral',
+    note: AMBIENCES.cathedral.note,
+    ambience: true,
+    bed: 'cathedral',
+    make: () => ({
+      add: new SynthInstrument({ name: 'brass', preset: 'brass', gain: 0.34 }),
+      sub: new SynthInstrument({ name: 'sub', preset: 'subdrone', gain: 0.4 }),
+      // The one struck thing in the piece, and rare. A cathedral has a bell.
+      accent: new SynthInstrument({ name: 'gong', preset: 'gong', gain: 0.3 }),
+    }),
+  },
+  airports: {
+    label: 'Airports',
+    note: AMBIENCES.airports.note,
+    ambience: true,
+    bed: 'airports',
+    make: () => ({
+      add: new SynthInstrument({ name: 'choir', preset: 'choir', gain: 0.26 }),
+      sub: new SynthInstrument({ name: 'bowed', preset: 'bowed', gain: 0.22 }),
+      // The piano in the original is the only percussive thing in it, and it
+      // is what stops the loops becoming wallpaper.
+      accent: new SynthInstrument({ name: 'piano', preset: 'musicbox', gain: 0.3 }),
+    }),
+  },
+  glacier: {
+    label: 'Glacier',
+    note: AMBIENCES.glacier.note,
+    ambience: true,
+    bed: 'glacier',
+    make: () => ({
+      add: new SynthInstrument({ name: 'shimmer', preset: 'shimmer', gain: 0.3 }),
+      sub: new SynthInstrument({ name: 'sub', preset: 'subdrone', gain: 0.45 }),
+      accent: new SynthInstrument({ name: 'crack', preset: 'icecrack', gain: 0.4 }),
+    }),
+  },
 };
 
 export const KIT_NAMES = Object.keys(KITS);

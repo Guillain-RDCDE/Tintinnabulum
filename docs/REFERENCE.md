@@ -344,13 +344,35 @@ asserts that nothing exceeds its budget.
 
 ### Ambiences
 
-Twelve of the kits are instruments: one event, one note. Three are places.
+Twelve of the kits are instruments: one event, one note. Six are not.
 
 | | |
 |---|---|
 | **Seashore** | A swell that rises with the feed, waves breaking on the large events, foam on the small ones. A gull, rarely. |
 | **Forest fire** | A rumble that grows, cracks on every event, a log giving way on the large ones, wind through the tops. |
 | **Camargue night** | Crickets, a low warmth off the marsh, frogs on the events, reeds on the small ones. A heron, once in a long while. |
+
+Three more are not places but pieces: ways of building music out of a rate,
+with the feed as the performer. Nothing in them is triggered and nothing is
+sequenced, and neither was the music they come from.
+
+| | |
+|---|---|
+| **Cathedral** | A wall of low brass. Six sawtooth partials over a root of 41 Hz -- an octave below, the fifth, and up to the fourth harmonic -- through a filter low enough that at rest you hear the fundamental and almost nothing else. The crescendo is the filter opening, which is how a brass section actually gets louder and is why turning up a gain never sounds the same. A fifth two octaves above enters only when the feed is busy, and it is what turns the drone into a chord. |
+| **Airports** | Five held notes on loops of 17.3, 20.9, 25.1, 31.7 and 37.3 seconds, after the tape pieces of 1978. No two lengths share a factor, so the combination has a period of hours and what you hear has almost certainly not been heard before. There is tape hiss, because every one of those loops was quarter-inch tape and without it the piece sounds like a synthesiser pretending. |
+| **Glacier** | A sub at 32 Hz that you feel rather than hear, ice singing three octaves above it, and deliberately nothing in between: the gap is what makes the two ends sound far apart. |
+
+The loop envelope is one oscillator, not a sequencer. A sine would swell and
+fade symmetrically and every voice would sound like a hand on a fader, so the
+envelope -- in over two seconds, out over ten -- is computed as a Fourier series
+and handed to the oscillator as a `PeriodicWave`
+([`src/audio/loop-wave.js`](../src/audio/loop-wave.js)). One node per voice, no
+scheduling, and it runs for as long as the piece does.
+
+Their event voices have attacks measured in **seconds** rather than
+milliseconds. That is the only way a single event can join a piece that is
+already sounding instead of interrupting it: anything under about half a second
+reads as an onset, and an onset is an interruption.
 
 An ambience reads the data **twice**, and that is the whole idea rather than a
 costume over the old one.
@@ -572,6 +594,50 @@ JSON per event and is of no use to a picture. Settings cross it too, so choosing
 a palette on the laptop changes the wall, and a window that has just opened asks
 for them rather than sitting on defaults.
 
+### The kit plates
+
+Each kit card carries an engraved vignette, cut by
+[`src/visual/engrave.js`](../src/visual/engrave.js) at the moment it is drawn.
+
+They were pictograms before -- an arc for a bell, a sine for a synth, a teardrop
+for water. Accurate, and flat: eighteen of them side by side looked like a
+stationery catalogue, and nothing in them said this was a tool for making
+anything.
+
+Engraving is the right answer, and not for nostalgia. An engraving is built from
+exactly what a canvas is good at: one ink, one line at a time, and every tone in
+the picture made by how thick that line runs and how close it lies to its
+neighbour. It is sharp at any size, it costs nothing to ship, and it takes the
+palette like everything else here.
+
+**The one detail that matters more than the rest is that a burin line swells and
+tapers.** A comb of even lines reads as a screen door; a line that thickens
+where the form turns from the light and thins to nothing where it faces the
+light reads as a solid object. So nothing here is stroked — every line is a
+filled polygon whose width follows the tone underneath it, and a highlight is
+made by the line stopping rather than by painting anything white.
+
+| | |
+|---|---|
+| `burin` | one line, cut along a path, its width taken from the tone |
+| `hatch` | parallel lines across a box |
+| `crossHatch` | a second set, over the dark passages only — everywhere turns a picture into tartan |
+| `contour` | lines that follow the form, which is what gives volume |
+| `stipple` | dots between the lines, so mid-tones are not mechanical |
+| `whiteLine` | cutting light out of a dark ground, after Bewick — the right technique for flame and water, whose subject *is* light |
+
+A `tone` is a function `(x, y) -> 0..1`. Marks ask it what to do; a composition
+only says where the form is. Two rules hold the set together: **one ink**, with
+the accent used for at most one thing per card, and **the light always comes
+from the upper left** — nothing looks more like clip art than a collection of
+objects each lit from its own direction.
+
+**On generating them with an image model:** it was considered and it is the
+wrong trade here. A generated plate is a raster that cannot follow the palette,
+cannot be re-cut when a kit changes, and can quietly stop depicting what it
+claims to — three properties this project spends real effort keeping. Cutting
+them costs two to twenty milliseconds a card.
+
 ### Shapes
 
 Used by the **Bloom** scene, which draws one mark per event. Eight marks are
@@ -631,6 +697,7 @@ src/audio/
   presets.js            timbres as data
   kits.js               named kits, and makeKit for your own
   noise.js              white, pink and brown buffers, made once per context
+  loop-wave.js          the repeating swell, as a Fourier series
   bed.js                the continuous layer, driven by event density
   ambiences.js          the three places, described as layers
   instruments.js        the barrel the rest of the library imports
@@ -638,6 +705,8 @@ src/audio/
   recorder-sink.js      offline rendering to WAV
 src/visual/
   canvas-sink.js        the canvas loop
+  engrave.js            the burin: hatching, contour, stipple, white line
+  kit-art.js            eighteen engraved plates, one per kit
   scenes/               marks, fields, structures, physical, generative,
                         geometry, recursive, budget, paint
   palettes.js           colour schemes

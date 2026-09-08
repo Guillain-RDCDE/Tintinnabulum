@@ -14,6 +14,47 @@ export const SYNTH_PRESETS = {
   blip: { engine: 'sub', wave: 'triangle', attack: 0.001, decay: 0.12, cutoff: 5000, cutoffDecay: 0.06, q: 1 },
   pad: { engine: 'sub', wave: 'sawtooth', attack: 0.6, decay: 3.2, cutoff: 900, cutoffDecay: 2.4, q: 3, detune: 8 },
 
+  // --- voices for the long pieces ------------------------------------------
+  // Everything above answers an event with a struck thing. These answer with a
+  // note that arrives, stays, and goes -- which is the only way a single event
+  // can belong inside a piece that is already sounding rather than interrupt
+  // it. The attacks are in whole seconds, which is the number that matters:
+  // anything under about half a second reads as an onset, and an onset is an
+  // interruption.
+  brass: {
+    // Low, wide, and filtered: the swell is the filter opening, exactly as it
+    // is in the bed underneath.
+    engine: 'sub', wave: 'sawtooth', attack: 1.1, decay: 5.5,
+    cutoff: 260, cutoffDecay: 3.4, q: 2.2, detune: 14,
+  },
+  choir: {
+    // Triangle rather than saw: almost no odd-harmonic edge, so it sits behind
+    // the brass instead of fighting it.
+    engine: 'sub', wave: 'triangle', attack: 1.6, decay: 6.5,
+    cutoff: 1100, cutoffDecay: 5, q: 1.2, detune: 19,
+  },
+  bowed: {
+    engine: 'sub', wave: 'sawtooth', attack: 0.9, decay: 4.2,
+    cutoff: 850, cutoffDecay: 3, q: 3.4, detune: 7,
+  },
+  subdrone: {
+    // Under everything, with no top at all. On a laptop this is nearly
+    // inaudible and that is correct: it is for the room, not the desk.
+    engine: 'sub', wave: 'sine', attack: 1.3, decay: 7,
+    cutoff: 200, cutoffDecay: 5, q: 0.8, detune: 3,
+  },
+  shimmer: {
+    // A slow FM bell with the index falling over seconds rather than tenths,
+    // so it arrives as light rather than as a strike.
+    engine: 'fm', wave: 'sine', ratio: 4.02, index: 55, indexDecay: 2.6,
+    attack: 0.7, decay: 5.5,
+  },
+  icecrack: {
+    // The one short sound in this group: ice does not swell.
+    engine: 'sub', wave: 'triangle', attack: 0.001, decay: 0.3,
+    cutoff: 3200, cutoffDecay: 0.12, q: 11, sweep: 2.4, sweepTime: 0.02,
+  },
+
   // A falling drop rings *upward* as the cavity closes: the pitch rises fast
   // and the whole thing is over in a fifth of a second.
   drop: {

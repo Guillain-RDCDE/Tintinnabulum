@@ -15,6 +15,7 @@
 // until it stops; only their gain and colour move.
 
 import { noiseSource } from './noise.js';
+import { swellWave } from './loop-wave.js';
 
 const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -65,21 +66,37 @@ export class Bed {
 
     let source;
     if (spec.tone) {
-      // A drone rather than noise: the low sustain under a night, the distant
-      // hum of a forest. Two detuned oscillators, because one is a test tone.
-      const a = ctx.createOscillator();
-      a.type = spec.wave || 'sine';
-      a.frequency.value = spec.tone;
-      const b = ctx.createOscillator();
-      b.type = spec.wave || 'sine';
-      b.frequency.value = spec.tone;
-      b.detune.value = spec.detune ?? 7;
+      // A drone rather than noise: the low sustain under a night, the weight
+      // under a cathedral. Never one oscillator -- one oscillator is a test
+      // tone, and the beating between two slightly apart is the whole reason
+      // this sounds like an instrument.
+      //
+      // `stack` is what separates a hum from a wall of low brass. Six partials
+      // over a root of forty hertz, each a couple of cents off its neighbour,
+      // through a low filter: the filter decides how much of the stack you
+      // hear, and that is the crescendo.
+      const stack = spec.stack || [{ mul: 1, gain: 1 }];
       const mix = ctx.createGain();
-      mix.gain.value = 0.5;
-      a.connect(mix);
-      b.connect(mix);
+      mix.gain.value = 1 / Math.max(1, stack.reduce((n, p2) => n + (p2.gain ?? 1), 0));
+      const spread = spec.detune ?? 7;
+      for (let i = 0; i < stack.length; i++) {
+        const part = stack[i];
+        const g = ctx.createGain();
+        g.gain.value = part.gain ?? 1;
+        g.connect(mix);
+        // Two per partial, detuned against each other. The spread widens with
+        // the partial number because beating that is right for a fundamental
+        // is inaudible three octaves up.
+        for (const sign of [-1, 1]) {
+          const osc = ctx.createOscillator();
+          osc.type = part.wave || spec.wave || 'sine';
+          osc.frequency.value = spec.tone * (part.mul ?? 1);
+          osc.detune.value = sign * spread * (1 + i * 0.35);
+          osc.connect(g);
+          nodes.push(osc);
+        }
+      }
       source = mix;
-      nodes.push(a, b);
     } else {
       const n = noiseSource(ctx, spec.colour || 'pink');
       source = n;
@@ -93,21 +110,39 @@ export class Bed {
     source.connect(filt).connect(gain).connect(dest);
 
     // A slow, unsynchronised modulation is what stops a bed sounding like a
-    // held sample. Two layers with slightly different rates never repeat the
-    // same combination, which is the whole trick behind a convincing swell.
-    if (spec.swell) {
+    // held sample. Rates that are not a ratio of one another never repeat the
+    // same combination, which is the whole trick behind a convincing swell --
+    // and, at periods of half a minute rather than ten seconds, it is also
+    // exactly how Music for Airports is built.
+    //
+    // `shape: 'swell'` gives the movement an asymmetric envelope instead of a
+    // sine: in over two seconds, out over ten. A sine rises and falls the same
+    // way, and every voice sounds like a hand on a fader.
+    for (const sw of spec.swells || (spec.swell ? [spec.swell] : [])) {
       const lfo = ctx.createOscillator();
-      lfo.type = 'sine';
-      lfo.frequency.value = spec.swell.rate;
+      if (sw.shape === 'swell') {
+        lfo.setPeriodicWave(
+          swellWave(ctx, { attack: sw.attack ?? 0.12, hold: sw.hold ?? 0.05, release: sw.release ?? 0.45 })
+        );
+      } else {
+        lfo.type = sw.wave || 'sine';
+      }
+      lfo.frequency.value = sw.rate;
+      // A phase offset per layer, so voices sharing a rate still do not land
+      // together. An oscillator has no phase control, so it is bought with a
+      // delayed start instead.
       const depth = ctx.createGain();
-      depth.gain.value = spec.swell.depth;
+      depth.gain.value = sw.depth;
       lfo.connect(depth);
-      depth.connect(spec.swell.target === 'cutoff' ? filt.frequency : gain.gain);
+      depth.connect(sw.target === 'cutoff' ? filt.frequency : gain.gain);
       nodes.push(lfo);
     }
 
+    // A start offset per layer rather than per node: everything inside one
+    // layer must stay in phase with itself, and nothing across layers should.
+    const offset = spec.offset ?? Math.random() * 0.3;
     for (const n of nodes) {
-      if (n.start) n.start(ctx.currentTime + Math.random() * 0.3);
+      if (n.start) n.start(ctx.currentTime + offset);
     }
     return { spec, gain, filt, nodes };
   }
