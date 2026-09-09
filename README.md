@@ -30,7 +30,7 @@ Nothing to install; it runs in a browser, and on a phone.
 - **[The input standard](spec/README.md)** — one required field, and a mapping
   document that plugs anything else in without writing code.
 - **[Reference](docs/REFERENCE.md)** — the library API, the eight built-in
-  feeds, the twenty-two kits, the fifty-one scenes, the eighty palettes.
+  feeds, the twenty-two kits, the sixty-six scenes, the eighty palettes.
 
 ## Thanks
 

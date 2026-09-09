@@ -16,7 +16,7 @@ Open the sandbox and change one thing at a time.
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Look** | Fifty-one visualisations and eighty palettes, grouped by ground or by dominant colour. Marks already on screen recolour at once, and the palette can be left to change on its own. |
+| **Look** | Sixty-six visualisations and eighty palettes, grouped by ground or by dominant colour. Marks already on screen recolour at once, and the palette can be left to change on its own. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -733,12 +733,13 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. Fifty-one ship, and
-thirty-four of them are constructions anyone can look up: nodal figures, polar
-curves, space-filling curves, recursive packings, attractors, automata, growths
-and physics. None of that is anyone's property and none of it is engineering,
-so what each scene actually has to decide is the part that belongs to this
-project -- which of the construction's parameters the live data turns.
+A scene decides what a moment of data looks like. Sixty-six ship, and
+forty-nine of them are constructions anyone can look up: nodal figures, polar
+curves, space-filling curves, aperiodic tilings, recursive packings,
+attractors, automata, growths and physics. None of that is anyone's property
+and none of it is engineering, so what each scene actually has to decide is the
+part that belongs to this project -- which of the construction's parameters the
+live data turns.
 
 Five come from the canon of generative art:
 
@@ -824,6 +825,36 @@ something anyone can look up, which is the rule the whole section follows.
 | **Rule 30** | Wolfram's elementary automaton. Eight bits of rule, no randomness anywhere in it, and a column that passes randomness tests. Events flip cells in the live row. |
 | **Boids** | Craig Reynolds, 1986: keep your distance, match your neighbours, head for the middle of them. Nothing in the code mentions a flock. |
 | **Interruptions** | Vera Molnar, 1968. A field of identical strokes with some removed; she called the removals the piece. Here the feed decides what is missing, so the holes are the data. |
+
+#### Six that are run rather than drawn
+
+These have a state and a rule, and the picture is wherever the rule has got to.
+
+| | |
+|---|---|
+| **Life** | John Conway, 1970. Three neighbours and a cell is born, two or three and it survives. That is the whole rule, and it is Turing complete. Events drop a glider — the five-cell shape that walks across the board forever. |
+| **Langton's ant** | Chris Langton, 1986. Turn, flip the square, step. Ten thousand steps of apparent chaos, and then it builds a diagonal highway and runs down it. Nobody has proved it always does. |
+| **Random walk** | The drunkard's walk. Robert Brown watched pollen do this in 1827 and could not say why; Einstein explained it in 1905 and got the first good estimate of the size of an atom. |
+| **Blue noise** | Mitchell's best-candidate, 1991: try a handful of positions and keep the one furthest from everything already placed. No clumps and no lattice, which is how a retina arranges its cones. |
+| **Cellular noise** | Steven Worley, 1996. Distance to the nearest of a scatter of points, drawn as a height — a Voronoi diagram seen from the side, and the reason computer-generated stone and cracked mud look the way they do. |
+| **Pursuit** | The mice problem: four mice at the corners of a square, each running at the next. They spiral in, and the path each traces is a logarithmic spiral. |
+
+#### Nine tilings, fractals and figures
+
+Constructions with a closed form. What the feed turns is a parameter, and the
+figure follows within a frame.
+
+| | |
+|---|---|
+| **Penrose tiling** | Roger Penrose, 1974: two rhombs that tile the plane and cannot do it periodically. The first proof that so few shapes could, and the reason quasicrystals were believed when Shechtman found them. |
+| **Girih** | The strapwork of Islamic architecture. The craftsmen cutting these in the fifteenth century were building quasiperiodic patterns five hundred years before anyone in Europe proved they existed. |
+| **Sierpinski carpet** | Cut the middle ninth from a square and repeat. Every curve in the plane can be embedded in what is left, which is the property Sierpiński was after and is not obvious from looking. |
+| **Barnsley fern** | Michael Barnsley, 1988. Four affine maps chosen at random with fixed probabilities: twenty-four numbers, and a plant. |
+| **Julia set** | Gaston Julia, 1918, sixty years before anyone could see one. Events move `c`, and a small move is a large change. |
+| **L-system** | Aristid Lindenmayer, 1968: a biologist wanting to describe how algae grow wrote a grammar rather than an equation. |
+| **Ulam spiral** | Stanisław Ulam, 1963, doodling through a dull lecture. The integers on a square spiral, and the primes fall on diagonals nobody has explained. |
+| **Collatz tree** | Halve it if even, treble and add one if odd. Every number tried reaches one and nobody can prove they all do. Grown backwards from one, it is a tree. |
+| **Riley waves** | Bridget Riley's wave paintings of the 1960s: bands whose curvature changes across the canvas, so a flat surface appears to turn. |
 
 #### Systems
 
@@ -1091,7 +1122,8 @@ src/visual/
   kit-art.js            the colour on each kit card
   space-art.js          the colour on each room card
   scenes/               marks, fields, structures, physical, generative,
-                        fantasia (attractors, automata, packings),
+                        fantasia (attractors, packings), automata (things
+                        that are run), tilings (tilings and fractals),
                         geometry, recursive, systems, budget, paint
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation
