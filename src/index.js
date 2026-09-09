@@ -43,9 +43,8 @@ export { pluck, plucksHeldMB } from './audio/string.js';
 export { strike, strikesHeldMB } from './audio/modal.js';
 export { AMBIENCES, AMBIENCE_NAMES } from './audio/ambiences.js';
 export { noiseBuffer, noiseSource } from './audio/noise.js';
-export { drawKitArt, KIT_ART_NAMES } from './visual/kit-art.js';
-export { drawSpaceArt } from './visual/space-art.js';
-export { loadPlates, plateFor, platedKits } from './visual/kit-plates.js';
+export { drawKitArt, kitArtOf } from './visual/kit-art.js';
+export { drawSpaceArt, spaceReachOf } from './visual/space-art.js';
 
 export { CanvasSink, DEFAULT_PALETTE } from './visual/canvas-sink.js';
 export {
@@ -70,6 +69,10 @@ export {
   DEFAULT_PALETTE_NAME,
   resolvePalette,
   swatchOf,
+  GROUND_BANDS,
+  groundBandOf,
+  PALETTE_FAMILIES,
+  familyOf,
 } from './visual/palettes.js';
 
 export {

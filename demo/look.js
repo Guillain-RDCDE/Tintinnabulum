@@ -11,6 +11,10 @@
 import {
   PALETTES,
   swatchOf,
+  GROUND_BANDS,
+  groundBandOf,
+  PALETTE_FAMILIES,
+  familyOf,
   SHAPES,
   drawShape,
   SCENES,
@@ -174,7 +178,6 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
   };
 
   // --- palettes -----------------------------------------------------------
-  let rotateWord = 'never';
 
   function selectPalette(name, persist = true) {
     canvas.setPalette(name);
@@ -191,72 +194,142 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
   }
 
 
-  // --- changing palette on its own ----------------------------------------
+  // --- leaving it to change on its own -------------------------------------
   //
-  // Twenty-six palettes is twenty-five nobody sees, because choosing one is a
-  // decision and watching is not. Left to itself the piece walks through them,
-  // slowly enough that the change is something you notice having happened
-  // rather than something you watch happen.
+  // Forty palettes is thirty-nine nobody sees, and forty visualisations is
+  // thirty-nine nobody sees, because choosing one is a decision and watching is
+  // not. Left to itself the piece walks through them, slowly enough that the
+  // change is something you notice having happened rather than something you
+  // watch happen.
   //
-  // The order is shuffled once per session rather than being the order they
-  // are declared in: down the list, the neighbours are related -- the three
-  // papers sit together -- and a walk through them would look like a fault.
+  // Both rotations are the same mechanism with a different verb for arriving,
+  // so it is written once. What differs is only that: a palette is walked to,
+  // because colours interpolate, and a visualisation is dipped to, because a
+  // Hilbert curve and a wave field have nothing in common to blend.
   const ROTATE_STEPS = [
-    [0, 'never', 'The palette stays as chosen.'],
-    [45000, 'every 45 seconds', 'Quick enough to see the range in a few minutes. Good for showing somebody what is here.'],
-    [120000, 'every two minutes', 'A change while you are looking at something else, which is the point of it.'],
-    [300000, 'every five minutes', 'About the length of a piece of music.'],
-    [900000, 'every quarter of an hour', 'For a screen somebody is working next to.'],
-    [3600000, 'every hour', 'For a screen in a room, over a day.'],
-    [10800000, 'every three hours', 'An exhibition that opens in the morning and closes at night.'],
+    [0, 'never'],
+    [45000, 'every 45 seconds'],
+    [120000, 'every two minutes'],
+    [300000, 'every five minutes'],
+    [900000, 'every quarter of an hour'],
+    [3600000, 'every hour'],
+    [10800000, 'every three hours'],
   ];
 
-  let rotateEvery = 0;
-  let rotateTimer = 0;
-  let rotateOrder = null;
-  let rotateAt = 0;
+  /**
+   * Wire one "change it on its own" control.
+   *
+   * @param {object} o
+   * @param {string}   o.id       the slider's element id; -val and -note follow it
+   * @param {Function} o.names    everything it may choose between
+   * @param {Function} o.current  what is showing now, so a step is always a change
+   * @param {Function} o.go       start the change to a name
+   * @param {string[]} o.notes    one line per step, saying what the interval is for
+   * @param {string}   o.key      where the choice is remembered
+   */
+  function makeRotation({ id, names, current, go, notes, key }) {
+    let timer = 0;
+    let order = null;
+    let at = 0;
+    let word = 'never';
 
-  const shuffled = () => {
-    const names = Object.keys(PALETTES);
-    for (let i = names.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [names[i], names[j]] = [names[j], names[i]];
-    }
-    return names;
-  };
+    // Shuffled once per session rather than taken in declaration order: down
+    // either list the neighbours are related -- the ten papers sit together,
+    // the geometric scenes sit together -- and a walk through those in order
+    // reads as a fault rather than as a change. That shuffle is the whole of
+    // the random mode; the slider only says how often it steps.
+    const shuffle = () => {
+      const list = names();
+      for (let i = list.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [list[i], list[j]] = [list[j], list[i]];
+      }
+      return list;
+    };
 
-  function stepPalette() {
-    if (!rotateOrder) rotateOrder = shuffled();
-    // Start from where the chooser actually is, so the first step is a change
-    // rather than a jump back to the top of the list.
-    let next = rotateOrder[rotateAt % rotateOrder.length];
-    if (next === canvas.paletteName) {
-      rotateAt++;
-      next = rotateOrder[rotateAt % rotateOrder.length];
+    function step() {
+      if (!order || !order.length) order = shuffle();
+      // Start from where the chooser actually is, so the first step is a
+      // change rather than a jump back to the top of the list.
+      let next = order[at % order.length];
+      if (next === current()) {
+        at++;
+        next = order[at % order.length];
+      }
+      at++;
+      go(next);
     }
-    rotateAt++;
-    // Walked, not switched: see CanvasSink.fadePalette.
-    canvas.fadePalette(next, 4000);
-    // The rest of the panel follows once the walk has arrived, because
-    // repainting thirty-four scene cards four times a second is not a thing
-    // to do for a colour change nobody is looking at.
-    setTimeout(() => selectPalette(next, true), 4200);
+
+    function select(index, persist = true) {
+      const i = Math.max(0, Math.min(ROTATE_STEPS.length - 1, Math.round(index)));
+      const [ms, said] = ROTATE_STEPS[i];
+      word = said;
+      $(`#${id}-val`).textContent = said;
+      $(`#${id}-note`).textContent = notes[i];
+      $(`#${id}`).value = String(i);
+      clearInterval(timer);
+      timer = 0;
+      if (ms > 0) timer = setInterval(step, ms);
+      if (persist) store.set(key, String(i));
+      updateSummaries();
+    }
+
+    $(`#${id}`).addEventListener('input', (e) => select(Number(e.target.value)));
+    return { select, step, get word() { return word; } };
   }
 
-  function selectRotate(index, persist = true) {
-    const i = Math.max(0, Math.min(ROTATE_STEPS.length - 1, Math.round(index)));
-    const [ms, word, note] = ROTATE_STEPS[i];
-    rotateEvery = ms;
-    rotateWord = word;
-    $('#rotate-val').textContent = word;
-    $('#rotate-note').textContent = note;
-    $('#rotate').value = String(i);
-    clearInterval(rotateTimer);
-    rotateTimer = 0;
-    if (ms > 0) rotateTimer = setInterval(stepPalette, ms);
-    if (persist) store.set('rotate', String(i));
-    updateSummaries();
-  }
+  const PALETTE_ROTATE_NOTES = [
+    'The palette stays as chosen.',
+    'Quick enough to see the range in a few minutes. Good for showing somebody what is here.',
+    'A change while you are looking at something else, which is the point of it.',
+    'About the length of a piece of music.',
+    'For a screen somebody is working next to.',
+    'For a screen in a room, over a day.',
+    'An exhibition that opens in the morning and closes at night.',
+  ];
+
+  const SCENE_ROTATE_NOTES = [
+    'The visualisation stays as chosen.',
+    'Quick enough to see most of the forty in half an hour.',
+    'Long enough to watch one develop before it goes.',
+    'About the length of a piece of music, which is roughly how long anybody stands in front of a screen.',
+    'For a room people walk through rather than sit in.',
+    'For a screen in a room, over a day.',
+    'An exhibition that opens in the morning and closes at night.',
+  ];
+
+  const paletteRotation = makeRotation({
+    id: 'rotate',
+    key: 'rotate',
+    notes: PALETTE_ROTATE_NOTES,
+    names: () => Object.keys(PALETTES),
+    current: () => canvas.paletteName,
+    go: (next) => {
+      // Walked, not switched: see CanvasSink.fadePalette.
+      canvas.fadePalette(next, 4000);
+      // The rest of the panel follows once the walk has arrived, because
+      // repainting forty scene cards five times a second is not a thing to do
+      // for a colour change nobody is looking at.
+      setTimeout(() => selectPalette(next, true), 4200);
+    },
+  });
+
+  const sceneRotation = makeRotation({
+    id: 'scene-rotate',
+    key: 'scene-rotate',
+    notes: SCENE_ROTATE_NOTES,
+    names: () => Object.keys(SCENES),
+    current: () => canvas.sceneName,
+    go: (next) => {
+      // Dipped, not cut: see CanvasSink.fadeScene.
+      canvas.fadeScene(next, 2600);
+      // The panel follows at the bottom of the dip, where the swap happens.
+      setTimeout(() => selectScene(next, true), 1400);
+    },
+  });
+
+  const selectRotate = paletteRotation.select;
+  const stepPalette = paletteRotation.step;
 
   const palettePicker = createPicker($('#palettes'), Object.entries(PALETTES), {
     key: 'palette',
@@ -277,7 +350,29 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
       btn.append(chip, label);
     },
     onPick: (name) => selectPalette(name),
+    gridClassName: 'swatches',
   });
+
+  // Forty swatches in one grid is forty swatches. Two groupings, because there
+  // are two questions anybody actually asks of a palette: how light is it, and
+  // what colour is it. The first is measured from the ground and the second is
+  // written down; see palettes.js for why one is derived and the other is not.
+  const GROUPINGS = {
+    ground: [groundBandOf, GROUND_BANDS],
+    family: [familyOf, PALETTE_FAMILIES],
+    none: [null, []],
+  };
+
+  function selectGrouping(mode, persist = true) {
+    const [by, order] = GROUPINGS[mode] || GROUPINGS.ground;
+    palettePicker.group(by, order);
+    palettePicker.mark(canvas.paletteName);
+    $('#palette-group').value = mode;
+    if (persist) store.set('palette-group', mode);
+  }
+
+  $('#palette-group').addEventListener('change', (e) => selectGrouping(e.target.value));
+  selectGrouping(store.get('palette-group') || 'ground', false);
 
   // --- shapes -------------------------------------------------------------
   // Swatches are drawn with the same drawShape() the canvas uses, so a preview
@@ -359,7 +454,6 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
   $('#labels').addEventListener('change', (e) => (canvas.showLabels = e.target.checked));
   $('#hud').addEventListener('change', (e) => (canvas.showHud = e.target.checked));
 
-  $('#rotate').addEventListener('input', (e) => selectRotate(Number(e.target.value)));
   // Restored from demo.js, after `look` exists. Anything in here that reaches
   // updateSummaries cannot run during setup: the summary reads `look`, and
   // `look` is the const this call is still returning into.
@@ -372,16 +466,21 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
   return {
     selectScene, selectPalette, selectShape, selectRichness, selectBudget,
     selectRotate,
-    // Exposed so the step can be checked without waiting out the shortest
+    selectSceneRotate: sceneRotation.select,
+    // Exposed so a step can be checked without waiting out the shortest
     // interval, which is three quarters of a minute.
     stepPalette,
+    stepScene: sceneRotation.step,
     repaintScenePreviews, repaintShapeSwatches, repaintPendingPreviews, drawParams,
     SHAPE_LABELS,
     get richnessWord() {
       return richnessWord;
     },
     get rotateWord() {
-      return rotateWord;
+      return paletteRotation.word;
+    },
+    get sceneRotateWord() {
+      return sceneRotation.word;
     },
     /** True while the cards are still catching up with a palette change. */
     get previewsBusy() {

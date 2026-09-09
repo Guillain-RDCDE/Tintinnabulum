@@ -94,10 +94,9 @@ const context = await browser.newContext();
 const page = await context.newPage();
 const consoleErrors = [];
 const badResponses = [];
-// Two checks below deliberately request files that do not exist -- one to
-// prove a partly-broken sample bank still plays, one to prove a missing plates
-// folder costs nothing. Those failures are expected, so page hygiene is not
-// recorded while either probe runs.
+// One check below deliberately requests files that do not exist, to prove a
+// partly-broken sample bank still plays. That failure is expected, so page
+// hygiene is not recorded while the probe runs.
 let probing = false;
 page.on('console', (m) => {
   if (!probing && m.type() === 'error') consoleErrors.push(m.text());
@@ -197,17 +196,24 @@ await openPanels();
  */
 const paintEverything = async (p = page) => {
   await p.evaluate(async () => {
+    const settled = async () => {
+      // Wait for the cards on screen to be done rather than for a fixed
+      // delay. A tenth of a second per screen is faster than the page can
+      // paint -- one card is tens of milliseconds against a six-millisecond
+      // frame budget -- so a fixed wait scrolls past cards it never gave the
+      // page time to draw, and then complains they are blank.
+      for (let i = 0; i < 120; i++) {
+        await new Promise((r) => setTimeout(r, 100));
+        if (i > 2 && !window.son.look.previewsBusy) return;
+      }
+    };
     for (let y = 0; y < document.body.scrollHeight; y += Math.round(innerHeight * 0.7)) {
       window.scrollTo(0, y);
-      await new Promise((r) => setTimeout(r, 240));
+      await settled();
     }
     window.scrollTo(0, 0);
-    await new Promise((r) => setTimeout(r, 240));
+    await settled();
   });
-  await p
-    .waitForFunction(() => !window.son || !window.son.look || !window.son.look.previewsBusy,
-                     null, { timeout: 30000 })
-    .catch(() => {});
 };
 ok('a panel opens to reveal its controls',
    (await page.locator('#feeds .card').count()) >= 6 &&
@@ -404,25 +410,22 @@ const waves = await page.evaluate(() =>
       total++;
       if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 20) ink++;
     }
-    // A coarse 8x4 fingerprint of where the ink sits, for telling the motifs
-    // apart from one another.
-    const cols = 8;
-    const rows = 4;
-    const grid = new Array(cols * rows).fill(0);
-    for (let y = 0; y < cv.height; y++) {
-      for (let x = 0; x < cv.width; x++) {
-        const i = (y * cv.width + x) * 4;
-        if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 20) {
-          grid[Math.floor((y / cv.height) * rows) * cols + Math.floor((x / cv.width) * cols)]++;
-        }
-      }
-    }
-    const peak = Math.max(1, ...grid);
+    // A fingerprint of the colours themselves, at five points. Counting how
+    // many pixels differ from one corner is the wrong measure for a ramp,
+    // because every pixel differs from one end of a ramp: it gave every card
+    // the same fingerprint and would have called twenty-two identical cards
+    // distinct.
+    const at = (x, y) => {
+      const i = (Math.round(y) * cv.width + Math.round(x)) * 4;
+      return `${d[i] >> 3},${d[i + 1] >> 3},${d[i + 2] >> 3}`;
+    };
+    const w2 = cv.width - 1;
+    const h2 = cv.height - 1;
     return {
       name: b.dataset.kit,
       sized,
       share: total ? ink / total : 0,
-      print: grid.map((v) => Math.round((v / peak) * 9)).join(''),
+      print: [at(2, 2), at(w2 - 2, 2), at(2, h2 - 2), at(w2 - 2, h2 - 2), at(w2 / 2, h2 / 2)].join('|'),
     };
   })
 );
@@ -430,16 +433,16 @@ const unsized = waves.filter((c) => !c.sized);
 ok('every kit canvas is painted at its displayed size', unsized.length === 0,
    unsized.map((c) => c.name).join(' ') || waves.length + ' sized');
 const flatCards = waves.filter((c) => c.share < 0.04);
-ok('every kit card carries a real motif', flatCards.length === 0,
+ok('every kit card carries a real gradient', flatCards.length === 0,
    flatCards.map((c) => `${c.name}(${(c.share * 100).toFixed(1)}%)`).join(' ') ||
-     'lightest ' + (Math.min(...waves.map((c) => c.share)) * 100).toFixed(1) + '%');
+     'flattest ' + (Math.min(...waves.map((c) => c.share)) * 100).toFixed(1) + '%');
 
-// The whole point of replacing the waveforms: you should be able to tell the
-// water from the night without reading the label. Identical fingerprints would
-// mean twelve cards that look like one card.
+// You should be able to tell the water from the night without reading the
+// label. Identical fingerprints would mean twenty-two cards that look like
+// one card, which is what the picker exists not to be.
 const prints = new Set(waves.map((c) => c.print));
 ok('no two kits look the same', prints.size === waves.length,
-   `${prints.size} distinct motifs for ${waves.length} kits`);
+   `${prints.size} distinct for ${waves.length} kits`);
 
 // The pitch-swept presets are the new mechanism, so they get their own check:
 // a sweep that fails leaves a flat tone, which still passes a peak test.
@@ -1106,196 +1109,151 @@ ok('repeats are varied rather than looped', field.variations > 3,
    `${field.variations} distinct playback lengths in 24 hits`);
 // A property, not a list. Pinning the names meant that giving the dawn chorus
 // real birds failed a check about whether kits declare themselves honestly.
-// --- generated plates ------------------------------------------------------
-// The kit cards can be cut by the burin or drawn from an image a model made
-// (tools/make-plates.mjs). Two things have to hold, and they pull in opposite
-// directions: an installed plate must be USED and must take the palette's ink
-// like everything else, and a kit without one must still get a card. The
-// fixture installs exactly one, which is what makes both testable at once.
-const plates = await page.evaluate(async () => {
-  const { drawKitArt } = await import('../src/visual/kit-art.js');
-  const { loadPlates, platedKits, forgetPlates } = await import('../src/visual/kit-plates.js');
-  const { PALETTES } = await import('../src/index.js');
+// --- the kit cards -------------------------------------------------------
+//
+// Pictograms, then engraved vignettes, then plates from an image model, then
+// gradients. The first three lost the same argument -- at a hundred and fifty
+// pixels wide a picture of a marimba is a smudge -- and the gradients lost a
+// different one: tasteful and dull, and a picker nobody wants to touch has
+// failed at the only job a picker has. They are colour charts now.
+//
+// Three properties, and none of them is "it drew something": every colour has
+// to come from the palette, the arrangement has to be the kit's own and never
+// move, and no two kits may look the same.
+const charts = await page.evaluate(async () => {
+  const { drawKitArt, PALETTES, KITS } = await import('../src/index.js');
+  const names = Object.keys(KITS);
 
-  // The whole card, kept as pixels. What has to be asserted about a plate is
-  // how it differs from another rendering of the same plate, and picking out
-  // "the ink" first begs the question: an earlier version of this decided ink
-  // was anything not the dark background, which stopped meaning anything the
-  // moment the plates were printed on light paper.
-  const paint = (kit, pal) => {
+  const render = (kit, pal) => {
     const cv = document.createElement('canvas');
     cv.width = 296;
     cv.height = 168;
     const ctx = cv.getContext('2d');
-    const ok = drawKitArt(ctx, kit, { w: 296, h: 168, palette: PALETTES[pal].colors });
-    const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
-    const lum = [];
-    let painted = 0;
-    let n = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      n++;
-      if (d[i + 3] > 8) painted++;
-      lum.push(0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]);
+    const drew = drawKitArt(ctx, kit, { w: 296, h: 168, palette: PALETTES[pal].colors });
+    const d = ctx.getImageData(0, 0, 296, 168).data;
+    // The centre of each of the eighteen blocks. A chart is exactly the set of
+    // its blocks, so that is what gets measured.
+    const cells = [];
+    for (let r = 0; r < 3; r++) {
+      for (let c = 0; c < 6; c++) {
+        const x = Math.round((c + 0.5) * (296 / 6));
+        const y = Math.round((r + 0.5) * (168 / 3));
+        const i = (y * 296 + x) * 4;
+        cells.push([d[i], d[i + 1], d[i + 2]]);
+      }
     }
-    lum.sort((a, b) => a - b);
-    const at = (q) => lum[Math.min(lum.length - 1, Math.floor(lum.length * q))];
-    const median = at(0.5);
-    return {
-      ok,
-      coverage: painted / n,
-      pixels: Array.from(d),
-      // The darkest tenth and the lightest tenth. A print has dark marks on a
-      // light ground; a negative has the two the other way round.
-      // The darkest mark on the plate against the tone of the ground. A
-      // percentile does not do here: a plate may be nine tenths paper, and
-      // then the fifth percentile is paper too.
-      dark: Math.round(lum[0]),
-      ground: Math.round(median),
-    };
+    const distinct = new Set(cells.map((c) => c.join(','))).size;
+    const mean = cells.flat().reduce((a, c) => a + c, 0) / (cells.length * 3);
+    return { drew, distinct, mean, print: cells.map((c) => c.map((v) => v >> 3).join('.')).join('|') };
   };
 
-  /** Mean absolute difference, per channel, between two renderings. */
-  const differ = (a, b) => {
-    let sum = 0;
-    let n = 0;
-    for (let i = 0; i < a.pixels.length; i += 4) {
-      sum += Math.abs(a.pixels[i] - b.pixels[i]) +
-             Math.abs(a.pixels[i + 1] - b.pixels[i + 1]) +
-             Math.abs(a.pixels[i + 2] - b.pixels[i + 2]);
-      n += 3;
-    }
-    return sum / n;
-  };
-
-  // Before: nothing installed, so everything is cut.
-  forgetPlates();
-  const cutOnly = paint('hatnote', 'marine');
-
-  const found = await loadPlates({ base: new URL('../test/fixtures/plates/', location.href).href });
-  const listed = platedKits();
-  const installedMarine = paint('hatnote', 'marine');
-  const installedEmber = paint('hatnote', 'ember');
-  // A kit the fixture does not carry: this one has to fall back to the burin.
-  const stillCut = paint('glassy', 'marine');
-
-  const paletteShift = differ(installedMarine, installedEmber);
-  const installedVsCut = differ(installedMarine, cutOnly);
-  // Big enough to hold, not so big as to keep the pixels: two full cards is
-  // half a megabyte through the bridge and nothing below needs them.
-  for (const r of [cutOnly, installedMarine, installedEmber, stillCut]) delete r.pixels;
-  return {
-    found, listed, cutOnly, installedMarine, installedEmber, stillCut,
-    paletteShift, installedVsCut,
-  };
-});
-
-// A base that is not there at all -- which is the commonest case, since the
-// plates are optional. The request is deliberately made to a folder that does
-// not exist, so page hygiene is not recorded while it happens.
-probing = true;
-const missingPlates = await page.evaluate(async () => {
-  const { drawKitArt } = await import('../src/visual/kit-art.js');
-  const { loadPlates, forgetPlates } = await import('../src/visual/kit-plates.js');
-  const { PALETTES } = await import('../src/index.js');
-  forgetPlates();
-  const missing = await loadPlates({ base: new URL('../test/fixtures/no-such-folder/', location.href).href });
-  const cv = document.createElement('canvas');
-  cv.width = 296;
-  cv.height = 168;
-  const ctx = cv.getContext('2d');
-  const ok = drawKitArt(ctx, 'hatnote', { w: 296, h: 168, palette: PALETTES.marine.colors });
-  const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
-  let ink = 0;
-  let n = 0;
-  for (let i = 0; i < d.length; i += 4) {
-    n++;
-    const lit = Math.abs(d[i] - 4) + Math.abs(d[i + 1] - 20) + Math.abs(d[i + 2] - 28);
-    if (d[i + 3] > 8 && lit > 40) ink++;
+  // Marine against Papyrus, not against another near-black: two dark
+  // palettes differ by a few units of mean brightness and the check passed or
+  // failed on noise. A dark ground against a paper one is the real question.
+  const marine = {};
+  const papyrus = {};
+  for (const n of names) {
+    marine[n] = render(n, 'marine');
+    papyrus[n] = render(n, 'papyrus');
   }
-  forgetPlates();
-  return { missing, ok, coverage: ink / n };
+  const twice = render('gongs', 'marine').print === render('gongs', 'marine').print;
+  return { names, marine, papyrus, twice };
 });
-probing = false;
 
-ok('a generated plate is found and listed',
-   plates.found.length === 1 && plates.listed.join() === 'hatnote',
-   plates.listed.join(', ') || 'none');
-// Compared as pixels, not as a coverage figure: both fill the card, so what
-// separates them is what they put there.
-ok('and it is what gets drawn, not the cut one',
-   plates.installedMarine.ok === true && plates.installedVsCut > 40,
-   `${plates.installedVsCut.toFixed(0)} per channel from the cut plate`);
-// The point of storing a mask rather than a picture: a plate that carried its
-// own colours would render identically in both palettes, and seventeen
-// palettes would then have one set of colours for the cards and another for
-// everything else.
-ok('a generated plate takes the palette ink', plates.paletteShift > 4,
-   `${plates.paletteShift.toFixed(1)} per channel between marine and ember`);
-// A print, not a negative. Filling the mask with a light ink over the dark
-// ground was the first version and every subject glowed white out of the
-// dark, which is the one thing an engraving never looks like.
-ok('and it is printed dark on light, as an engraving is',
-   plates.installedMarine.dark < 120 && plates.installedMarine.ground > 170,
-   `darkest mark ${plates.installedMarine.dark}, ground ${plates.installedMarine.ground}`);
+const failedDraw = charts.names.filter((n) => !charts.marine[n].drew);
+ok('every kit card is drawn', failedDraw.length === 0,
+   failedDraw.join(', ') || charts.names.length + ' kits');
+
+// A chart of one colour is a rectangle. Several palettes have categories that
+// sit close to their own ground, and a block at the ground's lightness is not
+// a block, it is a hole -- which is why the pool pushes each one clear.
+const dullCards = charts.names.filter((n) => charts.marine[n].distinct < 5);
+ok('every card carries several distinct colours', dullCards.length === 0,
+   dullCards.map((n) => n + '(' + charts.marine[n].distinct + ')').join(' ') ||
+   'fewest ' + Math.min(...charts.names.map((n) => charts.marine[n].distinct)) + ' of 18 blocks');
+
+// The whole reason not to store pictures: the grid must follow a palette
+// change exactly as the canvas does.
+// Compared block by block rather than by mean brightness. A mean can happen to
+// match across two palettes -- two of the twenty-two did -- and a card whose
+// every block changed would then be reported as not following the palette.
+// What has to be true is that the blocks are different colours, which is what
+// this asks.
+const stuck = charts.names.filter((n) => charts.marine[n].print === charts.papyrus[n].print);
+ok('the cards are drawn in the palette, not in fixed colours', stuck.length === 0,
+   stuck.join(', ') || charts.names.length + ' change between marine and papyrus');
+
+ok('a card is the same on every visit, because a hash decides it', charts.twice);
+
+// Twenty-two cards that look alike would be twenty-two cards nobody can tell
+// apart, which is the only thing a picker card has to do.
+const chartPrints = new Set(charts.names.map((n) => charts.marine[n].print));
+ok('no two kits are given the same chart', chartPrints.size === charts.names.length,
+   chartPrints.size + ' distinct for ' + charts.names.length + ' kits');
+
 // --- the rooms have pictures too ----------------------------------------
 //
-// The rooms were the one grid on the page with nothing to look at: seven words
-// in a row. Each now plots its own impulse response, and what that has to be
-// is a measurement rather than a decoration -- so the checks are that the
-// pictures differ from each other in the way the rooms differ, not merely that
-// something was drawn.
+// A reflectogram first: the room's own impulse response, plotted. Honest,
+// correct, and it read as a graph nobody asked for. Then a gradient. It is a
+// colour chart now, like the kits, keeping the one fact the picker exists to
+// give you -- how long the room rings -- as how many blocks are coloured.
 const rooms = await page.evaluate(async () => {
-  const { drawSpaceArt, PALETTES } = await import('../src/index.js');
+  const { drawSpaceArt, spaceReachOf, PALETTES } = await import('../src/index.js');
   const { SPACES } = await import('../src/audio/space.js');
+  const COLS = 6;
+  const ROWS = 2;
   const measure = (name, palette) => {
     const cv = document.createElement('canvas');
     cv.width = 252;
-    cv.height = 104;
+    cv.height = 84;
     const ctx = cv.getContext('2d');
-    const ok = drawSpaceArt(ctx, SPACES[name], { w: 252, h: 104, palette }) !== false;
-    const d = ctx.getImageData(0, 0, 252, 104).data;
-    const bg = [d[0], d[1], d[2]];
-    let ink = 0;
-    let rightmost = 0;
-    for (let y = 0; y < 104; y++) {
-      for (let x = 0; x < 252; x++) {
+    const drew = drawSpaceArt(ctx, SPACES[name], { w: 252, h: 84, palette }) !== false;
+    const d = ctx.getImageData(0, 0, 252, 84).data;
+    const g = palette.background.replace('#', '');
+    const bg = [parseInt(g.slice(0, 2), 16), parseInt(g.slice(2, 4), 16), parseInt(g.slice(4, 6), 16)];
+    let coloured = 0;
+    const seen = new Set();
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const x = Math.round((c + 0.5) * (252 / COLS));
+        const y = Math.round((r + 0.5) * (84 / ROWS));
         const i = (y * 252 + x) * 4;
-        if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 30) {
-          ink++;
-          // Above the baseline only. The time axis is drawn right across every
-          // card, so counting it made all seven reach the same distance --
-          // which is what the first version of this check measured.
-          if (x > rightmost && y < 104 * 0.7) rightmost = x;
+        const px = [d[i], d[i + 1], d[i + 2]];
+        if (Math.abs(px[0] - bg[0]) + Math.abs(px[1] - bg[1]) + Math.abs(px[2] - bg[2]) > 24) {
+          coloured++;
+          seen.add(px.join(','));
         }
       }
     }
-    return { ok, ink, reach: rightmost / 252 };
+    return { drew, coloured, distinct: seen.size, reach: spaceReachOf(SPACES[name]) };
   };
   const marine = {};
   for (const n of Object.keys(SPACES)) marine[n] = measure(n, PALETTES.marine.colors);
-  return { names: Object.keys(SPACES), marine, papyrus: measure('hall', PALETTES.papyrus.colors) };
+  return { names: Object.keys(SPACES), marine };
 });
-const blankRooms = rooms.names.filter((n) => rooms.marine[n].ink < 40);
-ok('every room card is drawn, none left blank', blankRooms.length === 0,
-   blankRooms.join(', ') || `${rooms.names.length} rooms`);
-// The one thing the picker exists to tell you is how long a room rings, so a
-// longer tail must reach further across the card than a shorter one.
-ok('a longer room reaches further across its card',
-   rooms.marine.room.reach < rooms.marine.hall.reach &&
-   rooms.marine.hall.reach < rooms.marine.cathedral.reach,
-   `room ${rooms.marine.room.reach.toFixed(2)} < hall ${rooms.marine.hall.reach.toFixed(2)} < cathedral ${rooms.marine.cathedral.reach.toFixed(2)}`);
-// Dry is the absence of a room, and it has to look like one.
-ok('the dry setting draws the strike and no tail',
-   rooms.marine.none.ink > 0 && rooms.marine.none.ink < rooms.marine.room.ink / 3,
-   `dry ${rooms.marine.none.ink} against room ${rooms.marine.room.ink}`);
 
-ok('a kit with no generated plate is still cut',
-   plates.stillCut.ok === true && plates.stillCut.coverage > 0.01,
-   `${(plates.stillCut.coverage * 100).toFixed(1)}% ink`);
-ok('a missing plates folder costs nothing',
-   missingPlates.missing.length === 0 && missingPlates.ok === true &&
-   missingPlates.coverage > 0.01,
-   `${(missingPlates.coverage * 100).toFixed(1)}% ink with no plates installed`);
+const failedRooms = rooms.names.filter((n) => !rooms.marine[n].drew);
+ok('every room card is drawn', failedRooms.length === 0,
+   failedRooms.join(', ') || rooms.names.length + ' rooms');
+
+// The one thing the picker exists to tell you, and now it is countable.
+ok('a longer room colours more of its card',
+   rooms.marine.none.coloured < rooms.marine.room.coloured &&
+   rooms.marine.room.coloured < rooms.marine.hall.coloured &&
+   rooms.marine.hall.coloured < rooms.marine.cathedral.coloured,
+   'dry ' + rooms.marine.none.coloured + ' < room ' + rooms.marine.room.coloured +
+   ' < hall ' + rooms.marine.hall.coloured + ' < cathedral ' + rooms.marine.cathedral.coloured + ' of 12');
+
+// Dry is a choice, not an absence, so it gets one block rather than none.
+ok('the dry setting still shows one block', rooms.marine.none.coloured === 1,
+   rooms.marine.none.coloured + ' block(s)');
+
+// The longest room fills its card, or the scale is telling a lie at the top.
+ok('the longest room fills its card', rooms.marine.cathedral.coloured === 12,
+   rooms.marine.cathedral.coloured + ' of 12');
+
+ok('the room cards use several colours, like the kit cards',
+   rooms.marine.cathedral.distinct >= 4, rooms.marine.cathedral.distinct + ' distinct');
 
 ok('every kit that declares recordings actually carries them',
    field.sampledKits.length >= 3 && field.sampledKits.every((k) => k.banks > 0),
@@ -1631,6 +1589,53 @@ ok('circles already on screen are recoloured by a palette change',
    recoloured.born !== recoloured.after, `${recoloured.born} -> ${recoloured.after}`);
 ok('the sink reports the palette it is using', recoloured.name === 'ultraviolet', recoloured.name);
 
+// --- forty swatches, put in front of somebody ---------------------------
+//
+// A flat grid of forty is forty: you read the first row, decide it is a lot,
+// and take the default. Grouped, the same forty are a handful of short lists.
+// Both groupings have to account for every palette -- a swatch that lands
+// under no heading is a palette nobody will ever find, and nothing looks
+// broken when it happens.
+const grouped = await page.evaluate(async () => {
+  const out = {};
+  const read = () => ({
+    headings: [...document.querySelectorAll('#palettes .sub-label')].map((h) => h.textContent),
+    swatches: document.querySelectorAll('#palettes .sw').length,
+    marked: [...document.querySelectorAll('#palettes .sw')]
+      .filter((s) => s.getAttribute('aria-pressed') === 'true').map((s) => s.dataset.palette),
+  });
+  const sel = document.querySelector('#palette-group');
+  for (const mode of ['ground', 'family', 'none']) {
+    sel.value = mode;
+    sel.dispatchEvent(new Event('change'));
+    await new Promise((r) => setTimeout(r, 250));
+    out[mode] = read();
+  }
+  sel.value = 'ground';
+  sel.dispatchEvent(new Event('change'));
+  await new Promise((r) => setTimeout(r, 250));
+  const { PALETTES } = await import('../src/index.js');
+  out.total = Object.keys(PALETTES).length;
+  return out;
+});
+ok('grouping by ground keeps every swatch',
+   grouped.ground.swatches === grouped.total, `${grouped.ground.swatches} of ${grouped.total}`);
+ok('grouping by dominant keeps every swatch',
+   grouped.family.swatches === grouped.total, `${grouped.family.swatches} of ${grouped.total}`);
+ok('ungrouped keeps every swatch and shows no headings',
+   grouped.none.swatches === grouped.total && grouped.none.headings.length === 0,
+   `${grouped.none.swatches} swatches, ${grouped.none.headings.length} headings`);
+ok('the ground grouping reads lightest first',
+   grouped.ground.headings.join(' ') === 'Paper Twilight Night', grouped.ground.headings.join(' '));
+ok('the dominant grouping is offered as its own arrangement',
+   grouped.family.headings.length >= 5 &&
+   grouped.family.headings.join(' ') !== grouped.ground.headings.join(' '),
+   grouped.family.headings.join(' '));
+// Relaying the grid must not lose which one is chosen.
+ok('the chosen palette stays marked through a regrouping',
+   grouped.family.marked.length === 1 && grouped.family.marked[0] === grouped.ground.marked[0],
+   `${grouped.ground.marked.join(',')} then ${grouped.family.marked.join(',')}`);
+
 // --- one click, not two -------------------------------------------------
 //
 // The bug this guards was not in the click handling at all. Repainting the
@@ -1671,6 +1676,37 @@ const worstTask = await page.evaluate(async () => {
 });
 ok('a palette change never holds the page long enough to swallow a click',
    worstTask < 300, `worst task ${worstTask} ms`);
+
+// A newer repaint supersedes an older one, which is right: only the second
+// answer is wanted. What the first had not reached must not be dropped, and
+// it was -- silently and permanently, until somebody happened to scroll. Four
+// palette clicks in a second is not an unusual thing for a person to do.
+const notDropped = await page.evaluate(async () => {
+  for (const p of ['ember', 'linen', 'cobalt', 'marine']) {
+    document.querySelector(`#palettes .sw[data-palette="${p}"]`).click();
+    await new Promise((r) => setTimeout(r, 90));
+  }
+  for (let i = 0; i < 150; i++) {
+    if (!window.son.look.previewsBusy && i > 3) break;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return [...document.querySelectorAll('#kits .card')]
+    .filter((b) => {
+      const cv = b.querySelector('canvas');
+      if (!cv || !cv.width) return true;
+      const r = b.getBoundingClientRect();
+      if (r.top > innerHeight || r.bottom < 0) return false; // off screen, fairly
+      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      const bg = [d[0], d[1], d[2]];
+      for (let i = 0; i < d.length; i += 4 * 29) {
+        if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 20) return false;
+      }
+      return true;
+    })
+    .map((b) => b.dataset.kit);
+});
+ok('a superseded repaint hands its unfinished cards back rather than dropping them',
+   notDropped.length === 0, notDropped.join(', ') || 'none left blank');
 
 // --- changing palette on its own ----------------------------------------
 //
@@ -1738,6 +1774,87 @@ ok('each step lands on a palette that is not the one before it',
    rotateUi.seen.length === 3 && new Set(rotateUi.seen).size === 3 && !rotateUi.seen.includes('marine'),
    rotateUi.seen.join(' -> '));
 ok('the rotation can be turned off again', rotateUi.after === 'never', rotateUi.after);
+
+// --- and the same for the visualisation ---------------------------------
+//
+// Colours interpolate and two scenes do not: a Hilbert curve and a wave field
+// have nothing in common to blend. So a scene change dips to the palette's own
+// ground, swaps at the bottom where there is nothing to see, and comes back
+// up. The check is that it really goes dark in the middle -- sampling only the
+// two ends would pass on a cut, which is the thing this exists not to be.
+const dip = await page.evaluate(async () => {
+  const sink = window.son.sinks.find((s) => s.particles);
+  sink.setScene('bloom');
+  for (let i = 0; i < 40; i++) window.son.emit({ magnitude: 200 + i * 300, id: 'dip-' + i });
+  await new Promise((r) => setTimeout(r, 700));
+  const cv = document.querySelector('#canvas');
+  const ctx = cv.getContext('2d');
+  const ink = () => {
+    const d = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    const bg = [d[0], d[1], d[2]];
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4 * 53) {
+      if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 18) n++;
+    }
+    return n;
+  };
+  const before = ink();
+  sink.fadeScene('wavefield', 1800);
+  let lowest = Infinity;
+  for (let i = 0; i < 24; i++) {
+    await new Promise((r) => setTimeout(r, 100));
+    lowest = Math.min(lowest, ink());
+  }
+  await new Promise((r) => setTimeout(r, 900));
+  return { before, lowest, arrived: sink.sceneName, stillFading: sink.sceneFading };
+});
+ok('a visualisation change dips to the ground on the way',
+   dip.before > 200 && dip.lowest < dip.before / 8,
+   `${dip.before} down to ${dip.lowest}`);
+ok('and arrives at the visualisation it was sent to',
+   dip.arrived === 'wavefield' && dip.stillFading === false, dip.arrived);
+
+const beatsDip = await page.evaluate(async () => {
+  const sink = window.son.sinks.find((s) => s.particles);
+  sink.setScene('bloom');
+  await new Promise((r) => setTimeout(r, 200));
+  sink.fadeScene('hilbert', 6000);
+  await new Promise((r) => setTimeout(r, 400));
+  sink.setScene('threads');
+  await new Promise((r) => setTimeout(r, 900));
+  return { scene: sink.sceneName, fading: sink.sceneFading };
+});
+ok('a chosen visualisation cancels a dip already under way',
+   beatsDip.scene === 'threads' && beatsDip.fading === false,
+   `${beatsDip.scene}, fading=${beatsDip.fading}`);
+
+const sceneRotateUi = await page.evaluate(async () => {
+  const look = window.son.look;
+  const sink = window.son.sinks.find((s) => s.particles);
+  const before = { word: look.sceneRotateWord, val: document.querySelector('#scene-rotate-val').textContent };
+  look.selectSceneRotate(3, false);
+  const armed = { word: look.sceneRotateWord, note: document.querySelector('#scene-rotate-note').textContent };
+  sink.setScene('bloom');
+  const seen = [];
+  for (let i = 0; i < 3; i++) {
+    look.stepScene();
+    await new Promise((r) => setTimeout(r, 3200));
+    seen.push(sink.sceneName);
+  }
+  look.selectSceneRotate(0, false);
+  return { before, armed, seen, after: look.sceneRotateWord };
+});
+ok('the visualisation rotation is off until it is asked for',
+   sceneRotateUi.before.word === 'never' && sceneRotateUi.before.val === 'never',
+   sceneRotateUi.before.word);
+ok('choosing an interval for it says which one',
+   sceneRotateUi.armed.word === 'every five minutes', sceneRotateUi.armed.word);
+ok('every interval says what it is for', sceneRotateUi.armed.note.length > 20, sceneRotateUi.armed.note);
+ok('each step lands on a visualisation that is not the one before it',
+   sceneRotateUi.seen.length === 3 && new Set(sceneRotateUi.seen).size === 3 &&
+   !sceneRotateUi.seen.includes('bloom'),
+   sceneRotateUi.seen.join(' -> '));
+ok('it can be turned off again', sceneRotateUi.after === 'never', sceneRotateUi.after);
 
 // The choice must survive a reload, and must not break when storage is denied.
 await page.click('#palettes .sw[data-palette="bronze"]');
@@ -1906,18 +2023,7 @@ ok('every scene is offered in the picker',
 // seconds -- so the page is walked the way a person walks it. Scrolling past
 // every card and then checking is also the only honest test of the lazy path:
 // a card that never got painted would be found here rather than by a visitor.
-await page.evaluate(async () => {
-  for (let y = 0; y < document.body.scrollHeight; y += Math.round(innerHeight * 0.7)) {
-    window.scrollTo(0, y);
-    await new Promise((r) => setTimeout(r, 260));
-  }
-  window.scrollTo(0, 0);
-});
-await page.waitForFunction(
-  () => !window.son.look.previewsBusy,
-  null,
-  { timeout: 30000 }
-);
+await paintEverything();
 
 const previews = await page.evaluate(() =>
   [...document.querySelectorAll('#scenes .card')].map((b) => {

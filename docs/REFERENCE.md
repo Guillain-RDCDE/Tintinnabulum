@@ -16,7 +16,7 @@ Open the sandbox and change one thing at a time.
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Look** | Forty visualisations and twenty-six palettes. Marks already on screen recolour at once, and the palette can be left to change on its own. |
+| **Look** | Forty visualisations and forty palettes, grouped by ground or by dominant colour. Marks already on screen recolour at once, and the palette can be left to change on its own. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -374,21 +374,10 @@ room around it, and that is the commonest way to make one sound bad.
 son.space = 'cathedral';
 ```
 
-Each room card plots **that room's own impulse response**
-([`src/visual/space-art.js`](../src/visual/space-art.js)) rather than a drawing
-of an arch or a cave: the early reflections use the same golden-ratio spacing
-the audio does, the tail the same decay exponent. A card cannot go stale
-against the sound, because it is the sound. The rooms were the one grid on the
-page with nothing to look at, and seven words in a row is not a way to choose
-between a cistern and a canyon.
-
-Two decisions about the axes, and the first version had both wrong. **Time runs
-as a square root**, because everything that separates one room from another
-happens in the first half second and a linear five-second axis crushes all of
-it into the leftmost tenth — seven cards came out looking like the same card.
-**Height runs in decibels over 60 dB**, which is how reverberation is read at
-all: RT60 is the time to fall sixty decibels, and on a linear amplitude axis
-the cathedral appeared to stop at two fifths of its own length.
+Each room card is a colour chart, like the kit cards, and **how many blocks are
+coloured is how long the room rings**: Dry gets one, Room four, Cathedral all
+twelve. The seven can be ranked by eye without reading a word. See
+[the card grids](#the-kit-cards-and-the-room-cards) for the rest.
 
 The impulse responses are **built, not recorded**
 ([`src/audio/space.js`](../src/audio/space.js)), which for this purpose is not
@@ -440,39 +429,47 @@ ear is listening for, and on a long-ringing bell that is a beat you can count.
 
 ### Palettes
 
-Twenty-six, selectable at runtime and stored as plain data in
+Forty, selectable at runtime and stored as plain data in
 [`src/visual/palettes.js`](../src/visual/palettes.js).
 
-They are grouped by the one thing a palette decides before it decides anything
-else: how light the ground is. For a long time that was not a choice at all —
-of the first seventeen, two were on paper and fifteen shared a near-black whose
-relative luminance ran from 0.002 to 0.019. Measured, that is not a range. It
-is one colour with the hue changed, offered seventeen times.
+Forty swatches in a single grid is forty swatches: you read the first row,
+decide it is a lot, and take the default. So they are offered **grouped, two
+ways**, because there are two questions anybody actually asks of a palette.
 
-**On paper** — relative luminance 0.80 to 0.90
+**How light is the ground.** Derived from the colour, never declared, because a
+measurement cannot fall out of step with the thing it measures the way a label
+can. For a long time this was not a choice at all — of the first seventeen
+palettes, two were on paper and fifteen shared a near-black spanning 0.118 to
+0.268 in OKLab lightness, which is not a range but one colour with the hue
+changed, offered fifteen times.
 
-| | | |
+| Band | | |
 |---|---|---|
-| **Daylight** — ink on paper | **Papyrus** — a warmer light option | **Chalk** — graphite and coloured pencil |
-| **Linen** — cream and sepia | **Porcelain** — cobalt on white | |
+| **Paper** — 10 | Daylight, Papyrus, Chalk, Linen, Porcelain | Mint, Blush, Newsprint, Vellum, Ice |
+| **Twilight** — 9 | Slate, Terracotta, Sage, Dusk, Moss | Denim, Ochre, Pewter, Brick |
+| **Night** — 21 | Marine, Blueprint, Nocturne, Bronze, Aurora, Ember, Ultraviolet | Sakura, Nordic, Lacquer, Solar, Sunset, Neon, Rust, Cobalt, Oxblood, Monochrome, Ink, Abyss, Amber, Coal |
 
-**Neither paper nor night** — 0.06 to 0.09, grounds that are themselves a colour
+**What colour is it.** Declared, and deliberately so. Deriving it was tried and
+is worse than it sounds: a rule reading the ground's hue calls every near-black
+neutral, and a rule falling back to the marks called **Marine amber** — because
+the commonest mark in this set is a gold, and the marks are systematised while
+the grounds are not. A dominant is a judgement about what a palette looks like,
+so it is written where somebody can disagree with it rather than inferred from
+numbers that do not know.
 
-| | | |
-|---|---|---|
-| **Slate** — the tone of a wet roof | **Terracotta** — fired clay | **Sage** — lichen on stone |
-| **Dusk** — the half hour after sunset | | |
+| | |
+|---|---|
+| **Blue** — 11 | Nocturne, Blueprint, Nordic, Marine, Solar, Porcelain, Slate, Dusk, Cobalt, Ice, Denim |
+| **Teal** — 2 | Aurora, Abyss |
+| **Green** — 3 | Sage, Mint, Moss |
+| **Amber** — 7 | Bronze, Rust, Papyrus, Linen, Vellum, Ochre, Amber |
+| **Red** — 6 | Ember, Lacquer, Terracotta, Oxblood, Blush, Brick |
+| **Rose** — 4 | Ultraviolet, Sakura, Sunset, Neon |
+| **Neutral** — 7 | Daylight, Monochrome, Chalk, Newsprint, Pewter, Ink, Coal |
 
-**Dark** — under 0.03
-
-| | | |
-|---|---|---|
-| **Marine** — deep water, the default | **Blueprint** — technical, calmest | **Nocturne** — slate blue, the original |
-| **Bronze** — brass and copper | **Aurora** — mint and violet | **Ember** — banked fire |
-| **Ultraviolet** — magenta and cyan | **Sakura** — blossom on plum | **Nordic** — ice and steel |
-| **Lacquer** — vermilion and gold on black | **Solar** — daylight on deep navy | **Sunset** — coral, teal and gold |
-| **Neon** — arcade colours on black | **Rust** — weathered iron and sand | **Cobalt** — saturated blue, not black |
-| **Oxblood** — a bound ledger, warm | **Monochrome** — lightness only | |
+The suite holds both to the same standard: every palette must land in a band,
+every palette must declare a dominant from the known list, and no heading may
+stand over a single swatch.
 
 ```js
 new CanvasSink('#canvas', { palette: 'bronze' });
@@ -496,17 +493,18 @@ sharing a luminance band. *Monochrome* is the deliberate exception, held to a
 lightness floor instead, since its purpose is to remain readable without colour
 vision.
 
-### Letting the palette change on its own
+### Letting it change on its own
 
-Twenty-six palettes is twenty-five nobody sees, because choosing one is a
-decision and watching is not. Left to itself the piece walks through them, at
+Forty palettes is thirty-nine nobody sees, because choosing one is a decision
+and watching is not. Left to itself the piece walks through them at random, at
 one of seven intervals from forty-five seconds to three hours — long enough at
 the top end for a screen that is opened in the morning and closed at night.
 
 The order is shuffled once per session rather than being the order they are
-declared in. Down the list the neighbours are related — the five papers sit
+declared in. Down the list the neighbours are related — the ten papers sit
 together — and a walk through those in order would read as a fault rather than
-as a change.
+as a change. That shuffle is the whole of the random mode; the interval only
+says how often it steps.
 
 Each step is a `fadePalette`, not a `setPalette`. The difference is the whole
 point of the feature: a cut announces itself and interrupts, and a four-second
@@ -514,6 +512,32 @@ walk in OKLab is something you notice having happened rather than something you
 watch happen. The rest of the panel — the scene cards, the swatches — follows
 once the walk has arrived, because repainting forty preview canvases five times
 a second for a colour change nobody is looking at is not a thing to do.
+
+**The visualisation rotates too, on its own interval.** Forty scenes is
+thirty-nine nobody sees, for the same reason. It is the same mechanism with one
+difference, and the difference is how it arrives.
+
+A palette can be *walked* to because colours interpolate. Two scenes cannot: a
+Hilbert curve and a wave field have nothing in common to blend, and running
+both at once to cross-fade them would cost two simulations a frame for the two
+and a half seconds nobody is looking closely anyway. So a scene change **dips**:
+the picture fades to the palette's own ground, the swap happens at the bottom
+where there is nothing to see, and it comes back up. That is what a projection
+does between pieces, and it is why a room does not read a change of programme
+as an interruption.
+
+```js
+sink.fadeScene('wavefield', 2600);   // down, swap, back up
+sink.sceneFading;                    // true while it is happening
+```
+
+The dip is applied last of all in the frame, after the labels and the readout,
+so it takes those with it. Fading the marks and leaving the numbers burning
+over the top is the difference between a change of programme and a glitch. A
+click cancels a dip already running, the same way it cancels a palette walk.
+
+The two rotations are independent, so an exhibition can hold one colour and
+move through the visualisations, or the reverse.
 
 ### Colour variety
 
@@ -752,7 +776,7 @@ disturbing something that then goes on by itself.
 | **Ripple tank** | The wave equation on a grid. Two events near each other interfere, and what is between them is what a ripple tank makes in a lecture theatre. |
 | **Attractor** | Clifford Pickover's map, iterated. Four numbers decide the whole of it, and events move them. |
 | **Voronoi** | Every point takes the colour of the nearest event. The boundary is where the first and second nearest are equally far, so it needs no edge detection — it falls out of the distance. |
-| **Burin** | The canvas engraved, with event density as the tone, cut by the same engine as the kit cards. |
+| **Burin** | The canvas engraved, with event density as the tone, cut by the burin engine. |
 
 The sandpile topples in **sweeps over the whole grid** rather than from a work
 queue, and that is not an optimisation. A queue is the obvious way and it is
@@ -892,88 +916,57 @@ JSON per event and is of no use to a picture. Settings cross it too, so choosing
 a palette on the laptop changes the wall, and a window that has just opened asks
 for them rather than sitting on defaults.
 
-### The kit plates
+### The kit cards and the room cards
 
-Each kit card carries an engraved vignette, cut by
-[`src/visual/engrave.js`](../src/visual/engrave.js) at the moment it is drawn.
+Both are colour charts: flat blocks, thin gutters, nothing shaded and nothing
+lit ([`src/visual/mosaic.js`](../src/visual/mosaic.js)). Kits get eighteen
+blocks, rooms get twelve.
 
-They were pictograms before -- an arc for a bell, a sine for a synth, a teardrop
-for water. Accurate, and flat: eighteen of them side by side looked like a
-stationery catalogue, and nothing in them said this was a tool for making
-anything.
+It took four tries to arrive somewhere this plain. Pictograms first — an arc
+for a bell, a sine for a synth — accurate and flat, and eighteen of them side
+by side looked like a stationery catalogue. Then engraved vignettes, cut by a
+burin engine. Then plates from an image model, stored as alpha masks. All three
+lost the same argument: **at a hundred and fifty pixels wide a picture of a
+marimba is a smudge**. Then gradients, which lost a different one — tasteful,
+and dull, and a picker nobody wants to touch has failed at the only job a
+picker has.
 
-Engraving is the right answer, and not for nostalgia. An engraving is built from
-exactly what a canvas is good at: one ink, one line at a time, and every tone in
-the picture made by how thick that line runs and how close it lies to its
-neighbour. It is sharp at any size, it costs nothing to ship, and it takes the
-palette like everything else here.
+A colour chart is the oldest way of showing that a thing is one of a set and
+that the set is worth going through. It is why paint charts are pleasant to
+look at and ramps are not.
 
-**The one detail that matters more than the rest is that a burin line swells and
-tapers.** A comb of even lines reads as a screen door; a line that thickens
-where the form turns from the light and thins to nothing where it faces the
-light reads as a solid object. So nothing here is stroked — every line is a
-filled polygon whose width follows the tone underneath it, and a highlight is
-made by the line stopping rather than by painting anything white.
+**Every colour comes from the palette.** Nothing in that file names a colour:
+the pool is the palette's own four category colours at three values each, so
+the grids follow a palette change exactly as the canvas does. `default` is
+deliberately left out — on every light palette it is the ink, a near-black, and
+a chart with a black square in it stops looking like a chart.
 
-| | |
-|---|---|
-| `burin` | one line, cut along a path, its width taken from the tone |
-| `hatch` | parallel lines across a box |
-| `crossHatch` | a second set, over the dark passages only — everywhere turns a picture into tartan |
-| `contour` | lines that follow the form, which is what gives volume |
-| `stipple` | dots between the lines, so mid-tones are not mechanical |
-| `whiteLine` | cutting light out of a dark ground, after Bewick — the right technique for flame and water, whose subject *is* light |
+**Each block stands clear of the ground.** A palette's `bot` on Marine sits at
+0.19 lightness against a ground of 0.18: a block at the ground's own lightness
+is not a block, it is a hole.
 
-A `tone` is a function `(x, y) -> 0..1`. Marks ask it what to do; a composition
-only says where the form is. Two rules hold the set together: **one ink**, with
-the accent used for at most one thing per card, and **the light always comes
-from the upper left** — nothing looks more like clip art than a collection of
-objects each lit from its own direction.
+**The arrangement is the card's own and never moves.** Which colour lands in
+which cell comes from an FNV-1a hash of the name, so Gongs is the same chart on
+every visit and on every machine, and a kit added tomorrow gets its own without
+anybody choosing one.
 
-**Two sets of plates, and both are here.** The twenty-two in
-[`demo/plates/`](../demo/plates) were made by an image model and are what the
-cards show; the same twenty-two subjects are also cut by the burin, and that is
-what they fall back to. [`tools/make-plates.mjs`](../tools/make-plates.mjs) is
-what made them:
+**A room's card says how long it rings.** The number of coloured blocks is the
+room's tail on a square-root scale: Dry gets one, Room four, Cathedral all
+twelve. The seven can be ranked by eye without reading a word, which is what
+the reflectogram that came before was for and never achieved. The square root
+survived three rewrites because the reason for it did: everything separating
+one room from another is in the first second, and on a linear five-second scale
+four of the seven crowd the far end.
 
-```bash
-OPENAI_API_KEY=sk-... node tools/make-plates.mjs        # all twenty-two
-OPENAI_API_KEY=sk-... node tools/make-plates.mjs koto   # or a few
-node tools/make-plates.mjs --dry                        # the prompts, no calls
+```js
+drawKitArt(ctx, 'gongs', { w, h, palette });
+drawSpaceArt(ctx, SPACES.cathedral, { w, h, palette });
+spaceReachOf(SPACES.hall);   // how much of the card it colours
 ```
 
-One style paragraph is shared by every subject, verbatim. Describing the style
-differently per plate is exactly how a set of generated images stops being a
-set, and it is the only thing worth being strict about here.
-
-**What is stored is a mask, not a picture.** The model is asked for black line
-work on plain white; what is saved is white pixels carrying the drawing in
-their *alpha* channel. At draw time the mask is filled with the palette's ink,
-so a generated plate follows the palette exactly as a cut one does. Without
-that, twenty-six palettes would have one set of colours for the cards and
-another for everything else — which was the whole objection to generated art
-here, and this is what answers it.
-
-**It is printed dark on light**, as an engraving is: the paper and the ink are
-both derived from the palette, so a warm scheme prints on warm paper. Filling
-the mask with a light ink over the dark ground was the first version, and every
-subject glowed white out of the dark — a photographic negative, which is the
-one thing an engraving never looks like.
-
-**It is fitted, not cropped.** The model returns 3:2 and the card is 16:9, so
-covering the card cut fifteen per cent off the top and the bottom: it took the
-heads off the birds and the top off the rose window. The plate is padded to the
-card's shape instead, and because the padding is white it becomes transparent
-in the mask and nothing shows. `--remask` redoes that step from the images
-already downloaded, so adjusting how a plate is fitted never means buying the
-images again.
-
-**The burin stays, and stays the fallback.** A kit with no generated plate is
-cut as before. So a kit added tomorrow is never blocked on an API key, the
-project still works offline with none of this installed, and a missing folder
-or a file that will not decode costs that one card its picture and nothing
-else. A project that needs somebody else's service to draw its own buttons is
-a project that stops working when that service does.
+The suite asserts the properties rather than the pixels: that no two kits share
+a chart, that none is a single colour, that a longer room colours more of its
+card, and that the whole grid shifts when the palette does.
 
 ### Shapes
 
@@ -1048,15 +1041,14 @@ src/audio/
 src/visual/
   canvas-sink.js        the canvas loop
   engrave.js            the burin: hatching, contour, stipple, white line
-  kit-art.js            twenty-two cut plates, one per kit
-  space-art.js          each room's own impulse response, plotted
-  kit-plates.js         generated plates, if any are installed
+  mosaic.js             flat colour in blocks, for the kit and room cards
+  kit-art.js            the colour chart on each kit card
+  space-art.js          the colour chart on each room card
   scenes/               marks, fields, structures, physical, generative,
                         geometry, recursive, systems, budget, paint
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation
   shapes.js             mark geometry
-  kit-art.js            the drawn signature on each kit card
 src/sources/
   transports.js         WebSocket, SSE, poll, manual, random, ingest
   feeds.js              Bitcoin, Coinbase, earthquakes, Bluesky, GitHub, NOAA, HN
@@ -1070,7 +1062,6 @@ tools/
   render.mjs            drive the real visualiser headless, out to PNG
   contact-sheet.mjs     every scene on one sheet, to look at them
   level-kits.mjs        measure every kit and write the loudness corrections
-  make-plates.mjs       the kit plates, from an image model, as masks
   make-social-preview.mjs  regenerate the card in .github/, from the engine
 demo/
   demo.js               the sandbox page

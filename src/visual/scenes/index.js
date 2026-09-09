@@ -188,6 +188,13 @@ export function previewScene(
     ? () => performance.now()
     : () => Date.now();
   const until = budgetMs > 0 ? clock() + budgetMs : Infinity;
+  // A floor in frames as well as a ceiling in time. Some scenes draw nothing
+  // at all for their first few frames -- the burin builds a density field
+  // before it cuts a single line -- so a ceiling on its own can stop them
+  // before they have made a mark, and the card comes out blank. Which happens
+  // is a matter of how loaded the machine is at that moment, so it showed up
+  // as a card that was fine in isolation and empty in the suite.
+  const minFrames = Math.min(frames, 12);
 
   for (let f = 0; f < frames; f++) {
     api.now = f * api.dt;
@@ -211,7 +218,7 @@ export function previewScene(
     ctx.globalAlpha = 1;
     // Out of time. Stop on a drawn frame rather than after wiping the ground,
     // or the card would be blank -- which is the one outcome worse than slow.
-    if (clock() >= until) break;
+    if (f + 1 >= minFrames && clock() >= until) break;
     // Only the last frame is kept, but the trailing ones must accumulate for
     // scenes that build up rather than redraw, so the ground is repainted
     // between frames exactly as the live canvas does.

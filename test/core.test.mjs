@@ -9,6 +9,10 @@ import {
   DEFAULT_PALETTE_NAME,
   resolvePalette,
   swatchOf,
+  GROUND_BANDS,
+  groundBandOf,
+  PALETTE_FAMILIES,
+  familyOf,
 } from '../src/visual/palettes.js';
 
 let fails = 0;
@@ -656,6 +660,22 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
      thin.length
        ? thin.map(([b, list]) => `${b}: ${list.length}`).join(', ')
        : `${bands.dark.length} dark, ${bands.mid.length} mid, ${bands.light.length} light`);
+
+  // Forty swatches in one grid is forty swatches, so they are offered grouped
+  // two ways. Both groupings must account for every palette: a heading nobody
+  // wrote is how a palette becomes invisible without anything appearing broken.
+  const unbanded = names.filter((n) => !GROUND_BANDS.includes(groundBandOf(n)));
+  ok('every palette lands in a ground band', unbanded.length === 0,
+     unbanded.join(', ') || GROUND_BANDS.map((b) => `${b} ${names.filter((n) => groundBandOf(n) === b).length}`).join(', '));
+
+  const undeclared = names.filter((n) => !PALETTE_FAMILIES.includes(PALETTES[n].family));
+  ok('every palette declares a dominant from the known list', undeclared.length === 0,
+     undeclared.map((n) => `${n}=${PALETTES[n].family}`).join(', ') ||
+     PALETTE_FAMILIES.map((f) => `${f} ${names.filter((n) => familyOf(n) === f).length}`).join(', '));
+
+  // A family holding one palette is a heading for a heading's sake.
+  const lonely = PALETTE_FAMILIES.filter((f) => names.filter((n) => familyOf(n) === f).length < 2);
+  ok('no family is a heading over a single swatch', lonely.length === 0, lonely.join(', ') || 'all earn their heading');
 }
 
 console.log(fails ? `\n${fails} FAILURE(S): ${failedNames.join(' | ')}` : '\nall core checks passed');

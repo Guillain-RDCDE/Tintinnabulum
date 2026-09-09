@@ -8,6 +8,8 @@
 //
 // Palettes are pure data. Adding one is adding an entry here.
 
+import { lightnessOf } from './color.js';
+
 export const PALETTE_KEYS = [
   'background', 'default', 'user', 'anon', 'bot', 'alert', 'text', 'banner', 'hud',
 ];
@@ -15,6 +17,7 @@ export const PALETTE_KEYS = [
 export const PALETTES = {
   nocturne: {
     label: 'Nocturne',
+    family: 'Blue',
     note: 'The original: slate blue, night-time, high contrast.',
     colors: {
       background: '#1c2733',
@@ -31,6 +34,7 @@ export const PALETTES = {
 
   bronze: {
     label: 'Bronze',
+    family: 'Amber',
     note: 'Brass and copper. The colour of the bells the project is named after.',
     colors: {
       background: '#14100c',
@@ -47,6 +51,7 @@ export const PALETTES = {
 
   aurora: {
     label: 'Aurora',
+    family: 'Teal',
     note: 'Mint and violet over deep teal. Cold and luminous.',
     colors: {
       background: '#071a1c',
@@ -63,6 +68,7 @@ export const PALETTES = {
 
   ember: {
     label: 'Ember',
+    family: 'Red',
     note: 'Banked fire. Warm, dim, easy at night.',
     colors: {
       background: '#1a0f0b',
@@ -79,6 +85,7 @@ export const PALETTES = {
 
   ultraviolet: {
     label: 'Ultraviolet',
+    family: 'Rose',
     note: 'Magenta and cyan on near-black. The loudest one here.',
     colors: {
       background: '#0d0518',
@@ -95,6 +102,7 @@ export const PALETTES = {
 
   blueprint: {
     label: 'Blueprint',
+    family: 'Blue',
     note: 'Technical drawing. Calm, and the most readable at a glance.',
     colors: {
       background: '#0b1f33',
@@ -111,6 +119,7 @@ export const PALETTES = {
 
   sakura: {
     label: 'Sakura',
+    family: 'Rose',
     note: 'Blossom and lilac on plum. Soft without losing contrast.',
     colors: {
       background: '#1b1020',
@@ -127,6 +136,7 @@ export const PALETTES = {
 
   daylight: {
     label: 'Daylight',
+    family: 'Neutral',
     note: 'Ink on paper. The one to use for screenshots and projectors.',
     colors: {
       background: '#f4f1ea',
@@ -143,6 +153,7 @@ export const PALETTES = {
 
   nordic: {
     label: 'Nordic',
+    family: 'Blue',
     note: 'Ice and steel. Cool, restrained, easy to read for long stretches.',
     colors: {
       background: '#0f1720',
@@ -159,6 +170,7 @@ export const PALETTES = {
 
   marine: {
     label: 'Marine',
+    family: 'Blue',
     note: 'Deep water. Foam, shallows and the dark below.',
     colors: {
       background: '#04141c',
@@ -175,6 +187,7 @@ export const PALETTES = {
 
   lacquer: {
     label: 'Lacquer',
+    family: 'Red',
     note: 'Vermilion and gold on black, after Japanese lacquerware.',
     colors: {
       background: '#0e0a0a',
@@ -191,6 +204,7 @@ export const PALETTES = {
 
   solar: {
     label: 'Solar',
+    family: 'Blue',
     note: 'Full daylight spectrum on deep navy. The brightest of the set.',
     colors: {
       background: '#0a1020',
@@ -207,6 +221,7 @@ export const PALETTES = {
 
   sunset: {
     label: 'Sunset',
+    family: 'Rose',
     note: 'Coral, teal and gold on deep indigo. The widest hue spread here.',
     colors: {
       background: '#14101f',
@@ -223,6 +238,7 @@ export const PALETTES = {
 
   neon: {
     label: 'Neon',
+    family: 'Rose',
     note: 'Arcade colours on black. Loud, and unmistakable at a glance.',
     colors: {
       background: '#05050a',
@@ -239,6 +255,7 @@ export const PALETTES = {
 
   rust: {
     label: 'Rust',
+    family: 'Amber',
     note: 'Weathered iron and sand against deep teal. Warm without being loud.',
     colors: {
       background: '#101c1e',
@@ -255,6 +272,7 @@ export const PALETTES = {
 
   papyrus: {
     label: 'Papyrus',
+    family: 'Amber',
     note: 'A second light option, warmer than Daylight. Good on a projector.',
     colors: {
       background: '#f2ead8',
@@ -271,6 +289,7 @@ export const PALETTES = {
 
   monochrome: {
     label: 'Monochrome',
+    family: 'Neutral',
     note: 'Categories separated by lightness alone, so colour vision is never required.',
     colors: {
       background: '#101214',
@@ -294,6 +313,7 @@ export const PALETTES = {
   // nor night.
   chalk: {
     label: 'Chalk',
+    family: 'Neutral',
     note: 'Graphite and coloured pencil on cartridge paper. The coolest of the light grounds.',
     colors: {
       background: '#eef0f2',
@@ -310,6 +330,7 @@ export const PALETTES = {
 
   linen: {
     label: 'Linen',
+    family: 'Amber',
     note: 'Warm cream and sepia, the colours of a book left in the sun.',
     colors: {
       background: '#efe6d5',
@@ -326,6 +347,7 @@ export const PALETTES = {
 
   porcelain: {
     label: 'Porcelain',
+    family: 'Blue',
     note: 'Cobalt on white, after Delft and Jingdezhen. Blue leads it, but not alone: four categories have to stay apart, and two shades of one blue cannot both be distinct from each other and legible on white.',
     colors: {
       background: '#f2f4f7',
@@ -343,6 +365,7 @@ export const PALETTES = {
   // --- grounds that are neither paper nor night --------------------------
   slate: {
     label: 'Slate',
+    family: 'Blue',
     note: 'A mid grey-blue ground, the tone of a wet roof. Marks read as light on it without glaring.',
     colors: {
       background: '#48545e',
@@ -359,6 +382,7 @@ export const PALETTES = {
 
   terracotta: {
     label: 'Terracotta',
+    family: 'Red',
     note: 'Fired clay: a warm mid ground with slip and glaze over it.',
     colors: {
       background: '#6b3628',
@@ -375,6 +399,7 @@ export const PALETTES = {
 
   sage: {
     label: 'Sage',
+    family: 'Green',
     note: 'A grey-green ground, the colour of lichen on stone. Quiet, and the easiest of the set on a long session.',
     colors: {
       background: '#3f4a3c',
@@ -391,6 +416,7 @@ export const PALETTES = {
 
   dusk: {
     label: 'Dusk',
+    family: 'Blue',
     note: 'The half hour after sunset: a blue ground light enough to see, dark enough to be evening.',
     colors: {
       background: '#3d4a63',
@@ -408,6 +434,7 @@ export const PALETTES = {
   // --- deep, but not black -----------------------------------------------
   cobalt: {
     label: 'Cobalt',
+    family: 'Blue',
     note: 'Saturated blue rather than the usual near-black, so the ground itself is a colour.',
     colors: {
       background: '#10245c',
@@ -424,6 +451,7 @@ export const PALETTES = {
 
   oxblood: {
     label: 'Oxblood',
+    family: 'Red',
     note: 'Deep red-brown, the colour of a bound ledger. Warm where the other dark grounds are cold.',
     colors: {
       background: '#2a1416',
@@ -438,6 +466,250 @@ export const PALETTES = {
     },
   },
 
+
+  // --- more paper --------------------------------------------------------
+  //
+  // The set was still two thirds night. These are grounds you could print on.
+  mint: {
+    label: 'Mint',
+    family: 'Green',
+    note: 'A cool green paper, the colour of an old ledger. The quietest light ground here.',
+    colors: {
+      background: '#e6efe8',
+      default: '#33463c',
+      user: '#1b6b43',
+      anon: '#14508c',
+      bot: '#9c6a15',
+      alert: '#ad2424',
+      text: '#22322b',
+      banner: 'rgba(51, 70, 60, 0.85)',
+      hud: 'rgba(51, 70, 60, 0.45)',
+    },
+  },
+
+  blush: {
+    label: 'Blush',
+    family: 'Red',
+    note: 'Warm pink paper with earth inks. Soft without being weak.',
+    colors: {
+      background: '#f6e9e4',
+      default: '#4b3733',
+      user: '#9c2f4a',
+      anon: '#1c6f6a',
+      bot: '#8a6a12',
+      alert: '#1f4f96',
+      text: '#3b2b28',
+      banner: 'rgba(75, 55, 51, 0.85)',
+      hud: 'rgba(75, 55, 51, 0.45)',
+    },
+  },
+
+  newsprint: {
+    label: 'Newsprint',
+    family: 'Neutral',
+    note: 'Grey stock and process inks. The colour of a paper read on a train, before anybody thought a screen should be white.',
+    colors: {
+      background: '#e3e1dc',
+      default: '#2e2e2c',
+      user: '#a8301f',
+      anon: '#1c5f8c',
+      bot: '#1f6b46',
+      alert: '#8a6208',
+      text: '#1f1f1e',
+      banner: 'rgba(46, 46, 44, 0.85)',
+      hud: 'rgba(46, 46, 44, 0.45)',
+    },
+  },
+
+  vellum: {
+    label: 'Vellum',
+    family: 'Amber',
+    note: 'Pale yellow calfskin, and the browns of iron-gall ink.',
+    colors: {
+      background: '#f4ecd6',
+      default: '#4a3f28',
+      user: '#8a5b13',
+      anon: '#1c6b4e',
+      bot: '#2f4f8c',
+      alert: '#ae2a1c',
+      text: '#3c3320',
+      banner: 'rgba(74, 63, 40, 0.85)',
+      hud: 'rgba(74, 63, 40, 0.45)',
+    },
+  },
+
+  iceblue: {
+    label: 'Ice',
+    family: 'Blue',
+    note: 'A very pale blue ground, the colour of a winter sky through glass.',
+    colors: {
+      background: '#e8eff4',
+      default: '#2f4552',
+      user: '#0f4f8f',
+      anon: '#1c7a5a',
+      bot: '#a06a12',
+      alert: '#b02430',
+      text: '#233541',
+      banner: 'rgba(47, 69, 82, 0.85)',
+      hud: 'rgba(47, 69, 82, 0.45)',
+    },
+  },
+
+  // --- more grounds that are neither paper nor night ----------------------
+  moss: {
+    label: 'Moss',
+    family: 'Green',
+    note: 'A damp mid green, darker than sage and further from grey.',
+    colors: {
+      background: '#4a5540',
+      default: '#eef0e2',
+      user: '#f5c74a',
+      anon: '#57d2bf',
+      bot: '#9db6ff',
+      alert: '#ff7358',
+      text: '#f3f5e9',
+      banner: 'rgba(238, 240, 226, 0.32)',
+      hud: 'rgba(238, 240, 226, 0.20)',
+    },
+  },
+
+  denim: {
+    label: 'Denim',
+    family: 'Blue',
+    note: 'Indigo-dyed cloth at mid tone, worn rather than new.',
+    colors: {
+      background: '#41546e',
+      default: '#eef2f7',
+      user: '#a8c8ff',
+      anon: '#ffce5c',
+      bot: '#6fd6bf',
+      alert: '#ff7a6a',
+      text: '#f2f5fa',
+      banner: 'rgba(238, 242, 247, 0.32)',
+      hud: 'rgba(238, 242, 247, 0.20)',
+    },
+  },
+
+  ochre: {
+    label: 'Ochre',
+    family: 'Amber',
+    note: 'Raw earth pigment: a mid yellow-brown, the oldest colour anyone painted with.',
+    colors: {
+      background: '#7a5c2e',
+      default: '#f7efdc',
+      user: '#6fd8c4',
+      anon: '#ffd98a',
+      bot: '#a8bcff',
+      alert: '#ff6f52',
+      text: '#faf3e4',
+      banner: 'rgba(247, 239, 220, 0.32)',
+      hud: 'rgba(247, 239, 220, 0.20)',
+    },
+  },
+
+  pewter: {
+    label: 'Pewter',
+    family: 'Neutral',
+    note: 'A neutral mid grey with no hue at all in the ground, so the marks carry every bit of the colour.',
+    colors: {
+      background: '#5a5a5a',
+      default: '#f0f0f0',
+      user: '#ffcb4d',
+      anon: '#4fd0c0',
+      bot: '#8fb0ff',
+      alert: '#ff7a66',
+      text: '#f5f5f5',
+      banner: 'rgba(240, 240, 240, 0.32)',
+      hud: 'rgba(240, 240, 240, 0.20)',
+    },
+  },
+
+  brick: {
+    label: 'Brick',
+    family: 'Red',
+    note: 'Fired red at mid tone. Warmer than terracotta and a good deal louder.',
+    colors: {
+      background: '#7d3f38',
+      default: '#f8e6df',
+      user: '#efc94f',
+      anon: '#6fc8b8',
+      bot: '#9cb8ff',
+      alert: '#ff5f4a',
+      text: '#fbeee9',
+      banner: 'rgba(248, 230, 223, 0.32)',
+      hud: 'rgba(248, 230, 223, 0.20)',
+    },
+  },
+
+  // --- more night, but each one a colour ---------------------------------
+  ink: {
+    label: 'Ink',
+    family: 'Neutral',
+    note: 'Iron-gall black with a blue cast, and the warm inks a scribe would have had beside it.',
+    colors: {
+      background: '#12161c',
+      default: '#e6e9ee',
+      user: '#e8b04a',
+      anon: '#4fc9b6',
+      bot: '#8fb0ff',
+      alert: '#e8604f',
+      text: '#eef1f5',
+      banner: 'rgba(232, 176, 74, 0.75)',
+      hud: 'rgba(232, 176, 74, 0.45)',
+    },
+  },
+
+  abyss: {
+    label: 'Abyss',
+    family: 'Teal',
+    note: 'Deep teal rather than deep blue: the ground has a hue, and it is not the sky.',
+    colors: {
+      background: '#08262b',
+      default: '#dcf0ee',
+      user: '#57d6dd',
+      anon: '#ffc860',
+      bot: '#9aa8ff',
+      alert: '#ff7059',
+      text: '#e6f4f2',
+      banner: 'rgba(79, 208, 216, 0.75)',
+      hud: 'rgba(79, 208, 216, 0.45)',
+    },
+  },
+
+  amber: {
+    label: 'Amber',
+    family: 'Amber',
+    note: 'A dark warm brown lit from inside, as resin is.',
+    colors: {
+      background: '#1d1408',
+      default: '#f6e6c8',
+      user: '#f0a827',
+      anon: '#5fc0a8',
+      bot: '#92aef0',
+      alert: '#f4593c',
+      text: '#f9eed8',
+      banner: 'rgba(240, 168, 39, 0.75)',
+      hud: 'rgba(240, 168, 39, 0.45)',
+    },
+  },
+
+  coal: {
+    label: 'Coal',
+    family: 'Neutral',
+    note: 'Near-black with no cast either way, and marks that are deliberately muted. The most restrained thing here.',
+    colors: {
+      background: '#131313',
+      default: '#dcdcdc',
+      user: '#c8a24a',
+      anon: '#5c9e93',
+      bot: '#93a9e8',
+      alert: '#c25b45',
+      text: '#e4e4e4',
+      banner: 'rgba(220, 220, 220, 0.28)',
+      hud: 'rgba(220, 220, 220, 0.18)',
+    },
+  },
+
 };
 
 export const DEFAULT_PALETTE_NAME = 'marine';
@@ -449,6 +721,42 @@ export function resolvePalette(nameOrColors) {
   }
   const entry = PALETTES[nameOrColors] || PALETTES[DEFAULT_PALETTE_NAME];
   return { ...entry.colors };
+}
+
+// --- how forty palettes are put in front of somebody ---------------------
+//
+// A grid of forty swatches is a grid of forty swatches: you look at the first
+// row, decide it is a lot, and take the default. So they are offered grouped,
+// two ways, because there are two questions anybody actually asks.
+//
+// HOW LIGHT IS IT. Derived, never declared: it is a measurement of the ground,
+// and a measurement cannot fall out of step with the colour the way a label
+// can. The bands are the same ones the test suite holds the set to.
+export const GROUND_BANDS = ['Paper', 'Twilight', 'Night'];
+
+/**
+ * Which lightness band a palette's ground falls in.
+ * @param {string} name
+ * @returns {'Paper'|'Twilight'|'Night'}
+ */
+export function groundBandOf(name) {
+  const L = lightnessOf(resolvePalette(name).background);
+  return L >= 0.7 ? 'Paper' : L >= 0.3 ? 'Twilight' : 'Night';
+}
+
+// WHAT COLOUR IS IT. Declared, and deliberately so. Deriving it was tried and
+// is worse than it sounds: a rule taking the ground's hue calls every
+// near-black neutral, and a rule falling back to the marks called Marine amber,
+// because the commonest mark in this set is a gold and the marks are
+// systematised while the grounds are not. A family is a judgement about what a
+// palette looks like, so it is written down where somebody can disagree with
+// it rather than inferred from numbers that do not know.
+export const PALETTE_FAMILIES = ['Blue', 'Teal', 'Green', 'Amber', 'Red', 'Rose', 'Neutral'];
+
+/** The declared dominant of a palette, falling back for anything unlabelled. */
+export function familyOf(name) {
+  const entry = PALETTES[name];
+  return (entry && entry.family) || 'Neutral';
 }
 
 /** The few colours a picker needs to show for a palette, ground first. */

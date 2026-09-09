@@ -121,11 +121,11 @@
   #kits .card .cap { display: block; padding: .45rem .6rem .5rem; }
   #kits .card b { font-size: .875rem; }
   #kits .card span { font-size: .7rem; }
-  /* room cards plot the room's own impulse response: shorter than a kit
-     plate, because a reflectogram is a measurement and not a picture. */
+  /* room cards are shorter than kit cards: a room is one fact -- how long it
+     rings -- and the colour crosses the card by that much. */
   #spaces { grid-template-columns: repeat(auto-fill, minmax(126px, 1fr)); }
   #spaces .card { padding: 0; overflow: hidden; min-height: 0; }
-  #spaces .card canvas { display: block; width: 100%; height: 52px; background: #04141c; }
+  #spaces .card canvas { display: block; width: 100%; height: 58px; background: #04141c; }
   #spaces .card .cap { display: block; padding: .4rem .55rem .45rem; }
   #spaces .card b { font-size: .8125rem; }
   #spaces .card span { font-size: .6875rem; }
@@ -140,6 +140,9 @@
   .card[aria-pressed="true"] b { color: var(--accent); }
 
   .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(74px, 1fr)); gap: .55rem; }
+  .grouped { display: block; }
+  .grouped .sub-label { margin: .9rem 0 .35rem; font-size: .6875rem; }
+  .grouped > .sub-label:first-child { margin-top: 0; }
   .sw { border: 2px solid transparent; border-radius: var(--r-ctl); padding: 0; background: none;
         cursor: pointer; transition: transform .12s ease, border-color .12s ease; }
   .sw:hover { transform: translateY(-2px); border-color: var(--line-strong); }
@@ -343,11 +346,21 @@
       <div class="cards" id="scenes"></div>
       <p class="note" id="scene-note"></p>
 
+      <label class="field"><span>Change visualisation on its own, at random <span id="scene-rotate-val">never</span></span>
+        <input type="range" id="scene-rotate" min="0" max="6" step="1" value="0"></label>
+      <p class="note" id="scene-rotate-note"></p>
+
       <p class="sub-label">Colours</p>
+      <label class="field"><span>Arrange them by</span>
+        <select id="palette-group">
+          <option value="ground" selected>How light the ground is</option>
+          <option value="family">Dominant colour</option>
+          <option value="none">Nothing, all forty at once</option>
+        </select></label>
       <div class="swatches" id="palettes"></div>
       <p class="note" id="palette-note"></p>
 
-      <label class="field"><span>Change palette on its own <span id="rotate-val">never</span></span>
+      <label class="field"><span>Change palette on its own, at random <span id="rotate-val">never</span></span>
         <input type="range" id="rotate" min="0" max="6" step="1" value="0"></label>
       <p class="note" id="rotate-note"></p>
 

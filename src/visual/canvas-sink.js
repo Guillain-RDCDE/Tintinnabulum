@@ -70,6 +70,8 @@ export class CanvasSink {
     this._buffers = {};
     // A palette change under way, if one is: see fadePalette.
     this._fade = null;
+    // A visualisation change under way, if one is: see fadeScene.
+    this._sceneFade = null;
     this._lastFrame = 0;
 
     this.particles = [];
@@ -225,6 +227,10 @@ export class CanvasSink {
    */
   setScene(name) {
     if (!SCENES[name]) return this;
+    // A click wins over a dip already under way, the same way it wins over a
+    // palette walk. Leaving the dip running would fade to the ground and then
+    // land on the scene the timer wanted rather than the one just chosen.
+    if (this._sceneFade && this._sceneFade.name !== name) this._sceneFade = null;
     this.sceneName = name;
     this._initScene();
     return this;
@@ -371,6 +377,33 @@ export class CanvasSink {
   /** True while a palette change is still under way. */
   get fading() {
     return Boolean(this._fade);
+  }
+
+  /**
+   * Change visualisation through a dip to the ground rather than by cutting.
+   *
+   * A palette can be walked to because colours interpolate. Two scenes do not:
+   * a Hilbert curve and a wave field have nothing in common to blend, and
+   * running both at once to cross-fade them costs two simulations a frame for
+   * the two and a half seconds nobody is looking closely anyway.
+   *
+   * So it dips. The picture fades to the palette's own ground, the scene is
+   * swapped at the bottom where there is nothing to see, and it comes back up.
+   * That is what a projection does between pieces, and it is the reason a room
+   * full of people does not notice a change of programme as an interruption.
+   *
+   * @param {string} name
+   * @param {number} [ms] the whole dip, down and back up
+   */
+  fadeScene(name, ms = 2600) {
+    if (!SCENES[name] || name === this.sceneName) return this;
+    this._sceneFade = { name, started: performance.now(), ms: Math.max(200, ms), swapped: false };
+    return this;
+  }
+
+  /** True while a visualisation is being changed through the dip. */
+  get sceneFading() {
+    return Boolean(this._sceneFade);
   }
 
   /**
@@ -619,6 +652,29 @@ export class CanvasSink {
     // page. On a firehose that is a hundred thousand an hour.
     this._trimRecent();
     if (this.showHud) this._hud(ctx);
+
+    // The dip, last of all, so it takes the labels and the readout with it.
+    // Fading only the marks and leaving the numbers burning over the top is
+    // the difference between a change of programme and a glitch.
+    if (this._sceneFade) {
+      const f = this._sceneFade;
+      const t = Math.min(1, (now - f.started) / f.ms);
+      // Down to nothing at the halfway point, back up after it.
+      const veil = 1 - Math.abs(t * 2 - 1);
+      if (!f.swapped && t >= 0.5) {
+        f.swapped = true;
+        this.setScene(f.name);
+      }
+      ctx.globalAlpha = Math.min(1, veil);
+      ctx.fillStyle = this.palette.background;
+      ctx.fillRect(0, 0, this.w, this.h);
+      if (t >= 1) {
+        // The swap can be missed entirely if the tab was hidden for the whole
+        // dip, and a change that silently did not happen is worse than a cut.
+        if (!f.swapped) this.setScene(f.name);
+        this._sceneFade = null;
+      }
+    }
 
     ctx.globalAlpha = 1;
     this._raf = requestAnimationFrame(this._frame);

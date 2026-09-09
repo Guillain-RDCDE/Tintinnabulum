@@ -10,7 +10,6 @@ import {
   KITS,
   drawKitArt,
   drawSpaceArt,
-  loadPlates,
   SHAPES,
   DEFAULT_SHAPE,
   drawShape,
@@ -291,12 +290,6 @@ const kitPicker = createPicker($('#kits'), Object.entries(KITS), {
 const paintKitArts = () => kitPicker.repaint(paintKitArt);
 requestAnimationFrame(paintKitArts);
 
-// Generated plates, if any are installed. Nothing waits on this: the cards are
-// cut first and redrawn if a plate turns up, so a missing folder, a missing
-// network or a file that will not decode costs nothing at all.
-loadPlates().then((kits) => {
-  if (kits.length) paintKitArts();
-});
 
 
 const scaleSel = $('#scale');
@@ -397,6 +390,7 @@ const { selectScene, selectPalette, selectShape, selectRichness, selectBudget, S
 // Restored here rather than inside setupLook, because it refreshes the panel
 // summary and the summary reads `look`.
 look.selectRotate(Number(store.get('rotate') || 0), false);
+look.selectSceneRotate(Number(store.get('scene-rotate') || 0), false);
 
 // A card inside a folded panel is skipped rather than drawn -- see the note on
 // `repaint` in dom.js -- so unfolding a panel is when the cards inside it get
@@ -472,7 +466,7 @@ function selectSpace(name, persist = true) {
 // src/visual/space-art.js for why that is the honest picture rather than a
 // drawing of an arch.
 function paintSpaceArt(cv, name) {
-  const { ctx, w, h } = fitCanvas(cv, { height: 52 });
+  const { ctx, w, h } = fitCanvas(cv, { height: 58 });
   drawSpaceArt(ctx, SPACES[name], { w, h, palette: PALETTES[canvas.paletteName].colors });
 }
 
@@ -524,8 +518,10 @@ function updateSummaries() {
     (son.space === DEFAULT_SPACE ? '' : ` · ${spaceWord}`) +
     (son.audio.tempo.bpm ? ` · ${son.audio.tempo.bpm} bpm` : '');
   $('#sum-look').textContent =
-    `${SCENES[canvas.sceneName].label} · ${PALETTES[canvas.paletteName].label}` +
-    (look.rotateWord === 'never' ? '' : ` · ${look.rotateWord}`) +
+    `${SCENES[canvas.sceneName].label}` +
+    (look.sceneRotateWord === 'never' ? '' : ` ${look.sceneRotateWord}`) +
+    ` · ${PALETTES[canvas.paletteName].label}` +
+    (look.rotateWord === 'never' ? '' : ` ${look.rotateWord}`) +
     (look.richnessWord === 'balanced' ? '' : ` · ${look.richnessWord} colour`);
   $('#sum-connect').textContent = connectSummary;
   $('#sum-filter').textContent =

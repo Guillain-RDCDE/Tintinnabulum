@@ -80,6 +80,10 @@ export function createPicker(container, entries, {
   onPick,
   title = null,
   multi = false,
+  // Optional: the class the inner grids take once the picker is grouped. The
+  // container itself stops being the grid at that point, because a heading
+  // cannot live inside one.
+  gridClassName = null,
 }) {
   const buttons = new Map();
   // Cards whose panel was folded when a repaint came round.
@@ -112,7 +116,16 @@ export function createPicker(container, entries, {
     // A newer repaint supersedes an older one. The palette was changed twice
     // and only the second answer is wanted; finishing the first would paint
     // half the grid in a colour nobody asked for.
-    if (job) job.cancelled = true;
+    //
+    // What the cancelled walk had not reached goes back on the pending list
+    // rather than being dropped. Dropping it was silent and permanent: two
+    // rapid palette clicks left whichever cards the first walk had not got to
+    // unpainted for the life of the page, and nothing anywhere said so. The
+    // suite caught it as two blank scene cards out of forty.
+    if (job) {
+      job.cancelled = true;
+      for (const name of job.queue) pending.add(name);
+    }
     const mine = { cancelled: false, queue: names.slice(), painted: 0 };
     job = mine;
     const tick = () => {
@@ -138,6 +151,17 @@ export function createPicker(container, entries, {
         }
         if (performance.now() >= until) break;
       }
+      if (!mine.queue.length) {
+        // Anything a superseded walk left behind, and anything that has since
+        // scrolled into view, is picked up here rather than waiting for the
+        // next scroll. Without this a cancelled walk's cards stay blank until
+        // somebody happens to move the page.
+        const owed = [...pending].filter((n) => {
+          const b = buttons.get(n);
+          return b && b.querySelector('canvas') && isShowing(b);
+        });
+        if (owed.length) mine.queue.push(...owed);
+      }
       if (mine.queue.length) requestAnimationFrame(tick);
       else if (job === mine) job = null;
     };
@@ -149,6 +173,48 @@ export function createPicker(container, entries, {
 
   return {
     buttons,
+
+    /**
+     * Lay the buttons out under headings, or back in one flat grid.
+     *
+     * Forty swatches in a single grid is forty swatches: you read the first
+     * row, decide it is a lot, and take the default. Under headings the same
+     * forty are a handful of short lists, each of which can be dismissed or
+     * looked at in one glance.
+     *
+     * @param {?Function} by     name -> heading, or null for one flat grid
+     * @param {string[]} [order] headings in the order they should appear;
+     *                           anything not listed goes to the end
+     */
+    group(by, order = []) {
+      container.textContent = '';
+      if (!by) {
+        container.className = gridClassName || container.className;
+        for (const [, btn] of buttons) container.append(btn);
+        return;
+      }
+      const bins = new Map();
+      for (const [name] of entries) {
+        const heading = by(name) || '';
+        if (!bins.has(heading)) bins.set(heading, []);
+        bins.get(heading).push(name);
+      }
+      const rank = (h) => {
+        const i = order.indexOf(h);
+        return i < 0 ? order.length : i;
+      };
+      // The container holds headings now, so it cannot itself be the grid.
+      container.className = 'grouped';
+      for (const heading of [...bins.keys()].sort((a, b) => rank(a) - rank(b))) {
+        const h = document.createElement('p');
+        h.className = 'sub-label';
+        h.textContent = heading;
+        const grid = document.createElement('div');
+        grid.className = gridClassName || '';
+        for (const name of bins.get(heading)) grid.append(buttons.get(name));
+        container.append(h, grid);
+      }
+    },
 
     /** Mark the selection: a name, or an array of them when `multi`. */
     mark(selected) {
