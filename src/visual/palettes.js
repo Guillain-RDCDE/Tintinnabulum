@@ -710,6 +710,702 @@ export const PALETTES = {
     },
   },
 
+
+  // --- forty more, and every one of them a different ground ---------------
+  //
+  // The set was forty, and the grounds were still bunched: twenty-one of them
+  // near-black, and the light ones nearly all warm. These fill the wheel. Ten
+  // more papers across the hues, fourteen more grounds that are neither paper
+  // nor night, and sixteen more darks that are each a colour rather than the
+  // same black with a tint.
+  //
+  // The category colours were not chosen by eye. A search took each ground and
+  // returned the QUIETEST quartet clearing the suite's two rules, which is the
+  // opposite of what a first attempt did: maximising perceptual distance gave
+  // every ground the same garish magenta-cyan-green-red, and violet is out by
+  // instruction anyway. The hue wheel is walked as a list with that band
+  // removed, so nothing can land in it.
+
+  seafoam: {
+    label: 'Seafoam',
+    family: 'Green',
+    note: 'A pale green paper, the colour of sea glass held up to the light.',
+    colors: {
+      background: '#e4f0ec',
+      default: '#2c4f43',
+      user: '#702923',
+      anon: '#a0a338',
+      bot: '#286c55',
+      alert: '#3f619d',
+      text: '#1d342d',
+      banner: 'rgba(44, 79, 67, 0.85)',
+      hud: 'rgba(44, 79, 67, 0.45)',
+    },
+  },
+
+  shell: {
+    label: 'Shell',
+    family: 'Amber',
+    note: 'The inside of a shell: warm, faintly pink, and never quite white.',
+    colors: {
+      background: '#f5ece2',
+      default: '#533e28',
+      user: '#50882b',
+      anon: '#40aeba',
+      bot: '#363082',
+      alert: '#b37947',
+      text: '#372a1b',
+      banner: 'rgba(83, 62, 40, 0.85)',
+      hud: 'rgba(83, 62, 40, 0.45)',
+    },
+  },
+
+  oyster: {
+    label: 'Oyster',
+    family: 'Neutral',
+    note: 'Grey-beige, the colour of a wall nobody chose. Restful for exactly that reason.',
+    colors: {
+      background: '#eceae4',
+      default: '#484333',
+      user: '#2b5c88',
+      anon: '#ba404c',
+      bot: '#827530',
+      alert: '#47b36f',
+      text: '#302c22',
+      banner: 'rgba(72, 67, 51, 0.85)',
+      hud: 'rgba(72, 67, 51, 0.45)',
+    },
+  },
+
+  periwinkle: {
+    label: 'Periwinkle',
+    family: 'Blue',
+    note: 'The palest blue paper here, cool enough to make a warm mark look warmer.',
+    colors: {
+      background: '#e6e9f5',
+      default: '#283053',
+      user: '#703823',
+      anon: '#83a338',
+      bot: '#286c63',
+      alert: '#3f4e9d',
+      text: '#1b2037',
+      banner: 'rgba(40, 48, 83, 0.85)',
+      hud: 'rgba(40, 48, 83, 0.45)',
+    },
+  },
+
+  straw: {
+    label: 'Straw',
+    family: 'Amber',
+    note: 'Dry grass in late summer. The warmest light ground in the set.',
+    colors: {
+      background: '#f2eeda',
+      default: '#534b28',
+      user: '#2b882b',
+      anon: '#409aba',
+      bot: '#823046',
+      alert: '#b38f47',
+      text: '#37321b',
+      banner: 'rgba(83, 75, 40, 0.85)',
+      hud: 'rgba(83, 75, 40, 0.45)',
+    },
+  },
+
+  rosewater: {
+    label: 'Rosewater',
+    family: 'Red',
+    note: 'A pink so pale it reads as white until something white is put beside it.',
+    colors: {
+      background: '#f7e8ee',
+      default: '#532839',
+      user: '#2b4d88',
+      anon: '#ba4840',
+      bot: '#808230',
+      alert: '#47b38f',
+      text: '#371b26',
+      banner: 'rgba(83, 40, 57, 0.85)',
+      hud: 'rgba(83, 40, 57, 0.45)',
+    },
+  },
+
+  celadon: {
+    label: 'Celadon',
+    family: 'Green',
+    note: 'The green glaze Korean potters spent four centuries on, at its palest.',
+    colors: {
+      background: '#e8f1e4',
+      default: '#36512a',
+      user: '#75471f',
+      anon: '#62aa31',
+      bot: '#236970',
+      alert: '#3f38a3',
+      text: '#24361c',
+      banner: 'rgba(54, 81, 42, 0.85)',
+      hud: 'rgba(54, 81, 42, 0.45)',
+    },
+  },
+
+  bone: {
+    label: 'Bone',
+    family: 'Neutral',
+    note: 'Not white and not cream. The colour of a page that has been in a room for years.',
+    colors: {
+      background: '#f4f1ec',
+      default: '#4e412d',
+      user: '#2b884d',
+      anon: '#4081ba',
+      bot: '#823038',
+      alert: '#b3a147',
+      text: '#342c1e',
+      banner: 'rgba(78, 65, 45, 0.85)',
+      hud: 'rgba(78, 65, 45, 0.45)',
+    },
+  },
+
+  cobweb: {
+    label: 'Cobweb',
+    family: 'Neutral',
+    note: 'A cool grey with no colour to speak of, so every mark carries all of it.',
+    colors: {
+      background: '#eef0f3',
+      default: '#333b48',
+      user: '#2b3a88',
+      anon: '#ba6040',
+      bot: '#6a8230',
+      alert: '#47b3a4',
+      text: '#222730',
+      banner: 'rgba(51, 59, 72, 0.85)',
+      hud: 'rgba(51, 59, 72, 0.45)',
+    },
+  },
+
+  apricot: {
+    label: 'Apricot',
+    family: 'Amber',
+    note: 'Warm fruit skin. Light without being cold, which is rarer than it sounds.',
+    colors: {
+      background: '#f9ece0',
+      default: '#533c28',
+      user: '#705723',
+      anon: '#38a338',
+      bot: '#285a6c',
+      alert: '#9d3f58',
+      text: '#37281b',
+      banner: 'rgba(83, 60, 40, 0.85)',
+      hud: 'rgba(83, 60, 40, 0.45)',
+    },
+  },
+
+  olive: {
+    label: 'Olive',
+    family: 'Green',
+    note: 'The green of an army coat: dulled with brown, and the better for it.',
+    colors: {
+      background: '#4e5230',
+      default: '#ebecdf',
+      user: '#d3625a',
+      anon: '#dde094',
+      bot: '#60cda9',
+      alert: '#98b1dc',
+      text: '#f5f6ef',
+      banner: 'rgba(211, 98, 90, 0.75)',
+      hud: 'rgba(211, 98, 90, 0.45)',
+    },
+  },
+
+  lagoon: {
+    label: 'Lagoon',
+    family: 'Teal',
+    note: 'Shallow water over sand, seen from above.',
+    colors: {
+      background: '#1f4d50',
+      default: '#ddedee',
+      user: '#e86359',
+      anon: '#efe19a',
+      bot: '#5fe3b7',
+      alert: '#9dc7ec',
+      text: '#eef6f7',
+      banner: 'rgba(232, 99, 89, 0.75)',
+      hud: 'rgba(232, 99, 89, 0.45)',
+    },
+  },
+
+  mulberry: {
+    label: 'Mulberry',
+    family: 'Red',
+    note: 'Stained fingers in August. A red that has gone most of the way to purple without arriving.',
+    colors: {
+      background: '#6b3a52',
+      default: '#eddee5',
+      user: '#c3ad41',
+      anon: '#7ad19a',
+      bot: '#4986bc',
+      alert: '#cc7f87',
+      text: '#f6eef2',
+      banner: 'rgba(195, 173, 65, 0.75)',
+      hud: 'rgba(195, 173, 65, 0.45)',
+    },
+  },
+
+  storm: {
+    label: 'Storm',
+    family: 'Blue',
+    note: 'The sky twenty minutes before rain, which is a grey with blue in it.',
+    colors: {
+      background: '#4b5a66',
+      default: '#e2e6e9',
+      user: '#5ad3c3',
+      anon: '#94b0e0',
+      bot: '#cd7d60',
+      alert: '#dadc98',
+      text: '#f0f2f4',
+      banner: 'rgba(90, 211, 195, 0.75)',
+      hud: 'rgba(90, 211, 195, 0.45)',
+    },
+  },
+
+  cedar: {
+    label: 'Cedar',
+    family: 'Amber',
+    note: 'Cut cedar: warm, red-brown, and the smell is the point of it.',
+    colors: {
+      background: '#6b4a33',
+      default: '#eee4dd',
+      user: '#cd607d',
+      anon: '#dcd198',
+      bot: '#66c766',
+      alert: '#9dbcd8',
+      text: '#f7f1ee',
+      banner: 'rgba(205, 96, 125, 0.75)',
+      hud: 'rgba(205, 96, 125, 0.45)',
+    },
+  },
+
+  fern: {
+    label: 'Fern',
+    family: 'Green',
+    note: 'Undergrowth green, darker than sage and with none of its grey.',
+    colors: {
+      background: '#3f5c3f',
+      default: '#e1eae1',
+      user: '#5190c8',
+      anon: '#d78e89',
+      bot: '#c1af57',
+      alert: '#8ed2bb',
+      text: '#f0f5f0',
+      banner: 'rgba(81, 144, 200, 0.75)',
+      hud: 'rgba(81, 144, 200, 0.45)',
+    },
+  },
+
+  indigo: {
+    label: 'Indigo',
+    family: 'Blue',
+    note: 'The dye, not the colour name: deep, slightly dusty, and never quite even.',
+    colors: {
+      background: '#3c4478',
+      default: '#dddfee',
+      user: '#41b6c3',
+      anon: '#807ad1',
+      bot: '#bc7e49',
+      alert: '#9ecc7f',
+      text: '#eeeff6',
+      banner: 'rgba(65, 182, 195, 0.75)',
+      hud: 'rgba(65, 182, 195, 0.45)',
+    },
+  },
+
+  rosewood: {
+    label: 'Rosewood',
+    family: 'Red',
+    note: 'Dark furniture in a warm room.',
+    colors: {
+      background: '#6e4046',
+      default: '#ecdfe1',
+      user: '#cd606b',
+      anon: '#dcd198',
+      bot: '#66c78a',
+      alert: '#9dbcd8',
+      text: '#f6eff0',
+      banner: 'rgba(205, 96, 107, 0.75)',
+      hud: 'rgba(205, 96, 107, 0.45)',
+    },
+  },
+
+  basalt: {
+    label: 'Basalt',
+    family: 'Neutral',
+    note: 'Cooled lava: a mid grey with the faintest blue, and no warmth at all.',
+    colors: {
+      background: '#4a4a52',
+      default: '#e4e4e7',
+      user: '#accd60',
+      anon: '#98dcc5',
+      bot: '#6676c7',
+      alert: '#d8a09d',
+      text: '#f2f2f3',
+      banner: 'rgba(172, 205, 96, 0.75)',
+      hud: 'rgba(172, 205, 96, 0.45)',
+    },
+  },
+
+  marsh: {
+    label: 'Marsh',
+    family: 'Green',
+    note: 'Reed beds in winter. Green, brown, and undecided between them.',
+    colors: {
+      background: '#556348',
+      default: '#e5eae1',
+      user: '#4aabcf',
+      anon: '#db849c',
+      bot: '#c8a051',
+      alert: '#89d789',
+      text: '#f2f4f0',
+      banner: 'rgba(74, 171, 207, 0.75)',
+      hud: 'rgba(74, 171, 207, 0.45)',
+    },
+  },
+
+  copper: {
+    label: 'Copper',
+    family: 'Amber',
+    note: 'The metal before it turns: bright, orange, and about to be green.',
+    colors: {
+      background: '#7a4629',
+      default: '#eee3dd',
+      user: '#6a92d7',
+      anon: '#e5a8a4',
+      bot: '#ced270',
+      alert: '#a8e1ce',
+      text: '#f7f1ee',
+      banner: 'rgba(106, 146, 215, 0.75)',
+      hud: 'rgba(106, 146, 215, 0.45)',
+    },
+  },
+
+  harbour: {
+    label: 'Harbour',
+    family: 'Blue',
+    note: 'Working water: blue-grey, and busier than the sea.',
+    colors: {
+      background: '#26485c',
+      default: '#dde8ee',
+      user: '#c36441',
+      anon: '#b7d17a',
+      bot: '#49bcac',
+      alert: '#7f8ccc',
+      text: '#eef3f7',
+      banner: 'rgba(195, 100, 65, 0.75)',
+      hud: 'rgba(195, 100, 65, 0.45)',
+    },
+  },
+
+  heather: {
+    label: 'Heather',
+    family: 'Rose',
+    note: 'Moorland in flower, which is a grey with pink underneath it.',
+    colors: {
+      background: '#5f5570',
+      default: '#e5e2e9',
+      user: '#5a9ad3',
+      anon: '#e09994',
+      bot: '#cdbb60',
+      alert: '#98dcc5',
+      text: '#f2f1f4',
+      banner: 'rgba(90, 154, 211, 0.75)',
+      hud: 'rgba(90, 154, 211, 0.45)',
+    },
+  },
+
+  tundra: {
+    label: 'Tundra',
+    family: 'Neutral',
+    note: 'Lichen and stone at the treeline, where colour gives up gradually.',
+    colors: {
+      background: '#666a60',
+      default: '#e6e7e4',
+      user: '#64a5dd',
+      anon: '#e8a5a1',
+      bot: '#d7c56a',
+      alert: '#a4e5cf',
+      text: '#f2f3f2',
+      banner: 'rgba(100, 165, 221, 0.75)',
+      hud: 'rgba(100, 165, 221, 0.45)',
+    },
+  },
+
+  obsidian: {
+    label: 'Obsidian',
+    family: 'Neutral',
+    note: 'Volcanic glass. Black with a shine, and the darkest ground in the set.',
+    colors: {
+      background: '#0d0f12',
+      default: '#e1e5ea',
+      user: '#41c341',
+      anon: '#7abad1',
+      bot: '#bc4967',
+      alert: '#ccb37f',
+      text: '#f0f2f4',
+      banner: 'rgba(65, 195, 65, 0.75)',
+      hud: 'rgba(65, 195, 65, 0.45)',
+    },
+  },
+
+  bottle: {
+    label: 'Bottle',
+    family: 'Green',
+    note: 'Dark glass held to a window: green only where the light gets through.',
+    colors: {
+      background: '#0b1f18',
+      default: '#ddeee8',
+      user: '#4171c3',
+      anon: '#d1807a',
+      bot: '#b8bc49',
+      alert: '#7fccb3',
+      text: '#eef7f4',
+      banner: 'rgba(65, 113, 195, 0.75)',
+      hud: 'rgba(65, 113, 195, 0.45)',
+    },
+  },
+
+  carbon: {
+    label: 'Carbon',
+    family: 'Neutral',
+    note: 'Neutral black with no cast either way. The plainest thing here.',
+    colors: {
+      background: '#161616',
+      default: '#e6e6e6',
+      user: '#c37e41',
+      anon: '#9dd17a',
+      bot: '#49b0bc',
+      alert: '#847fcc',
+      text: '#f2f2f2',
+      banner: 'rgba(195, 126, 65, 0.75)',
+      hud: 'rgba(195, 126, 65, 0.45)',
+    },
+  },
+
+  prussian: {
+    label: 'Prussian',
+    family: 'Blue',
+    note: 'The first modern synthetic pigment, 1706, and still the deepest blue in a paintbox.',
+    colors: {
+      background: '#0a1e33',
+      default: '#dde5ee',
+      user: '#41c371',
+      anon: '#7aa9d1',
+      bot: '#bc4954',
+      alert: '#ccbf7f',
+      text: '#eef2f7',
+      banner: 'rgba(65, 195, 113, 0.75)',
+      hud: 'rgba(65, 195, 113, 0.45)',
+    },
+  },
+
+  wine: {
+    label: 'Wine',
+    family: 'Red',
+    note: 'The colour left in the bottom of a glass, held against the dark.',
+    colors: {
+      background: '#26101a',
+      default: '#eedde5',
+      user: '#4157c3',
+      anon: '#d1917a',
+      bot: '#99bc49',
+      alert: '#7fccc2',
+      text: '#f7eef2',
+      banner: 'rgba(65, 87, 195, 0.75)',
+      hud: 'rgba(65, 87, 195, 0.45)',
+    },
+  },
+
+  espresso: {
+    label: 'Espresso',
+    family: 'Amber',
+    note: 'Very dark brown. Warm, close, and the opposite of a night sky.',
+    colors: {
+      background: '#1a120c',
+      default: '#eee4dd',
+      user: '#c39841',
+      anon: '#7ad17a',
+      bot: '#499dbc',
+      alert: '#cc7f94',
+      text: '#f7f2ee',
+      banner: 'rgba(195, 152, 65, 0.75)',
+      hud: 'rgba(195, 152, 65, 0.45)',
+    },
+  },
+
+  gunmetal: {
+    label: 'Gunmetal',
+    family: 'Blue',
+    note: 'Blued steel: nearly black, with just enough blue to be a colour.',
+    colors: {
+      background: '#141a20',
+      default: '#e0e6eb',
+      user: '#41c398',
+      anon: '#7a9ad1',
+      bot: '#bc5049',
+      alert: '#cacc7f',
+      text: '#eff2f5',
+      banner: 'rgba(65, 195, 152, 0.75)',
+      hud: 'rgba(65, 195, 152, 0.45)',
+    },
+  },
+
+  abysswater: {
+    label: 'Deep water',
+    family: 'Teal',
+    note: 'Below the depth where blue has gone and only green is left.',
+    colors: {
+      background: '#07211f',
+      default: '#ddeeed',
+      user: '#5951c8',
+      anon: '#d7bd89',
+      bot: '#82c157',
+      alert: '#8ec0d2',
+      text: '#eef7f6',
+      banner: 'rgba(89, 81, 200, 0.75)',
+      hud: 'rgba(89, 81, 200, 0.45)',
+    },
+  },
+
+  blackcurrant: {
+    label: 'Blackcurrant',
+    family: 'Red',
+    note: 'Almost black, and unmistakably a fruit.',
+    colors: {
+      background: '#1a0f1c',
+      default: '#ebdeed',
+      user: '#c3ad41',
+      anon: '#7ad19a',
+      bot: '#4986bc',
+      alert: '#cc7f87',
+      text: '#f5eef6',
+      banner: 'rgba(195, 173, 65, 0.75)',
+      hud: 'rgba(195, 173, 65, 0.45)',
+    },
+  },
+
+  pinewood: {
+    label: 'Pinewood',
+    family: 'Green',
+    note: 'A conifer plantation at dusk, where the dark comes early.',
+    colors: {
+      background: '#0d1a12',
+      default: '#ddeee4',
+      user: '#41c3b2',
+      anon: '#7a89d1',
+      bot: '#bc6749',
+      alert: '#b5cc7f',
+      text: '#eef6f1',
+      banner: 'rgba(65, 195, 178, 0.75)',
+      hud: 'rgba(65, 195, 178, 0.45)',
+    },
+  },
+
+  ironwork: {
+    label: 'Ironwork',
+    family: 'Neutral',
+    note: 'Painted railings: black that has been black for a hundred years.',
+    colors: {
+      background: '#191c1e',
+      default: '#e3e6e8',
+      user: '#c34164',
+      anon: '#d1b47a',
+      bot: '#49bc49',
+      alert: '#7fb8cc',
+      text: '#f1f2f3',
+      banner: 'rgba(195, 65, 100, 0.75)',
+      hud: 'rgba(195, 65, 100, 0.45)',
+    },
+  },
+
+  ochrenight: {
+    label: 'Dark ochre',
+    family: 'Amber',
+    note: 'Earth pigment at its darkest, before it becomes brown.',
+    colors: {
+      background: '#1d1608',
+      default: '#eee8dd',
+      user: '#bfc341',
+      anon: '#7ad1b4',
+      bot: '#4973bc',
+      alert: '#cc847f',
+      text: '#f7f4ee',
+      banner: 'rgba(191, 195, 65, 0.75)',
+      hud: 'rgba(191, 195, 65, 0.45)',
+    },
+  },
+
+  midnight: {
+    label: 'Midnight',
+    family: 'Blue',
+    note: 'The sky at one in the morning, well away from a town.',
+    colors: {
+      background: '#080c1a',
+      default: '#dde1ee',
+      user: '#41b6c3',
+      anon: '#807ad1',
+      bot: '#bc7e49',
+      alert: '#9ecc7f',
+      text: '#eef0f7',
+      banner: 'rgba(65, 182, 195, 0.75)',
+      hud: 'rgba(65, 182, 195, 0.45)',
+    },
+  },
+
+  forge: {
+    label: 'Forge',
+    family: 'Red',
+    note: 'Iron before it glows: dark, warm, and about to be hot.',
+    colors: {
+      background: '#1f0e08',
+      default: '#eee1dd',
+      user: '#c3414e',
+      anon: '#d1c37a',
+      bot: '#49bc73',
+      alert: '#7fa8cc',
+      text: '#f7f0ee',
+      banner: 'rgba(195, 65, 78, 0.75)',
+      hud: 'rgba(195, 65, 78, 0.45)',
+    },
+  },
+
+  slatenight: {
+    label: 'Night slate',
+    family: 'Blue',
+    note: 'Wet roofs after dark, which is the same colour as Slate with the light taken away.',
+    colors: {
+      background: '#12171c',
+      default: '#e0e6eb',
+      user: '#9cc341',
+      anon: '#7ad1c6',
+      bot: '#495cbc',
+      alert: '#cc947f',
+      text: '#eff2f5',
+      banner: 'rgba(156, 195, 65, 0.75)',
+      hud: 'rgba(156, 195, 65, 0.45)',
+    },
+  },
+
+  seanight: {
+    label: 'Night sea',
+    family: 'Blue',
+    note: 'Open water at night. Marine, with the last of the day gone out of it.',
+    colors: {
+      background: '#04171f',
+      default: '#dde9ee',
+      user: '#41a0c3',
+      anon: '#d17a91',
+      bot: '#bc9549',
+      alert: '#7fcc7f',
+      text: '#eef4f7',
+      banner: 'rgba(65, 160, 195, 0.75)',
+      hud: 'rgba(65, 160, 195, 0.45)',
+    },
+  },
+
 };
 
 export const DEFAULT_PALETTE_NAME = 'marine';

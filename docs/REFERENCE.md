@@ -16,7 +16,7 @@ Open the sandbox and change one thing at a time.
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Look** | Forty visualisations and forty palettes, grouped by ground or by dominant colour. Marks already on screen recolour at once, and the palette can be left to change on its own. |
+| **Look** | Fifty-one visualisations and eighty palettes, grouped by ground or by dominant colour. Marks already on screen recolour at once, and the palette can be left to change on its own. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -465,10 +465,10 @@ ear is listening for, and on a long-ringing bell that is a beat you can count.
 
 ### Palettes
 
-Forty, selectable at runtime and stored as plain data in
+Eighty, selectable at runtime and stored as plain data in
 [`src/visual/palettes.js`](../src/visual/palettes.js).
 
-Forty swatches in a single grid is forty swatches: you read the first row,
+Eighty swatches in a single grid is eighty swatches: you read the first row,
 decide it is a lot, and take the default. So they are offered **grouped, two
 ways**, because there are two questions anybody actually asks of a palette.
 
@@ -479,11 +479,11 @@ palettes, two were on paper and fifteen shared a near-black spanning 0.118 to
 0.268 in OKLab lightness, which is not a range but one colour with the hue
 changed, offered fifteen times.
 
-| Band | | |
-|---|---|---|
-| **Paper** — 10 | Daylight, Papyrus, Chalk, Linen, Porcelain | Mint, Blush, Newsprint, Vellum, Ice |
-| **Twilight** — 9 | Slate, Terracotta, Sage, Dusk, Moss | Denim, Ochre, Pewter, Brick |
-| **Night** — 21 | Marine, Blueprint, Nocturne, Bronze, Aurora, Ember, Ultraviolet | Sakura, Nordic, Lacquer, Solar, Sunset, Neon, Rust, Cobalt, Oxblood, Monochrome, Ink, Abyss, Amber, Coal |
+| Band | |
+|---|---|
+| **Paper** — 20 | Daylight, Papyrus, Chalk, Linen, Porcelain, Mint, Blush, Newsprint, Vellum, Ice, Seafoam, Shell, Oyster, Periwinkle, Straw, Rosewater, Celadon, Bone, Cobweb, Apricot |
+| **Twilight** — 23 | Slate, Terracotta, Sage, Dusk, Moss, Denim, Ochre, Pewter, Brick, Olive, Lagoon, Mulberry, Storm, Cedar, Fern, Indigo, Rosewood, Basalt, Marsh, Copper, Harbour, Heather, Tundra |
+| **Night** — 37 | Nocturne, Bronze, Aurora, Ember, Ultraviolet, Blueprint, Sakura, Nordic, Marine, Lacquer, Solar, Sunset, Neon, Rust, Monochrome, Cobalt, Oxblood, Ink, Abyss, Amber, Coal, Obsidian, Bottle, Carbon, Prussian, Wine, Espresso, Gunmetal, Deep water, Blackcurrant, Pinewood, Ironwork, Dark ochre, Midnight, Forge, Night slate, Night sea |
 
 **What colour is it.** Declared, and deliberately so. Deriving it was tried and
 is worse than it sounds: a rule reading the ground's hue calls every near-black
@@ -495,17 +495,24 @@ numbers that do not know.
 
 | | |
 |---|---|
-| **Blue** — 11 | Nocturne, Blueprint, Nordic, Marine, Solar, Porcelain, Slate, Dusk, Cobalt, Ice, Denim |
-| **Teal** — 2 | Aurora, Abyss |
-| **Green** — 3 | Sage, Mint, Moss |
-| **Amber** — 7 | Bronze, Rust, Papyrus, Linen, Vellum, Ochre, Amber |
-| **Red** — 6 | Ember, Lacquer, Terracotta, Oxblood, Blush, Brick |
-| **Rose** — 4 | Ultraviolet, Sakura, Sunset, Neon |
-| **Neutral** — 7 | Daylight, Monochrome, Chalk, Newsprint, Pewter, Ink, Coal |
+| **Blue** — 20 | Nocturne, Blueprint, Nordic, Marine, Solar, Porcelain, Slate, Dusk, Cobalt, Ice, Denim, Periwinkle, Storm, Indigo, Harbour, Prussian, Gunmetal, Midnight, Night slate, Night sea |
+| **Teal** — 4 | Aurora, Abyss, Lagoon, Deep water |
+| **Green** — 10 | Sage, Mint, Moss, Seafoam, Celadon, Olive, Fern, Marsh, Bottle, Pinewood |
+| **Amber** — 14 | Bronze, Rust, Papyrus, Linen, Vellum, Ochre, Amber, Shell, Straw, Apricot, Cedar, Copper, Espresso, Dark ochre |
+| **Red** — 12 | Ember, Lacquer, Terracotta, Oxblood, Blush, Brick, Rosewater, Mulberry, Rosewood, Wine, Blackcurrant, Forge |
+| **Rose** — 5 | Ultraviolet, Sakura, Sunset, Neon, Heather |
+| **Neutral** — 15 | Daylight, Monochrome, Chalk, Newsprint, Pewter, Ink, Coal, Oyster, Bone, Cobweb, Basalt, Tundra, Obsidian, Carbon, Ironwork |
 
-The suite holds both to the same standard: every palette must land in a band,
-every palette must declare a dominant from the known list, and no heading may
-stand over a single swatch.
+**The last forty were not chosen by eye.** A search took each ground and
+returned the *quietest* quartet clearing the suite's two rules, which is the
+opposite of what the first attempt did: maximising perceptual distance handed
+every ground the same garish magenta-cyan-green-red. Distance is a floor, not a
+goal. The hue wheel is walked as a list with the violet band removed, so
+nothing can land in it.
+
+The suite holds both groupings to the same standard: every palette must land in
+a band, every palette must declare a dominant from the known list, and no
+heading may stand over a single swatch.
 
 ```js
 new CanvasSink('#canvas', { palette: 'bronze' });
@@ -726,12 +733,12 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. Forty ship, and
-twenty-three of them are constructions anyone can look up: nodal figures, polar
-curves, space-filling curves, recursive packings, growths and physics. None of that is anyone's
-property and none of it is engineering, so what each scene actually has to
-decide is the part that belongs to this project -- which of the construction's
-parameters the live data turns.
+A scene decides what a moment of data looks like. Fifty-one ship, and
+thirty-four of them are constructions anyone can look up: nodal figures, polar
+curves, space-filling curves, recursive packings, attractors, automata, growths
+and physics. None of that is anyone's property and none of it is engineering,
+so what each scene actually has to decide is the part that belongs to this
+project -- which of the construction's parameters the live data turns.
 
 Five come from the canon of generative art:
 
@@ -793,11 +800,30 @@ they draw at minute ten is not what they drew at minute one.
 |---|---|
 | **Hilbert curve** | David Hilbert, 1891: one unbroken line that reaches every cell of a grid and never crosses itself. An event's position becomes a distance along it, and that stretch lights up. |
 | **Dragon curve** | Fold a strip of paper in half repeatedly, then open every crease to a right angle. Events pay out more of the strip, so a quiet feed leaves it half unfolded. |
-| **Chaos game** | Jump part of the way to a random corner, mark the spot, repeat. The rule mentions no triangle and a triangle is what appears. Sierpinski, 1915. |
 | **Subdivision** | Every event splits the rectangle it lands in, across its longer side. Nothing decides where the lines go except the data. |
 | **Circle packing** | Each event drops a circle where it landed and lets it grow until it touches another. What is left is the shape of the space nothing has used. |
 | **Quasicrystal** | Plane waves at angles that share no common measure, so the interference never repeats. Shechtman, 1982, and a Nobel eight years after the ridicule. |
 
+
+#### Twelve more, from the same shelf
+
+Attractors, automata, packings and one op-art piece. Every one of them is
+something anyone can look up, which is the rule the whole section follows.
+
+| | |
+|---|---|
+| **Lorenz** | Edward Lorenz, 1963: convection reduced to three equations, and the first picture anybody had of deterministic chaos. Two starts a millionth apart end up on opposite wings. Events nudge the state and the butterfly absorbs them. |
+| **De Jong** | Peter de Jong's attractor. Four sines folded on themselves, and a hundredth of a change to any constant gives a different creature. |
+| **Rose curve** | Guido Grandi named these in 1723: r = cos(k.theta). One number decides how many petals and whether they overlap. One rose per event. |
+| **Koch snowflake** | Helge von Koch, 1904. Replace the middle third of every line with two sides of a triangle and repeat: infinite length around a finite area, which is what a coastline is. |
+| **Moire** | Two ring gratings with their centres apart. The fringes are in neither of them; the eye supplies them. Each event moves the second centre, and a few pixels swings the fringes across the card. |
+| **Metaballs** | Jim Blinn, 1982. Fields that add, so two blobs merge before they touch. The colour is the field-weighted average, so the merge is a colour merge too. |
+| **Apollonian gasket** | Circles packed into the gaps between circles. Apollonius posed it; Descartes gave the relation between four touching curvatures in 1643. An event fills the circle it landed in. |
+| **Maze** | Recursive division: cut the room in two, leave one door, repeat. The oldest maze algorithm there is, and the only one whose output looks built rather than grown. |
+| **Delaunay** | The triangulation dual to a Voronoi diagram. Delaunay proved in 1934 that it is the triangulation whose smallest angle is as large as possible. |
+| **Rule 30** | Wolfram's elementary automaton. Eight bits of rule, no randomness anywhere in it, and a column that passes randomness tests. Events flip cells in the live row. |
+| **Boids** | Craig Reynolds, 1986: keep your distance, match your neighbours, head for the middle of them. Nothing in the code mentions a flock. |
+| **Interruptions** | Vera Molnar, 1968. A field of identical strokes with some removed; she called the removals the piece. Here the feed decides what is missing, so the holes are the data. |
 
 #### Systems
 
@@ -1065,6 +1091,7 @@ src/visual/
   kit-art.js            the colour on each kit card
   space-art.js          the colour on each room card
   scenes/               marks, fields, structures, physical, generative,
+                        fantasia (attractors, automata, packings),
                         geometry, recursive, systems, budget, paint
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation

@@ -35,6 +35,8 @@ export class AudioEngine {
     // How many times the context had to be brought back. Exposed rather than
     // hidden: a page that keeps recovering is a page with a real problem.
     this.recoveries = 0;
+    /** Called with the new state whenever the context changes it. */
+    this.onStateChange = null;
     this._capture = null;
     // The room. Instruments connect to a bus, the bus goes two ways --
     // straight through, and through a convolver -- and both arrive at the
@@ -52,6 +54,15 @@ export class AudioEngine {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) throw new Error('Web Audio is not available in this browser');
       this._ctx = new AC({ latencyHint: this._latencyHint });
+      // Anyone who wants to know when the context changes state gets told
+      // here, where the context is made, rather than wherever it happens to be
+      // unlocked from. Hung off unlock() instead, this was never attached at
+      // all on the path that matters: once audio is working every later call
+      // takes an early return, and a page that unlocks by another route --
+      // which the suite does after a reload -- never reached it.
+      this._ctx.addEventListener('statechange', () => {
+        if (this.onStateChange) this.onStateChange(this._ctx.state);
+      });
       this._master = this._ctx.createGain();
       this._master.gain.value = this._muted ? 0 : this._volume;
       // A limiter between the master and the speakers, and it is not a polish

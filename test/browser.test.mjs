@@ -1915,19 +1915,43 @@ const overlayTruth = await page.evaluate(async () => {
   const el = document.querySelector('#unlock');
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   // Force the context back down, as a phone does when it refuses a gesture.
+  //
+  // Checked straight away rather than after a wait: the engine now brings a
+  // stopped context back within two seconds, so a delayed check is a race
+  // against the repair. What has to be true is that the overlay follows the
+  // context -- showing while it is down, gone once it is up -- and both halves
+  // are asserted here.
   await window.son.engine.ctx.suspend();
-  await wait(1400);
+  await wait(120);
   const whileBlocked = el.classList.contains('show');
+  const blockedState = window.son.engine.ctx.state;
   // Resume by some other means than the overlay, which is exactly what
   // pressing Start ended up doing.
   await window.son.engine.ctx.resume();
-  await wait(1400);
+  await wait(400);
   const afterResume = el.classList.contains('show');
-  return { whileBlocked, afterResume, state: window.son.engine.ctx.state };
+  return { whileBlocked, blockedState, afterResume, state: window.son.engine.ctx.state };
 });
-ok('the overlay appears when the context is blocked', overlayTruth.whileBlocked);
+ok('the overlay appears when the context is blocked',
+   overlayTruth.whileBlocked && overlayTruth.blockedState !== 'running',
+   'ctx=' + overlayTruth.blockedState);
 ok('the overlay goes away once sound is possible, however it was unblocked',
    overlayTruth.afterResume === false, 'ctx=' + overlayTruth.state);
+
+// The overlay must follow a recovery it did not cause. It used to be refreshed
+// only where the page itself touched the audio, which was true until the engine
+// started bringing back a context that stopped on its own.
+const afterWatchdog = await page.evaluate(async () => {
+  const el = document.querySelector('#unlock');
+  await window.son.engine.ctx.suspend();
+  await new Promise((r) => setTimeout(r, 120));
+  const asking = el.classList.contains('show');
+  await new Promise((r) => setTimeout(r, 3500));
+  return { asking, still: el.classList.contains('show'), state: window.son.engine.ctx.state };
+});
+ok('the overlay stops asking once the engine has brought the sound back',
+   afterWatchdog.asking && afterWatchdog.still === false && afterWatchdog.state === 'running',
+   `asking ${afterWatchdog.asking}, still ${afterWatchdog.still}, ctx ${afterWatchdog.state}`);
 
 // A refused unlock must not make every later attempt a no-op.
 const retries = await page.evaluate(async () => {

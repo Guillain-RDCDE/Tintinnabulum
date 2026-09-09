@@ -31,6 +31,7 @@ import { GENERATIVE_SCENES } from './generative.js';
 import { GEOMETRY_SCENES } from './geometry.js';
 import { RECURSIVE_SCENES } from './recursive.js';
 import { SYSTEM_SCENES } from './systems.js';
+import { FANTASIA_SCENES } from './fantasia.js';
 
 export { noise2 } from './noise.js';
 
@@ -43,6 +44,7 @@ export const SCENES = {
   ...GEOMETRY_SCENES,
   ...RECURSIVE_SCENES,
   ...SYSTEM_SCENES,
+  ...FANTASIA_SCENES,
 };
 
 export const SCENE_NAMES = Object.keys(SCENES);

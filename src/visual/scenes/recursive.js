@@ -8,8 +8,6 @@
 //
 //   Hilbert     David Hilbert, 1891. A curve that visits every cell of a grid.
 //   Dragon      The Heighway dragon, folded from a strip of paper.
-//   Chaos game  Half-way to a random corner, forever. Sierpinski, 1915, from
-//               a rule that mentions no triangle at all.
 //   Mondrian    Recursive subdivision, after the compositions of 1917-1930.
 //   Packing     Circles that grow until they touch, and then stop.
 //   Quasicrystal Waves at incommensurable angles, which never repeat.
@@ -225,86 +223,6 @@ export const RECURSIVE_SCENES = {
     },
   },
 
-  chaosgame: {
-    label: 'Chaos game',
-    positional: false,
-    preview: { dt: 40, frames: 200 },
-    note: 'Pick a corner at random, jump part of the way to it, mark the spot, repeat. The rule says nothing about a triangle, and a triangle is what appears. Sierpinski, 1915.',
-    params: {
-      corners: { label: 'Corners', min: 3, max: 9, step: 1, default: 3, rebuild: true },
-      jump: { label: 'How far it jumps', min: 0.25, max: 0.75, step: 0.005, default: 0.5 },
-      rate: { label: 'Points per second', min: 200, max: 12000, step: 100, default: 3000 },
-      hold: { label: 'How long it holds', min: 0, max: 1, step: 0.02, default: 0.96 },
-    },
-    init(api) {
-      const s = api.scene;
-      s.x = 0.5;
-      s.y = 0.5;
-      s.bufClean = false;
-      s.burn = 0;
-    },
-    event(p, api) {
-      // An event throws the point somewhere new. The attractor pulls it back
-      // within a handful of steps, so the feed shows up as a faint spray of
-      // stragglers on the way home rather than as a mark of its own.
-      const s = api.scene;
-      s.x = p.x / Math.max(1, api.w);
-      s.y = p.y / Math.max(1, api.h);
-      s.burn = 6;
-      s.color = p.color;
-      s.rate = Math.min(3, (s.rate || 1) + 0.5);
-    },
-    frame(ctx, api) {
-      const s = api.scene;
-      const cv = scratch(api);
-      const g = canvasFor(api);
-      if (!g) return;
-
-      const k = Math.max(3, Math.round(api.param('corners')));
-      const ratio = api.param('jump');
-      const side = Math.min(api.w, api.h) * 0.94;
-      const cx = api.w / 2;
-      const cy = api.h / 2;
-      const R = side / 2;
-      // The corners, in canvas units, with one at the top.
-      const vx = new Float64Array(k);
-      const vy = new Float64Array(k);
-      for (let i = 0; i < k; i++) {
-        const a = (i / k) * TAU - Math.PI / 2;
-        vx[i] = (cx + Math.cos(a) * R) / api.w;
-        vy[i] = (cy + Math.sin(a) * R) / api.h;
-      }
-
-      s.rate = Math.max(1, (s.rate || 1) * 0.97);
-      const n = Math.min(20000, Math.round(api.param('rate') * (api.dt / 1000) * s.rate));
-      g.fillStyle = s.color || api.palette.user;
-      for (let i = 0; i < n; i++) {
-        const c = (Math.random() * k) | 0;
-        s.x += (vx[c] - s.x) * ratio;
-        s.y += (vy[c] - s.y) * ratio;
-        // The first few steps after a throw are not on the attractor yet, and
-        // plotting them speckles the empty regions that are the whole picture.
-        if (s.burn > 0) {
-          s.burn--;
-          continue;
-        }
-        g.globalAlpha = 0.5;
-        g.fillRect(s.x * api.w, s.y * api.h, 1, 1);
-      }
-      g.globalAlpha = 1;
-
-      const keep = api.param('hold');
-      if (keep < 0.999) {
-        g.save();
-        g.globalCompositeOperation = 'destination-out';
-        g.fillStyle = `rgba(0,0,0,${(1 - keep) * Math.min(0.05, api.dt / 1000) * 1.6})`;
-        g.fillRect(0, 0, cv.width, cv.height);
-        g.restore();
-      }
-      ctx.globalAlpha = 1;
-      ctx.drawImage(cv, 0, 0, api.w, api.h);
-    },
-  },
 
   mondrian: {
     label: 'Subdivision',

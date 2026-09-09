@@ -93,7 +93,6 @@ async function ensureAudio() {
   // audio does not survive an await on iOS, so loading a kit before asking
   // would spend the tap without using it.
   son.engine.resumeSync();
-
   // Gate on being genuinely audible, not merely on the kit having loaded. A
   // kit loads happily while the context stays blocked, and latching on that
   // turned every later tap into a no-op: the overlay kept asking, and nothing
@@ -115,6 +114,19 @@ async function ensureAudio() {
 
 unlockEl.addEventListener('click', ensureAudio);
 refreshUnlock();
+
+// The overlay follows the context, whoever changed it.
+//
+// It used to be refreshed only where the page itself touched the audio, which
+// was fine while the page was the only thing that could. It is not any more:
+// the engine brings back a context that stopped on its own, and without this
+// the overlay would go on asking to be tapped after the sound had already come
+// back -- the exact fault it was fixed for once before, arrived at from the
+// other direction.
+son.engine.onStateChange = (state) => {
+  refreshUnlock();
+  if (state === 'running' && audioReady) describe({ ...son.audio.status, running: true });
+};
 
 // =========================================================================
 // Listen to
