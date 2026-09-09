@@ -374,6 +374,22 @@ room around it, and that is the commonest way to make one sound bad.
 son.space = 'cathedral';
 ```
 
+Each room card plots **that room's own impulse response**
+([`src/visual/space-art.js`](../src/visual/space-art.js)) rather than a drawing
+of an arch or a cave: the early reflections use the same golden-ratio spacing
+the audio does, the tail the same decay exponent. A card cannot go stale
+against the sound, because it is the sound. The rooms were the one grid on the
+page with nothing to look at, and seven words in a row is not a way to choose
+between a cistern and a canyon.
+
+Two decisions about the axes, and the first version had both wrong. **Time runs
+as a square root**, because everything that separates one room from another
+happens in the first half second and a linear five-second axis crushes all of
+it into the leftmost tenth — seven cards came out looking like the same card.
+**Height runs in decibels over 60 dB**, which is how reverberation is read at
+all: RT60 is the time to fall sixty decibels, and on a linear amplitude axis
+the cathedral appeared to stop at two fifths of its own length.
+
 The impulse responses are **built, not recorded**
 ([`src/audio/space.js`](../src/audio/space.js)), which for this purpose is not
 a compromise: an impulse response is noise with an envelope on it plus a
@@ -570,6 +586,13 @@ asserts that nothing exceeds its budget.
 ### Ambiences
 
 Sixteen of the kits are instruments: one event, one note. Six are not.
+
+**A bed only sounds while a source is connected.** It used to start the moment
+audio was permitted, which put a page nobody had asked to do anything into a
+five-second cathedral: arrive with an ambience remembered from a previous
+visit, click anything at all, and the aerodrome was already running before
+*Start listening* had been pressed. An ambience is a way of hearing a feed, not
+a screensaver, so `connect` starts the bed and `disconnect` stops it.
 
 | | |
 |---|---|
@@ -798,6 +821,31 @@ before the page would respond, and the panels start folded, so not one of those
 cards was on screen. Cards inside a folded panel are skipped and painted when
 the panel is opened.
 
+Three further rules make that affordable, and each of them was added after
+something measurable went wrong.
+
+**A card below the fold is not painted either.** Skipping the folded panels was
+only half the doctrine: forty cards do not fit on a screen, and the ones under
+it cost the same few hundred milliseconds each for a picture nobody is looking
+at. The margin is one screen either way, so scrolling finds them drawn rather
+than drawing them under the eye.
+
+**No repaint may hold the main thread.** The cards are painted a few per frame
+against a six-millisecond budget, and a newer repaint cancels an older one. As
+one loop, a palette change was a single task of **2562 ms** — and a click
+arriving inside that window is queued, not acted on. The button does not even
+light up, so it reads as a click that did nothing and you click again. That is
+the whole of a bug reported as "I have to double-click now": nothing was wrong
+with the click handling, the page simply was not answering.
+
+**One card may not take longer than 120 ms.** Thirty-six of the forty draw in
+under fifty and never approach it. Four are simulations — a Clifford attractor,
+a burin field, a Chladni plate, a Gray-Scott reaction — and were costing
+between 400 and 1749 ms each on their own, which no amount of scheduling can
+hide. They stop early instead. That costs those four a less developed picture,
+not a wrong one: the frames that ran are the scene's own. `previewScene` takes
+`budgetMs: 0` to lift the ceiling.
+
 **Adding one is adding an object** to
 one of the families in [`src/visual/scenes/`](../src/visual/scenes), or registering it from
 outside:
@@ -1001,6 +1049,7 @@ src/visual/
   canvas-sink.js        the canvas loop
   engrave.js            the burin: hatching, contour, stipple, white line
   kit-art.js            twenty-two cut plates, one per kit
+  space-art.js          each room's own impulse response, plotted
   kit-plates.js         generated plates, if any are installed
   scenes/               marks, fields, structures, physical, generative,
                         geometry, recursive, systems, budget, paint

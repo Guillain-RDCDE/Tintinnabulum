@@ -121,6 +121,15 @@
   #kits .card .cap { display: block; padding: .45rem .6rem .5rem; }
   #kits .card b { font-size: .875rem; }
   #kits .card span { font-size: .7rem; }
+  /* room cards plot the room's own impulse response: shorter than a kit
+     plate, because a reflectogram is a measurement and not a picture. */
+  #spaces { grid-template-columns: repeat(auto-fill, minmax(126px, 1fr)); }
+  #spaces .card { padding: 0; overflow: hidden; min-height: 0; }
+  #spaces .card canvas { display: block; width: 100%; height: 52px; background: #04141c; }
+  #spaces .card .cap { display: block; padding: .4rem .55rem .45rem; }
+  #spaces .card b { font-size: .8125rem; }
+  #spaces .card span { font-size: .6875rem; }
+
   .card { border: 1px solid var(--line-strong); border-radius: var(--r-ctl); background: var(--surface);
     cursor: pointer; padding: .65rem .7rem; text-align: left; font: inherit; color: var(--fg);
     min-height: 52px; transition: border-color .15s ease, transform .1s ease; }
@@ -283,7 +292,7 @@
       <p class="note" id="kit-note"></p>
 
       <p class="sub-label">The room</p>
-      <div class="swatches" id="spaces"></div>
+      <div class="cards" id="spaces"></div>
       <p class="note" id="space-note"></p>
 
       <p class="sub-label">Restraint</p>

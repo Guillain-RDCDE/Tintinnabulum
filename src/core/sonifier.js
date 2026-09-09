@@ -29,6 +29,9 @@ export class Sonifier {
 
     this.sinks = [this.audio];
     this.sources = [];
+    // The continuous bed the current kit declares, if it is an ambience. It
+    // only ever sounds while a source is connected: see _syncBed.
+    this._bed = null;
     this.filters = [];
     this._listeners = [];
     this._times = [];
@@ -69,6 +72,8 @@ export class Sonifier {
     if (!source) return this;
     source.start((ev) => this.emit(ev));
     this.sources.push(source);
+    // An ambience's bed belongs to listening, not to the page being open.
+    this._syncBed();
     return this;
   }
 
@@ -77,10 +82,12 @@ export class Sonifier {
       const i = this.sources.indexOf(source);
       if (i >= 0) this.sources.splice(i, 1);
       if (source.stop) source.stop();
+      this._syncBed();
       return this;
     }
     for (const s of this.sources) if (s.stop) s.stop();
     this.sources.length = 0;
+    this._syncBed();
     return this;
   }
 
@@ -106,12 +113,9 @@ export class Sonifier {
       status.fellBackToSynth = status.usable;
     }
 
-    // A bed chosen while the context was still blocked has been waiting for
-    // permission to make a sound. This is where it gets it.
-    if (running && this._pendingBed !== undefined) {
-      this.audio.setBed(this._pendingBed);
-      this._pendingBed = null;
-    }
+    // A bed the kit declared while the context was blocked can sound now --
+    // but only if there is something to listen to. See _syncBed.
+    if (running) this._syncBed();
 
     this.audioStatus = {
       running,
@@ -134,16 +138,30 @@ export class Sonifier {
     // An ambience carries a continuous bed as well as its instruments, and the
     // bed belongs to the kit: swapping kits must silence the sea before the
     // fire starts. A kit that names no bed clears whatever was running.
-    const bed = typeof kit === 'string' && KITS[kit] ? KITS[kit].bed || null : null;
+    this._bed = typeof kit === 'string' && KITS[kit] ? KITS[kit].bed || null : null;
     if (this.engine.locked) {
       this.audio.setKit(built); // nothing can sound yet anyway
-      this._pendingBed = bed;
       return this;
     }
     await this.audio.loadKit(built);
-    this.audio.setBed(bed);
-    this._pendingBed = null;
+    this._syncBed();
     return this;
+  }
+
+  /**
+   * Start or stop the kit's continuous bed, according to whether anything is
+   * actually being listened to.
+   *
+   * The bed used to start the moment audio was permitted, which put a page
+   * that had not been asked to do anything into a five-second cathedral: open
+   * the sandbox with an ambience remembered from last time, click anything at
+   * all, and the sea is running before "Start listening" has been pressed. An
+   * ambience is a way of hearing a feed, not a screensaver -- so a bed is tied
+   * to a source being connected, and to nothing else.
+   */
+  _syncBed() {
+    if (this.engine.locked) return;
+    this.audio.setBed(this.sources.length ? this._bed || null : null);
   }
 
   /**

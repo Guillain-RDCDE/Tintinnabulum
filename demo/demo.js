@@ -9,6 +9,7 @@ import {
   swatchOf,
   KITS,
   drawKitArt,
+  drawSpaceArt,
   loadPlates,
   SHAPES,
   DEFAULT_SHAPE,
@@ -383,7 +384,12 @@ let connectSummary = 'Paste JSON, hear it';
 const look = setupLook({
   canvas,
   updateSummaries: () => updateSummaries(),
-  paintKitArts: () => paintKitArts(),
+  // Every plate in the Sound panel is drawn in the palette's own ink, rooms
+  // included, so both grids follow a colour change rather than lying about it.
+  paintKitArts: () => {
+    paintKitArts();
+    paintSpaceArts();
+  },
   onLookChange: () => projector.sync(),
 });
 const { selectScene, selectPalette, selectShape, selectRichness, selectBudget, SHAPE_LABELS } = look;
@@ -395,14 +401,28 @@ look.selectRotate(Number(store.get('rotate') || 0), false);
 // A card inside a folded panel is skipped rather than drawn -- see the note on
 // `repaint` in dom.js -- so unfolding a panel is when the cards inside it get
 // made. `toggle` does not bubble, hence the capture phase.
-document.addEventListener(
-  'toggle',
-  () => {
-    kitPicker.repaintPending(paintKitArt);
-    look.repaintPendingPreviews();
-  },
-  true
-);
+function paintWhatIsNowVisible() {
+  kitPicker.repaintPending(paintKitArt);
+  spacePicker.repaintPending(paintSpaceArt);
+  look.repaintPendingPreviews();
+}
+
+document.addEventListener('toggle', paintWhatIsNowVisible, true);
+
+// A card below the fold is skipped too, so scrolling is the other moment a
+// card becomes worth drawing. Coalesced onto a frame: a scroll fires dozens of
+// events a second and each one would otherwise start a walk of three grids.
+let scrollPending = false;
+const onScroll = () => {
+  if (scrollPending) return;
+  scrollPending = true;
+  requestAnimationFrame(() => {
+    scrollPending = false;
+    paintWhatIsNowVisible();
+  });
+};
+addEventListener('scroll', onScroll, { passive: true });
+addEventListener('resize', onScroll);
 
 // =========================================================================
 // Sound: space between notes
@@ -447,17 +467,29 @@ function selectSpace(name, persist = true) {
   updateSummaries();
 }
 
+// The rooms were seven words in a row, the one grid on the page with nothing
+// to look at. Each now carries its own impulse response, plotted: see
+// src/visual/space-art.js for why that is the honest picture rather than a
+// drawing of an arch.
+function paintSpaceArt(cv, name) {
+  const { ctx, w, h } = fitCanvas(cv, { height: 52 });
+  drawSpaceArt(ctx, SPACES[name], { w, h, palette: PALETTES[canvas.paletteName].colors });
+}
+
 const spacePicker = createPicker($('#spaces'), Object.entries(SPACES), {
   key: 'space',
-  className: 'sw',
+  className: 'card',
   title: (sp) => sp.note,
   render: (btn, sp) => {
-    const b = document.createElement('b');
-    b.textContent = sp.label;
-    btn.append(b);
+    btn.append(
+      document.createElement('canvas'),
+      caption(sp.label, sp.seconds ? `${sp.seconds}s tail` : 'no tail')
+    );
   },
   onPick: (name) => selectSpace(name),
 });
+const paintSpaceArts = () => spacePicker.repaint(paintSpaceArt);
+requestAnimationFrame(paintSpaceArts);
 selectSpace(store.pick('space', SPACES, DEFAULT_SPACE), false);
 // =========================================================================
 // Filter

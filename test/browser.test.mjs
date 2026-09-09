@@ -185,6 +185,30 @@ const openPanels = async (p = page) => {
   });
 };
 await openPanels();
+
+/**
+ * Walk the page the way a person does, so every card gets painted.
+ *
+ * A card is drawn only once it is near the screen: forty scene previews and
+ * twenty-two kit plates at once is what used to hold the main thread for two
+ * and a half seconds, which is long enough to swallow a click. So a check on
+ * the cards has to scroll to them first -- and doing it this way means the
+ * lazy path is exercised on every run rather than trusted.
+ */
+const paintEverything = async (p = page) => {
+  await p.evaluate(async () => {
+    for (let y = 0; y < document.body.scrollHeight; y += Math.round(innerHeight * 0.7)) {
+      window.scrollTo(0, y);
+      await new Promise((r) => setTimeout(r, 240));
+    }
+    window.scrollTo(0, 0);
+    await new Promise((r) => setTimeout(r, 240));
+  });
+  await p
+    .waitForFunction(() => !window.son || !window.son.look || !window.son.look.previewsBusy,
+                     null, { timeout: 30000 })
+    .catch(() => {});
+};
 ok('a panel opens to reveal its controls',
    (await page.locator('#feeds .card').count()) >= 6 &&
    (await page.locator('#kits .card').count()) >= 6 &&
@@ -355,6 +379,7 @@ ok('there are several kits to choose from', Object.keys(kitPeaks).length >= 6,
 
 // Each kit card carries its own waveform, rendered from the instrument. A
 // blank one would be a card promising a sound it cannot show.
+await paintEverything();
 await page.waitForFunction(
   () => {
     const cards = [...document.querySelectorAll('#kits .card canvas')];
@@ -939,21 +964,47 @@ ok('every ambience names a bed that exists',
    `${namedBeds.length} of ${ambience.ambienceKits.length}: ` +
    ambience.ambienceKits.map(([k, b]) => `${k}->${b}`).join(', '));
 
-// Choosing an ambience starts its bed; choosing an ordinary kit stops it.
+// A bed belongs to listening, not to the page being open.
+//
+// It used to start the moment audio was permitted, which put a page nobody had
+// asked to do anything into a five-second cathedral: arrive with an ambience
+// remembered from last time, click anything at all, and the aerodrome was
+// running before "Start listening" had been pressed. That is the check, and
+// the rest of this block is what it must not have broken.
 const bedSwap = await page.evaluate(async () => {
   const son = window.son;
+  son.disconnect();
+  await son.setKit('airports');
+  // Audio is unlocked by now and the kit is an ambience. Nothing is connected,
+  // so nothing may be sounding.
+  const idle = son.audio.bed;
+
+  // A source needs only to be startable and stoppable to count as listening.
+  const fake = { name: 'test', start() {}, stop() {} };
+  son.connect(fake);
+  const listening = son.audio.bed && son.audio.bed.name;
+
   await son.setKit('shore');
   const onShore = son.audio.bed && son.audio.bed.name;
   await son.setKit('fire');
   const onFire = son.audio.bed && son.audio.bed.name;
   await son.setKit('synth');
   const afterPlain = son.audio.bed;
+
+  await son.setKit('shore');
+  son.disconnect(fake);
+  const afterStop = son.audio.bed;
+
   await son.setKit('hatnote');
-  return { onShore, onFire, afterPlain };
+  return { idle, listening, onShore, onFire, afterPlain, afterStop };
 });
+ok('an ambience is silent until something is being listened to',
+   bedSwap.idle === null, String(bedSwap.idle));
+ok('and starts once a source is connected', bedSwap.listening === 'airports', String(bedSwap.listening));
 ok('choosing an ambience starts its bed', bedSwap.onShore === 'shore', String(bedSwap.onShore));
 ok('choosing another swaps it rather than stacking', bedSwap.onFire === 'fire', String(bedSwap.onFire));
 ok('choosing an ordinary kit silences it', bedSwap.afterPlain === null, String(bedSwap.afterPlain));
+ok('stopping the feed silences the bed with it', bedSwap.afterStop === null, String(bedSwap.afterStop));
 
 
 
@@ -1186,6 +1237,58 @@ ok('a generated plate takes the palette ink', plates.paletteShift > 4,
 ok('and it is printed dark on light, as an engraving is',
    plates.installedMarine.dark < 120 && plates.installedMarine.ground > 170,
    `darkest mark ${plates.installedMarine.dark}, ground ${plates.installedMarine.ground}`);
+// --- the rooms have pictures too ----------------------------------------
+//
+// The rooms were the one grid on the page with nothing to look at: seven words
+// in a row. Each now plots its own impulse response, and what that has to be
+// is a measurement rather than a decoration -- so the checks are that the
+// pictures differ from each other in the way the rooms differ, not merely that
+// something was drawn.
+const rooms = await page.evaluate(async () => {
+  const { drawSpaceArt, PALETTES } = await import('../src/index.js');
+  const { SPACES } = await import('../src/audio/space.js');
+  const measure = (name, palette) => {
+    const cv = document.createElement('canvas');
+    cv.width = 252;
+    cv.height = 104;
+    const ctx = cv.getContext('2d');
+    const ok = drawSpaceArt(ctx, SPACES[name], { w: 252, h: 104, palette }) !== false;
+    const d = ctx.getImageData(0, 0, 252, 104).data;
+    const bg = [d[0], d[1], d[2]];
+    let ink = 0;
+    let rightmost = 0;
+    for (let y = 0; y < 104; y++) {
+      for (let x = 0; x < 252; x++) {
+        const i = (y * 252 + x) * 4;
+        if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 30) {
+          ink++;
+          // Above the baseline only. The time axis is drawn right across every
+          // card, so counting it made all seven reach the same distance --
+          // which is what the first version of this check measured.
+          if (x > rightmost && y < 104 * 0.7) rightmost = x;
+        }
+      }
+    }
+    return { ok, ink, reach: rightmost / 252 };
+  };
+  const marine = {};
+  for (const n of Object.keys(SPACES)) marine[n] = measure(n, PALETTES.marine.colors);
+  return { names: Object.keys(SPACES), marine, papyrus: measure('hall', PALETTES.papyrus.colors) };
+});
+const blankRooms = rooms.names.filter((n) => rooms.marine[n].ink < 40);
+ok('every room card is drawn, none left blank', blankRooms.length === 0,
+   blankRooms.join(', ') || `${rooms.names.length} rooms`);
+// The one thing the picker exists to tell you is how long a room rings, so a
+// longer tail must reach further across the card than a shorter one.
+ok('a longer room reaches further across its card',
+   rooms.marine.room.reach < rooms.marine.hall.reach &&
+   rooms.marine.hall.reach < rooms.marine.cathedral.reach,
+   `room ${rooms.marine.room.reach.toFixed(2)} < hall ${rooms.marine.hall.reach.toFixed(2)} < cathedral ${rooms.marine.cathedral.reach.toFixed(2)}`);
+// Dry is the absence of a room, and it has to look like one.
+ok('the dry setting draws the strike and no tail',
+   rooms.marine.none.ink > 0 && rooms.marine.none.ink < rooms.marine.room.ink / 3,
+   `dry ${rooms.marine.none.ink} against room ${rooms.marine.room.ink}`);
+
 ok('a kit with no generated plate is still cut',
    plates.stillCut.ok === true && plates.stillCut.coverage > 0.01,
    `${(plates.stillCut.coverage * 100).toFixed(1)}% ink`);
@@ -1528,6 +1631,47 @@ ok('circles already on screen are recoloured by a palette change',
    recoloured.born !== recoloured.after, `${recoloured.born} -> ${recoloured.after}`);
 ok('the sink reports the palette it is using', recoloured.name === 'ultraviolet', recoloured.name);
 
+// --- one click, not two -------------------------------------------------
+//
+// The bug this guards was not in the click handling at all. Repainting the
+// grids after a palette change was a single task of two and a half seconds,
+// and a click arriving inside it is queued rather than acted on: the button
+// does not even light up, so it reads as a click that did nothing. The fix is
+// that no repaint may hold the main thread, and the test is the symptom rather
+// than the mechanism -- a click made mid-repaint has to land, first time.
+await page.locator('#kits .card').first().scrollIntoViewIfNeeded();
+await page.waitForTimeout(300);
+const midRepaint = await page.evaluate(async () => {
+  document.querySelector('#kits [data-kit="marimba"]').click();
+  await new Promise((r) => setTimeout(r, 600));
+  // A palette change is the heaviest thing the page does. Click a kit while
+  // it is still working, exactly once.
+  document.querySelector('#palettes [data-palette="linen"]').click();
+  await new Promise((r) => setTimeout(r, 120));
+  document.querySelector('#kits [data-kit="clay"]').click();
+  await new Promise((r) => setTimeout(r, 1500));
+  return [...document.querySelectorAll('#kits [data-kit]')]
+    .filter((b) => b.getAttribute('aria-pressed') === 'true')
+    .map((b) => b.dataset.kit);
+});
+ok('a single click still lands while the cards are repainting',
+   midRepaint.length === 1 && midRepaint[0] === 'clay', midRepaint.join(', ') || 'nothing chosen');
+
+// The measurement behind it: no task may run long enough to swallow a click.
+// A hundred and fifty milliseconds is already a long time to be deaf; the
+// version this replaced measured 2562.
+const worstTask = await page.evaluate(async () => {
+  const tasks = [];
+  const obs = new PerformanceObserver((l) => { for (const e of l.getEntries()) tasks.push(e.duration); });
+  obs.observe({ entryTypes: ['longtask'] });
+  document.querySelector('#palettes [data-palette="ember"]').click();
+  await new Promise((r) => setTimeout(r, 5000));
+  obs.disconnect();
+  return Math.round(Math.max(0, ...tasks));
+});
+ok('a palette change never holds the page long enough to swallow a click',
+   worstTask < 300, `worst task ${worstTask} ms`);
+
 // --- changing palette on its own ----------------------------------------
 //
 // The rotation walks from one palette to the next rather than switching, so
@@ -1705,6 +1849,10 @@ ok('and comes back for the scene it belongs to',
 
 const shapeCount = await page.locator('#shapes .sw').count();
 ok('every shape has a swatch', shapeCount >= 8, shapeCount + ' shapes');
+// The swatches are painted lazily like every other card, so they have to be
+// on screen before their pixels mean anything.
+await page.locator('#shapes .sw').first().scrollIntoViewIfNeeded();
+await page.waitForTimeout(400);
 ok('the shape swatches are drawn, not empty', await page.evaluate(() => {
   const cv = document.querySelector('#shapes .sw canvas');
   const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
@@ -1752,6 +1900,25 @@ ok('every scene is offered in the picker',
 
 // Each card carries a still drawn by the scene itself. A blank one would be a
 // card that promises nothing, so the pixels are counted rather than trusted.
+//
+// A card below the fold is not painted until it is nearly on screen -- forty
+// simulations at once is what used to freeze the page for two and a half
+// seconds -- so the page is walked the way a person walks it. Scrolling past
+// every card and then checking is also the only honest test of the lazy path:
+// a card that never got painted would be found here rather than by a visitor.
+await page.evaluate(async () => {
+  for (let y = 0; y < document.body.scrollHeight; y += Math.round(innerHeight * 0.7)) {
+    window.scrollTo(0, y);
+    await new Promise((r) => setTimeout(r, 260));
+  }
+  window.scrollTo(0, 0);
+});
+await page.waitForFunction(
+  () => !window.son.look.previewsBusy,
+  null,
+  { timeout: 30000 }
+);
+
 const previews = await page.evaluate(() =>
   [...document.querySelectorAll('#scenes .card')].map((b) => {
     const cv = b.querySelector('canvas');
@@ -1770,19 +1937,38 @@ ok('every scene card shows a real preview', emptyCards.length === 0,
    emptyCards.map((p) => `${p.name}(${p.ink})`).join(' ') || previews.length + ' painted');
 
 // The stills are drawn in the active palette, so switching must redraw them.
-const beforeSwitch = await page.evaluate(() => {
-  const cv = document.querySelector('#scenes .card canvas');
-  return cv.getContext('2d').getImageData(0, 0, 4, 4).data.join(',');
+// A card nobody can see is deliberately left alone, so the card sampled has to
+// be one that is on screen at the moment of the switch -- which means finding
+// it after the click has scrolled the palette swatch into view, not before.
+const followed = await page.evaluate(async () => {
+  const onScreen = () =>
+    [...document.querySelectorAll('#scenes .card canvas')].find((cv) => {
+      const r = cv.getBoundingClientRect();
+      return r.top < innerHeight && r.bottom > 0 && cv.width > 0;
+    });
+  const read = (cv) => cv.getContext('2d').getImageData(0, 0, 4, 4).data.join(',');
+
+  document.querySelector('#palettes .sw[data-palette="papyrus"]').scrollIntoView({ block: 'center' });
+  await new Promise((r) => setTimeout(r, 400));
+  const cv = onScreen();
+  if (!cv) return { found: false };
+  const before = read(cv);
+  document.querySelector('#palettes .sw[data-palette="papyrus"]').click();
+  // Wait for the walk to finish rather than for a fixed delay: the cards are
+  // repainted a few per frame, so which card is reached when is not something
+  // a timeout can know. A fixed 900 ms sampled a card the walk had not got to
+  // yet and read it as stale.
+  for (let i = 0; i < 200; i++) {
+    if (!window.son.look.previewsBusy && i > 2) break;
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  return { found: true, name: cv.closest('.card').dataset.scene, before, after: read(cv) };
 });
-await page.click('#palettes .sw[data-palette="papyrus"]');
-await page.waitForTimeout(300);
-const afterSwitch = await page.evaluate(() => {
-  const cv = document.querySelector('#scenes .card canvas');
-  return cv.getContext('2d').getImageData(0, 0, 4, 4).data.join(',');
-});
-ok('the previews follow the palette rather than going stale', beforeSwitch !== afterSwitch);
+ok('the previews follow the palette rather than going stale',
+   followed.found && followed.before !== followed.after,
+   followed.found ? `${followed.name}: ${followed.before} -> ${followed.after}` : 'no card was on screen');
 await page.click('#palettes .sw[data-palette="marine"]');
-await page.waitForTimeout(200);
+await page.waitForTimeout(400);
 
 const sceneErrors = [];
 const blank = [];

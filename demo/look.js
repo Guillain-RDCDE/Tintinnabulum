@@ -383,5 +383,9 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     get rotateWord() {
       return rotateWord;
     },
+    /** True while the cards are still catching up with a palette change. */
+    get previewsBusy() {
+      return scenePicker.busy || shapePicker.busy;
+    },
   };
 }

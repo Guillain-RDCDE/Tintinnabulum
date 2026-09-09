@@ -44,6 +44,7 @@ export { strike, strikesHeldMB } from './audio/modal.js';
 export { AMBIENCES, AMBIENCE_NAMES } from './audio/ambiences.js';
 export { noiseBuffer, noiseSource } from './audio/noise.js';
 export { drawKitArt, KIT_ART_NAMES } from './visual/kit-art.js';
+export { drawSpaceArt } from './visual/space-art.js';
 export { loadPlates, plateFor, platedKits } from './visual/kit-plates.js';
 
 export { CanvasSink, DEFAULT_PALETTE } from './visual/canvas-sink.js';

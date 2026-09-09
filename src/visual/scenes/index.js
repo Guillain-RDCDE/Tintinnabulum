@@ -74,6 +74,21 @@ export function previewScene(
     // The dials, so a card shows the scene as it is currently tuned rather
     // than as it ships.
     params = {},
+    // A ceiling on how long one card may take, in milliseconds.
+    //
+    // Thirty-six of the forty scenes draw a card in under fifty milliseconds
+    // and never come near this. Four do not: a Clifford attractor, a burin
+    // field, a Chladni plate and a Gray-Scott reaction are simulations, and
+    // they were costing between four hundred and eight hundred milliseconds
+    // each. The page is frozen for every one of those, and a click landing in
+    // that window is queued rather than acted on -- which is felt as a click
+    // that did nothing, so you click again.
+    //
+    // Stopping early costs those four a less developed picture. It does not
+    // cost them the wrong picture: the frames that ran are the scene's own,
+    // and the card still cannot disagree with what you are about to launch.
+    // Zero lifts the ceiling, which is what the contact sheet wants.
+    budgetMs = 120,
   } = {}
 ) {
   const scene = SCENES[name] || SCENES[DEFAULT_SCENE];
@@ -167,6 +182,13 @@ export function previewScene(
     });
   }
 
+  // `performance` is not in every host this module might be loaded into, and a
+  // preview that throws is worse than a preview that takes its time.
+  const clock = typeof performance === 'object' && performance.now
+    ? () => performance.now()
+    : () => Date.now();
+  const until = budgetMs > 0 ? clock() + budgetMs : Infinity;
+
   for (let f = 0; f < frames; f++) {
     api.now = f * api.dt;
     for (const b of born) {
@@ -187,6 +209,9 @@ export function previewScene(
     }
     ctx.restore();
     ctx.globalAlpha = 1;
+    // Out of time. Stop on a drawn frame rather than after wiping the ground,
+    // or the card would be blank -- which is the one outcome worse than slow.
+    if (clock() >= until) break;
     // Only the last frame is kept, but the trailing ones must accumulate for
     // scenes that build up rather than redraw, so the ground is repainted
     // between frames exactly as the live canvas does.
