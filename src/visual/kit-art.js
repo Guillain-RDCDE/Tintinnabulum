@@ -1,24 +1,9 @@
-// The picture on each kit card: flat colour, in blocks.
+// The colour on each kit card.
 //
-// This has been four things. Pictograms first -- an arc for a bell, a sine for
-// a synth -- which were accurate and flat, and eighteen of them side by side
-// looked like a stationery catalogue. Then engraved vignettes cut by a burin
-// engine. Then plates from an image model, stored as alpha masks. All three
-// lost the same argument: at a hundred and fifty pixels wide a picture of a
-// marimba is a smudge, and twenty-two smudges is what the grid became.
-//
-// Then gradients, which lost a different one. They were tasteful and they were
-// dull, and a picker nobody wants to touch has failed at the only job a picker
-// has.
-//
-// So: a colour chart, six blocks by three. Nothing shaded, nothing lit,
-// nothing standing for an instrument. See mosaic.js for the drawing, and for
-// why flat squares are the right answer at this size.
+// One flat colour, taken from the palette. See mosaic.js for the pool and for
+// the four things this replaced.
 
-import { drawMosaic, hashOf } from './mosaic.js';
-
-const COLS = 6;
-const ROWS = 3;
+import { drawSwatch, swatchColour } from './mosaic.js';
 
 /**
  * Draw one kit's card.
@@ -29,16 +14,19 @@ const ROWS = 3;
  * @param {number} o.w
  * @param {number} o.h
  * @param {object} o.palette  a palette's `colors`
+ * @param {number} [o.index]  position in the grid; decides which colour
  * @returns {boolean} false if it could not be drawn at all
  */
-export function drawKitArt(ctx, kitName, { w, h, palette } = {}) {
+export function drawKitArt(ctx, kitName, { w, h, palette, index = 0 } = {}) {
   if (!ctx || !palette || !(w > 0) || !(h > 0)) return false;
   ctx.save();
   try {
-    // The arrangement is the kit's own and never moves: it comes from a hash
-    // of the name, so Gongs is the same chart on every visit and on every
-    // machine, and a kit added tomorrow gets its own without anybody choosing.
-    drawMosaic(ctx, { w, h, palette, seed: hashOf(kitName), cols: COLS, rows: ROWS });
+    // By position, not by a hash of the name. A hash into a pool of
+    // twenty-four collides long before twenty-two cards are placed, and two
+    // kits sharing a colour is the one thing this grid must not do. Position
+    // also means the picker walks the pool in order, which is what makes it
+    // read as a colour chart.
+    drawSwatch(ctx, { w, h, palette, index });
   } catch (e) {
     ctx.restore();
     ctx.globalAlpha = 1;
@@ -49,12 +37,7 @@ export function drawKitArt(ctx, kitName, { w, h, palette } = {}) {
   return true;
 }
 
-/**
- * The seed a kit's card is drawn from.
- *
- * Exposed so "no two kits look the same" is something a test can measure
- * rather than something somebody has to squint at.
- */
-export function kitArtOf(kitName) {
-  return { seed: hashOf(kitName), cols: COLS, rows: ROWS };
+/** The colour a kit card takes at a given position, for checking. */
+export function kitArtOf(palette, index) {
+  return swatchColour(palette, index);
 }

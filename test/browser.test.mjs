@@ -401,48 +401,32 @@ const waves = await page.evaluate(() =>
     // A canvas left at the HTML default of 300x150 was never painted at all,
     // which is how twelve blank cards once passed a check for "some ink".
     const sized = cv.width > 0 && Math.abs(cv.width / (window.devicePixelRatio || 1) - r.width) < 8;
-    const ctx2 = cv.getContext('2d');
-    const d = ctx2.getImageData(0, 0, cv.width, cv.height).data;
-    const bg = [d[0], d[1], d[2]];
-    let ink = 0;
-    let total = 0;
-    for (let i = 0; i < d.length; i += 4) {
-      total++;
-      if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 20) ink++;
-    }
-    // A fingerprint of the colours themselves, at five points. Counting how
-    // many pixels differ from one corner is the wrong measure for a ramp,
-    // because every pixel differs from one end of a ramp: it gave every card
-    // the same fingerprint and would have called twenty-two identical cards
-    // distinct.
+    const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
     const at = (x, y) => {
       const i = (Math.round(y) * cv.width + Math.round(x)) * 4;
-      return `${d[i] >> 3},${d[i + 1] >> 3},${d[i + 2] >> 3}`;
+      return d[i] + ',' + d[i + 1] + ',' + d[i + 2];
     };
     const w2 = cv.width - 1;
     const h2 = cv.height - 1;
-    return {
-      name: b.dataset.kit,
-      sized,
-      share: total ? ink / total : 0,
-      print: [at(2, 2), at(w2 - 2, 2), at(2, h2 - 2), at(w2 - 2, h2 - 2), at(w2 / 2, h2 / 2)].join('|'),
-    };
+    // Five points. A card is one flat colour now, so all five agree; a
+    // gradient, a mosaic or a drawing would not.
+    const pts = [at(2, 2), at(w2 - 2, 2), at(2, h2 - 2), at(w2 - 2, h2 - 2), at(w2 / 2, h2 / 2)];
+    return { name: b.dataset.kit, sized, flat: new Set(pts).size === 1, colour: pts[0] };
   })
 );
 const unsized = waves.filter((c) => !c.sized);
 ok('every kit canvas is painted at its displayed size', unsized.length === 0,
    unsized.map((c) => c.name).join(' ') || waves.length + ' sized');
-const flatCards = waves.filter((c) => c.share < 0.04);
-ok('every kit card carries a real gradient', flatCards.length === 0,
-   flatCards.map((c) => `${c.name}(${(c.share * 100).toFixed(1)}%)`).join(' ') ||
-     'flattest ' + (Math.min(...waves.map((c) => c.share)) * 100).toFixed(1) + '%');
+const notFlatInPage = waves.filter((c) => !c.flat);
+ok('every kit card in the page is one flat colour', notFlatInPage.length === 0,
+   notFlatInPage.map((c) => c.name).join(' ') || waves.length + ' flat');
 
 // You should be able to tell the water from the night without reading the
-// label. Identical fingerprints would mean twenty-two cards that look like
-// one card, which is what the picker exists not to be.
-const prints = new Set(waves.map((c) => c.print));
+// label. Two cards sharing a colour would be two cards nobody can tell apart,
+// which is what the picker exists not to be.
+const prints = new Set(waves.map((c) => c.colour));
 ok('no two kits look the same', prints.size === waves.length,
-   `${prints.size} distinct for ${waves.length} kits`);
+   prints.size + ' distinct for ' + waves.length + ' kits');
 
 // The pitch-swept presets are the new mechanism, so they get their own check:
 // a sweep that fails leaves a flat tone, which still passes a peak test.
@@ -1109,151 +1093,177 @@ ok('repeats are varied rather than looped', field.variations > 3,
    `${field.variations} distinct playback lengths in 24 hits`);
 // A property, not a list. Pinning the names meant that giving the dawn chorus
 // real birds failed a check about whether kits declare themselves honestly.
-// --- the kit cards -------------------------------------------------------
+// --- the kit cards and the room cards ------------------------------------
 //
-// Pictograms, then engraved vignettes, then plates from an image model, then
-// gradients. The first three lost the same argument -- at a hundred and fifty
-// pixels wide a picture of a marimba is a smudge -- and the gradients lost a
-// different one: tasteful and dull, and a picker nobody wants to touch has
-// failed at the only job a picker has. They are colour charts now.
+// Pictograms, engraved vignettes, plates from an image model, gradients, and
+// mosaics of eighteen blocks. The first three lost the same argument -- at a
+// hundred and fifty pixels wide a picture of a marimba is a smudge. The
+// gradient lost a different one: tasteful and dull. The mosaic lost a third:
+// twenty-two charts side by side are a quilt, and no card stands out.
 //
-// Three properties, and none of them is "it drew something": every colour has
-// to come from the palette, the arrangement has to be the kit's own and never
-// move, and no two kits may look the same.
-const charts = await page.evaluate(async () => {
-  const { drawKitArt, PALETTES, KITS } = await import('../src/index.js');
-  const names = Object.keys(KITS);
-
-  const render = (kit, pal) => {
-    const cv = document.createElement('canvas');
-    cv.width = 296;
-    cv.height = 168;
-    const ctx = cv.getContext('2d');
-    const drew = drawKitArt(ctx, kit, { w: 296, h: 168, palette: PALETTES[pal].colors });
-    const d = ctx.getImageData(0, 0, 296, 168).data;
-    // The centre of each of the eighteen blocks. A chart is exactly the set of
-    // its blocks, so that is what gets measured.
-    const cells = [];
-    for (let r = 0; r < 3; r++) {
-      for (let c = 0; c < 6; c++) {
-        const x = Math.round((c + 0.5) * (296 / 6));
-        const y = Math.round((r + 0.5) * (168 / 3));
-        const i = (y * 296 + x) * 4;
-        cells.push([d[i], d[i + 1], d[i + 2]]);
-      }
-    }
-    const distinct = new Set(cells.map((c) => c.join(','))).size;
-    const mean = cells.flat().reduce((a, c) => a + c, 0) / (cells.length * 3);
-    return { drew, distinct, mean, print: cells.map((c) => c.map((v) => v >> 3).join('.')).join('|') };
-  };
-
-  // Marine against Papyrus, not against another near-black: two dark
-  // palettes differ by a few units of mean brightness and the check passed or
-  // failed on noise. A dark ground against a paper one is the real question.
-  const marine = {};
-  const papyrus = {};
-  for (const n of names) {
-    marine[n] = render(n, 'marine');
-    papyrus[n] = render(n, 'papyrus');
-  }
-  const twice = render('gongs', 'marine').print === render('gongs', 'marine').print;
-  return { names, marine, papyrus, twice };
-});
-
-const failedDraw = charts.names.filter((n) => !charts.marine[n].drew);
-ok('every kit card is drawn', failedDraw.length === 0,
-   failedDraw.join(', ') || charts.names.length + ' kits');
-
-// A chart of one colour is a rectangle. Several palettes have categories that
-// sit close to their own ground, and a block at the ground's lightness is not
-// a block, it is a hole -- which is why the pool pushes each one clear.
-const dullCards = charts.names.filter((n) => charts.marine[n].distinct < 5);
-ok('every card carries several distinct colours', dullCards.length === 0,
-   dullCards.map((n) => n + '(' + charts.marine[n].distinct + ')').join(' ') ||
-   'fewest ' + Math.min(...charts.names.map((n) => charts.marine[n].distinct)) + ' of 18 blocks');
-
-// The whole reason not to store pictures: the grid must follow a palette
-// change exactly as the canvas does.
-// Compared block by block rather than by mean brightness. A mean can happen to
-// match across two palettes -- two of the twenty-two did -- and a card whose
-// every block changed would then be reported as not following the palette.
-// What has to be true is that the blocks are different colours, which is what
-// this asks.
-const stuck = charts.names.filter((n) => charts.marine[n].print === charts.papyrus[n].print);
-ok('the cards are drawn in the palette, not in fixed colours', stuck.length === 0,
-   stuck.join(', ') || charts.names.length + ' change between marine and papyrus');
-
-ok('a card is the same on every visit, because a hash decides it', charts.twice);
-
-// Twenty-two cards that look alike would be twenty-two cards nobody can tell
-// apart, which is the only thing a picker card has to do.
-const chartPrints = new Set(charts.names.map((n) => charts.marine[n].print));
-ok('no two kits are given the same chart', chartPrints.size === charts.names.length,
-   chartPrints.size + ' distinct for ' + charts.names.length + ' kits');
-
-// --- the rooms have pictures too ----------------------------------------
-//
-// A reflectogram first: the room's own impulse response, plotted. Honest,
-// correct, and it read as a graph nobody asked for. Then a gradient. It is a
-// colour chart now, like the kits, keeping the one fact the picker exists to
-// give you -- how long the room rings -- as how many blocks are coloured.
-const rooms = await page.evaluate(async () => {
-  const { drawSpaceArt, spaceReachOf, PALETTES } = await import('../src/index.js');
+// One flat colour each now, walked in order out of a pool the palette
+// supplies. Three properties: every colour comes from the palette, no two
+// cards share one, and each card is a single colour rather than anything else.
+const swatches = await page.evaluate(async () => {
+  const { drawKitArt, drawSpaceArt, poolSize, PALETTES, KITS } = await import('../src/index.js');
   const { SPACES } = await import('../src/audio/space.js');
-  const COLS = 6;
-  const ROWS = 2;
-  const measure = (name, palette) => {
+  const kits = Object.keys(KITS);
+  const rooms = Object.keys(SPACES);
+
+  const read = (draw, pal) => {
     const cv = document.createElement('canvas');
-    cv.width = 252;
-    cv.height = 84;
+    cv.width = 140;
+    cv.height = 60;
     const ctx = cv.getContext('2d');
-    const drew = drawSpaceArt(ctx, SPACES[name], { w: 252, h: 84, palette }) !== false;
-    const d = ctx.getImageData(0, 0, 252, 84).data;
-    const g = palette.background.replace('#', '');
-    const bg = [parseInt(g.slice(0, 2), 16), parseInt(g.slice(2, 4), 16), parseInt(g.slice(4, 6), 16)];
-    let coloured = 0;
-    const seen = new Set();
-    for (let r = 0; r < ROWS; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const x = Math.round((c + 0.5) * (252 / COLS));
-        const y = Math.round((r + 0.5) * (84 / ROWS));
-        const i = (y * 252 + x) * 4;
-        const px = [d[i], d[i + 1], d[i + 2]];
-        if (Math.abs(px[0] - bg[0]) + Math.abs(px[1] - bg[1]) + Math.abs(px[2] - bg[2]) > 24) {
-          coloured++;
-          seen.add(px.join(','));
-        }
-      }
-    }
-    return { drew, coloured, distinct: seen.size, reach: spaceReachOf(SPACES[name]) };
+    const drew = draw(ctx, PALETTES[pal].colors);
+    const d = ctx.getImageData(0, 0, 140, 60).data;
+    const at = (x, y) => {
+      const i = (y * 140 + x) * 4;
+      return d[i] + ',' + d[i + 1] + ',' + d[i + 2];
+    };
+    // Five points. One flat colour means all five agree; anything else --
+    // a gradient, a mosaic, a drawing -- does not.
+    const pts = [at(3, 3), at(136, 3), at(3, 56), at(136, 56), at(70, 30)];
+    return { drew, flat: new Set(pts).size === 1, colour: pts[0] };
   };
-  const marine = {};
-  for (const n of Object.keys(SPACES)) marine[n] = measure(n, PALETTES.marine.colors);
-  return { names: Object.keys(SPACES), marine };
+
+  const kitMarine = kits.map((n, i) =>
+    read((ctx, palette) => drawKitArt(ctx, n, { w: 140, h: 60, palette, index: i }), 'marine'));
+  const kitPapyrus = kits.map((n, i) =>
+    read((ctx, palette) => drawKitArt(ctx, n, { w: 140, h: 60, palette, index: i }), 'papyrus'));
+  const roomMarine = rooms.map((n, i) =>
+    read((ctx, palette) => drawSpaceArt(ctx, SPACES[n], { w: 140, h: 60, palette, index: i }), 'marine'));
+
+  return {
+    kits, rooms, kitMarine, kitPapyrus, roomMarine,
+    pool: poolSize(PALETTES.marine.colors),
+  };
 });
 
-const failedRooms = rooms.names.filter((n) => !rooms.marine[n].drew);
-ok('every room card is drawn', failedRooms.length === 0,
-   failedRooms.join(', ') || rooms.names.length + ' rooms');
+ok('every kit card is drawn', swatches.kitMarine.every((c) => c.drew),
+   swatches.kits.length + ' kits');
+ok('every room card is drawn', swatches.roomMarine.every((c) => c.drew),
+   swatches.rooms.length + ' rooms');
 
-// The one thing the picker exists to tell you, and now it is countable.
-ok('a longer room colours more of its card',
-   rooms.marine.none.coloured < rooms.marine.room.coloured &&
-   rooms.marine.room.coloured < rooms.marine.hall.coloured &&
-   rooms.marine.hall.coloured < rooms.marine.cathedral.coloured,
-   'dry ' + rooms.marine.none.coloured + ' < room ' + rooms.marine.room.coloured +
-   ' < hall ' + rooms.marine.hall.coloured + ' < cathedral ' + rooms.marine.cathedral.coloured + ' of 12');
+// One colour, not a gradient and not a chart.
+const notFlat = swatches.kits.filter((n, i) => !swatches.kitMarine[i].flat)
+  .concat(swatches.rooms.filter((n, i) => !swatches.roomMarine[i].flat));
+ok('each card is one flat colour', notFlat.length === 0, notFlat.join(', ') || 'all flat');
 
-// Dry is a choice, not an absence, so it gets one block rather than none.
-ok('the dry setting still shows one block', rooms.marine.none.coloured === 1,
-   rooms.marine.none.coloured + ' block(s)');
+// The pool has to be at least as large as the longest grid, or two kits share
+// a colour and the picker stops distinguishing them.
+ok('the palette offers more colours than there are kits',
+   swatches.pool >= swatches.kits.length,
+   swatches.pool + ' colours for ' + swatches.kits.length + ' kits');
 
-// The longest room fills its card, or the scale is telling a lie at the top.
-ok('the longest room fills its card', rooms.marine.cathedral.coloured === 12,
-   rooms.marine.cathedral.coloured + ' of 12');
+const kitColours = new Set(swatches.kitMarine.map((c) => c.colour));
+ok('no two kits are given the same colour', kitColours.size === swatches.kits.length,
+   kitColours.size + ' distinct for ' + swatches.kits.length + ' kits');
 
-ok('the room cards use several colours, like the kit cards',
-   rooms.marine.cathedral.distinct >= 4, rooms.marine.cathedral.distinct + ' distinct');
+const roomColours = new Set(swatches.roomMarine.map((c) => c.colour));
+ok('no two rooms are given the same colour', roomColours.size === swatches.rooms.length,
+   roomColours.size + ' distinct for ' + swatches.rooms.length + ' rooms');
+
+// The whole reason not to store pictures: the grids follow a palette change
+// exactly as the canvas does.
+const stuck = swatches.kits.filter((n, i) => swatches.kitMarine[i].colour === swatches.kitPapyrus[i].colour);
+ok('the cards are drawn in the palette, not in fixed colours', stuck.length === 0,
+   stuck.join(', ') || swatches.kits.length + ' change between marine and papyrus');
+
+// --- the output cannot be driven past the speakers -----------------------
+//
+// Reported as "a sort of overdose of sound, saturation all at once, and then
+// the sound gives up". Measured through the real engine at the rate Bluesky
+// actually produces -- thirty events a second, sixteen voices, a cathedral --
+// the output peaked at 25.1 with 8.6% of samples hard-clipped, and 14.3% on
+// Gongs. There was no limiter of any kind between the sum and the speakers.
+const ceiling = await page.evaluate(async () => {
+  const { Sonifier } = await import('../src/index.js');
+  const run = async (kit, space, perSec) => {
+    const seconds = 6;
+    const ctx = new OfflineAudioContext(2, 44100 * seconds, 44100);
+    const son = new Sonifier({ kit: 'synth', voices: { maxVoices: 16 }, volume: 0.7 });
+    // The engine builds its own chain; this only hands it a context it can
+    // render offline, so the limiter under test is the shipped one.
+    son.engine._ctx = ctx;
+    Object.defineProperty(son.engine, 'ctx', { get() { return ctx; } });
+    son.engine._master = ctx.createGain();
+    son.engine._master.gain.value = 0.7;
+    son.engine._limiter = ctx.createDynamicsCompressor();
+    son.engine._limiter.threshold.value = -6;
+    son.engine._limiter.knee.value = 0;
+    son.engine._limiter.ratio.value = 20;
+    son.engine._limiter.attack.value = 0.002;
+    son.engine._limiter.release.value = 0.25;
+    son.engine._ceiling = ctx.createWaveShaper();
+    const N = 8192;
+    const k = 2.2;
+    const curve = new Float32Array(N);
+    for (let i = 0; i < N; i++) {
+      const x = (i / (N - 1)) * 2 - 1;
+      curve[i] = Math.tanh(k * x) / Math.tanh(k);
+    }
+    son.engine._ceiling.curve = curve;
+    son.engine._ceiling.oversample = '2x';
+    son.engine._master.connect(son.engine._limiter);
+    son.engine._limiter.connect(son.engine._ceiling);
+    son.engine._ceiling.connect(ctx.destination);
+    son.engine._buildBus();
+    son.space = space;
+    await son.setKit(kit);
+    let seed = 12345;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; };
+    for (let i = 0; i < perSec * seconds; i++) {
+      son.emit({ magnitude: Math.round(Math.exp(rnd() * 9)) + 1, id: 'e' + i });
+    }
+    const buf = await ctx.startRendering();
+    let peak = 0;
+    let clipped = 0;
+    let total = 0;
+    for (let ch = 0; ch < buf.numberOfChannels; ch++) {
+      const d = buf.getChannelData(ch);
+      for (let i = 0; i < d.length; i++) {
+        const v = Math.abs(d[i]);
+        if (v > peak) peak = v;
+        if (v >= 0.999) clipped++;
+        total++;
+      }
+    }
+    return { peak, clip: (100 * clipped) / total };
+  };
+  return {
+    busy: await run('synth', 'cathedral', 30),
+    gongs: await run('gongs', 'cathedral', 30),
+    quiet: await run('synth', 'none', 2),
+  };
+});
+
+ok('a busy feed cannot drive the output past the speakers',
+   ceiling.busy.peak <= 1.02 && ceiling.gongs.peak <= 1.02,
+   'peak ' + ceiling.busy.peak.toFixed(3) + ' synth, ' + ceiling.gongs.peak.toFixed(3) + ' gongs, was 25.1');
+ok('and almost nothing is hard-clipped',
+   ceiling.busy.clip < 0.5 && ceiling.gongs.clip < 0.5,
+   ceiling.busy.clip.toFixed(3) + '% synth, ' + ceiling.gongs.clip.toFixed(3) + '% gongs, was 8.6% and 14.3%');
+// The limiter must be a safety net, not a permanent state: quiet material has
+// to arrive at the speakers unchanged.
+ok('a quiet feed is left alone', ceiling.quiet.peak > 0.2 && ceiling.quiet.clip === 0,
+   'peak ' + ceiling.quiet.peak.toFixed(3) + ', ' + ceiling.quiet.clip.toFixed(3) + '% clipped');
+
+// The other half of "the sound gives up": a context can stop while the tab is
+// in front, and nothing tells the page when it does.
+const recovered = await page.evaluate(async () => {
+  const son = window.son;
+  await son.unlock();
+  const before = son.engine.ctx.state;
+  await son.engine.ctx.suspend();
+  const stopped = son.engine.ctx.state;
+  await new Promise((r) => setTimeout(r, 3500));
+  return { before, stopped, after: son.engine.ctx.state, recoveries: son.engine.recoveries };
+});
+ok('a context that stops on its own is brought back',
+   recovered.stopped === 'suspended' && recovered.after === 'running' && recovered.recoveries >= 1,
+   recovered.before + ' -> ' + recovered.stopped + ' -> ' + recovered.after +
+   ', ' + recovered.recoveries + ' recovery');
 
 ok('every kit that declares recordings actually carries them',
    field.sampledKits.length >= 3 && field.sampledKits.every((k) => k.banks > 0),
@@ -1693,15 +1703,14 @@ const notDropped = await page.evaluate(async () => {
   return [...document.querySelectorAll('#kits .card')]
     .filter((b) => {
       const cv = b.querySelector('canvas');
-      if (!cv || !cv.width) return true;
+      if (!cv) return true;
       const r = b.getBoundingClientRect();
       if (r.top > innerHeight || r.bottom < 0) return false; // off screen, fairly
-      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
-      const bg = [d[0], d[1], d[2]];
-      for (let i = 0; i < d.length; i += 4 * 29) {
-        if (Math.abs(d[i] - bg[0]) + Math.abs(d[i + 1] - bg[1]) + Math.abs(d[i + 2] - bg[2]) > 20) return false;
-      }
-      return true;
+      // Never painted means the canvas is still at the HTML default of
+      // 300x150, which is the only honest test now that a card is one flat
+      // colour: looking for pixels that differ from the corner calls every
+      // card blank, because on a flat card none of them do.
+      return cv.width === 300 && cv.height === 150;
     })
     .map((b) => b.dataset.kit);
 });

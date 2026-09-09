@@ -353,6 +353,43 @@ correct: it is what a peaky kit is.
 The measured spread went from fourteen to one down to about three to one, with
 nothing clipping. A kit added later starts at 1 and is measured with the rest.
 
+### Nothing reaches the speakers past full scale
+
+Everything sums into a master gain, and for a long time that gain went straight
+to the speakers with nothing in between. Reported from use as *"a sort of
+overdose of sound, saturation all at once, and then the sound gives up"*, and
+the measurement is unambiguous. Through the real engine at the rate Bluesky
+actually produces — thirty events a second, sixteen voices, a cathedral:
+
+| | Before | After |
+|---|---|---|
+| Peak, synth | 25.1 | 1.00 |
+| Hard-clipped samples, synth | 8.6% | 0.014% |
+| Hard-clipped samples, gongs | 14.3% | 0.018% |
+
+Two stages, because one is not enough. A **limiter** first: no knee, a ratio of
+twenty, a two-millisecond attack, so it does nothing at all until the sum
+exceeds the threshold. That alone still measured peaks of 3.5 — a two
+millisecond attack lets the front of a transient through and a ratio of twenty
+is not infinity. So a **soft clip** after it, a tanh curve sampled into a
+`WaveShaper`, which cannot return a value outside full scale whatever it is
+handed. Below about a third of full scale that curve is a straight wire, so
+quiet material passes untouched: a sparse feed still measures a peak of 0.97
+and nothing clipped.
+
+The recorder taps the chain **after** both, or a recording would keep every
+peak the limiter had just held back and clip where the speakers did not.
+
+### The context is watched, because it can stop on its own
+
+The other half of that report is the sound not coming back. A context can be
+suspended while the tab is in front — an audio thread that misses its deadlines
+often enough, a device taken away, an old machine simply giving up — and
+nothing tells the page when it happens. Every two seconds the engine checks,
+and resumes a context it finds stopped. `engine.recoveries` counts how often it
+had to, and is exposed rather than hidden: a page that keeps recovering has a
+real problem that a silent retry would bury.
+
 ### The room
 
 Everything plays into a bus that goes two ways: straight through, and through a
@@ -374,10 +411,9 @@ room around it, and that is the commonest way to make one sound bad.
 son.space = 'cathedral';
 ```
 
-Each room card is a colour chart, like the kit cards, and **how many blocks are
-coloured is how long the room rings**: Dry gets one, Room four, Cathedral all
-twelve. The seven can be ranked by eye without reading a word. See
-[the card grids](#the-kit-cards-and-the-room-cards) for the rest.
+Each room card is one flat colour, like the kit cards. How long a room rings
+is on the card in seconds, which says it better than any picture of it did:
+see [the card grids](#the-kit-cards-and-the-room-cards).
 
 The impulse responses are **built, not recorded**
 ([`src/audio/space.js`](../src/audio/space.js)), which for this purpose is not
@@ -918,55 +954,39 @@ for them rather than sitting on defaults.
 
 ### The kit cards and the room cards
 
-Both are colour charts: flat blocks, thin gutters, nothing shaded and nothing
-lit ([`src/visual/mosaic.js`](../src/visual/mosaic.js)). Kits get eighteen
-blocks, rooms get twelve.
+One flat colour each, out of a pool the palette supplies
+([`src/visual/mosaic.js`](../src/visual/mosaic.js)).
 
-It took four tries to arrive somewhere this plain. Pictograms first — an arc
-for a bell, a sine for a synth — accurate and flat, and eighteen of them side
-by side looked like a stationery catalogue. Then engraved vignettes, cut by a
-burin engine. Then plates from an image model, stored as alpha masks. All three
-lost the same argument: **at a hundred and fifty pixels wide a picture of a
-marimba is a smudge**. Then gradients, which lost a different one — tasteful,
-and dull, and a picker nobody wants to touch has failed at the only job a
-picker has.
+It took five tries to arrive somewhere this plain, and each one lost a
+different argument.
 
-A colour chart is the oldest way of showing that a thing is one of a set and
-that the set is worth going through. It is why paint charts are pleasant to
-look at and ramps are not.
+| | Why it went |
+|---|---|
+| **Pictograms** | Accurate and flat. Eighteen side by side looked like a stationery catalogue. |
+| **Engraved vignettes** | At a hundred and fifty pixels wide, a picture of a marimba is a smudge. |
+| **Plates from an image model** | The same smudge, at the cost of an API key and a third party's terms. |
+| **Gradients** | Tasteful, and dull. A picker nobody wants to touch has failed at the only job a picker has. |
+| **Mosaics of eighteen blocks** | Twenty-two charts side by side are a quilt: no single card stands out. |
 
-**Every colour comes from the palette.** Nothing in that file names a colour:
-the pool is the palette's own four category colours at three values each, so
-the grids follow a palette change exactly as the canvas does. `default` is
-deliberately left out — on every light palette it is the ink, a near-black, and
-a chart with a black square in it stops looking like a chart.
+The pool is the palette's own four category colours at six values each, which
+is twenty-four — more than the twenty-two kits, which matters. **The grid walks
+it in order rather than picking by a hash of the name**: a hash into
+twenty-four collides long before the twenty-second card is placed, and two kits
+sharing a colour is the one thing this grid must not do. Walking in order is
+also what makes the picker read as a colour chart rather than as twenty-two
+unrelated squares. The rooms start further along the pool and take every third
+colour, so the two panels are not the same sequence one above the other.
 
-**Each block stands clear of the ground.** A palette's `bot` on Marine sits at
-0.19 lightness against a ground of 0.18: a block at the ground's own lightness
-is not a block, it is a hole.
-
-**The arrangement is the card's own and never moves.** Which colour lands in
-which cell comes from an FNV-1a hash of the name, so Gongs is the same chart on
-every visit and on every machine, and a kit added tomorrow gets its own without
-anybody choosing one.
-
-**A room's card says how long it rings.** The number of coloured blocks is the
-room's tail on a square-root scale: Dry gets one, Room four, Cathedral all
-twelve. The seven can be ranked by eye without reading a word, which is what
-the reflectogram that came before was for and never achieved. The square root
-survived three rewrites because the reason for it did: everything separating
-one room from another is in the first second, and on a linear five-second scale
-four of the seven crowd the far end.
+`default` is left out of the pool on purpose: on every light palette it is the
+ink, a near-black, and a chart with a black square in it stops looking like a
+chart. Each colour is pushed clear of the ground, because a card at the
+ground's own lightness is not a card, it is a hole.
 
 ```js
-drawKitArt(ctx, 'gongs', { w, h, palette });
-drawSpaceArt(ctx, SPACES.cathedral, { w, h, palette });
-spaceReachOf(SPACES.hall);   // how much of the card it colours
+drawKitArt(ctx, 'gongs', { w, h, palette, index });
+drawSpaceArt(ctx, SPACES.cathedral, { w, h, palette, index });
+poolSize(palette);   // must be at least as large as the longest grid
 ```
-
-The suite asserts the properties rather than the pixels: that no two kits share
-a chart, that none is a single colour, that a longer room colours more of its
-card, and that the whole grid shifts when the palette does.
 
 ### Shapes
 
@@ -1041,9 +1061,9 @@ src/audio/
 src/visual/
   canvas-sink.js        the canvas loop
   engrave.js            the burin: hatching, contour, stipple, white line
-  mosaic.js             flat colour in blocks, for the kit and room cards
-  kit-art.js            the colour chart on each kit card
-  space-art.js          the colour chart on each room card
+  mosaic.js             the colour pool the kit and room cards take from
+  kit-art.js            the colour on each kit card
+  space-art.js          the colour on each room card
   scenes/               marks, fields, structures, physical, generative,
                         geometry, recursive, systems, budget, paint
   palettes.js           colour schemes

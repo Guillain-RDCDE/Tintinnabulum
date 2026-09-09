@@ -266,9 +266,17 @@ async function selectKit(name, { persist = true, audition = true } = {}) {
 // accurate and unreadable: twelve of them side by side look like twelve of the
 // same thing, and the point of a picker is that you recognise the water and
 // the night without reading the labels.
+// The card's colour comes from its position in the grid, not from its name:
+// see kit-art.js for why a hash is the wrong choice here.
+const KIT_ORDER = Object.keys(KITS);
+
 function paintKitArt(cv, name) {
   const { ctx, w, h } = fitCanvas(cv, { height: 64 });
-  drawKitArt(ctx, name, { w, h, palette: PALETTES[canvas.paletteName].colors });
+  drawKitArt(ctx, name, {
+    w, h,
+    palette: PALETTES[canvas.paletteName].colors,
+    index: KIT_ORDER.indexOf(name),
+  });
 }
 
 const kitPicker = createPicker($('#kits'), Object.entries(KITS), {
@@ -465,9 +473,15 @@ function selectSpace(name, persist = true) {
 // to look at. Each now carries its own impulse response, plotted: see
 // src/visual/space-art.js for why that is the honest picture rather than a
 // drawing of an arch.
+const SPACE_ORDER = Object.keys(SPACES);
+
 function paintSpaceArt(cv, name) {
   const { ctx, w, h } = fitCanvas(cv, { height: 58 });
-  drawSpaceArt(ctx, SPACES[name], { w, h, palette: PALETTES[canvas.paletteName].colors });
+  drawSpaceArt(ctx, SPACES[name], {
+    w, h,
+    palette: PALETTES[canvas.paletteName].colors,
+    index: SPACE_ORDER.indexOf(name),
+  });
 }
 
 const spacePicker = createPicker($('#spaces'), Object.entries(SPACES), {

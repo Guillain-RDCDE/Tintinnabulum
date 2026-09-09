@@ -1,60 +1,38 @@
-// The picture on each room card: flat colour, in blocks, and how many blocks
-// are coloured is how long the room rings.
+// The colour on each room card.
 //
-// This was a reflectogram first -- the room's own impulse response, plotted,
-// with the early reflections at the same golden-ratio spacing the audio uses
-// and the tail on a 60 dB scale. Honest, correct, and it read as a graph
-// nobody asked for. Then a gradient, which was tasteful and dull.
+// One flat colour, from the same pool as the kit cards. See mosaic.js.
 //
-// It is a colour chart now, like the kits, and it keeps the one fact the
-// picker exists to give you: Dry colours a single block, Room a third of the
-// row, Cathedral the lot. The seven can be ranked by eye without reading a
-// word, which is what the graph was for and never achieved.
+// This was a reflectogram once -- the room's own impulse response, plotted,
+// with the early reflections at the same golden-ratio spacing the audio uses.
+// Honest, correct, and it read as a graph nobody asked for. The caption
+// already says how long each room rings, in seconds, which is the fact the
+// chart was there to give and says it better.
 
-import { drawMosaic, hashOf } from './mosaic.js';
+import { drawSwatch, swatchColour } from './mosaic.js';
 
-/** The longest room in the set. Everything is counted against this. */
-const AXIS_SECONDS = 5.2;
-
-const COLS = 6;
-const ROWS = 2;
-
-/**
- * How much of a room's card is coloured, 0 to 1.
- *
- * The square root, not the raw ratio: everything that separates one room from
- * another is in the first second, and on a linear five-second scale a room of
- * half a second gets a tenth of the card while four of the seven crowd the far
- * end. A floor of one block, because Dry is a choice rather than an absence.
- */
-export function spaceReachOf(spec) {
-  const seconds = (spec && spec.seconds) || 0;
-  const reach = Math.sqrt(Math.min(1, Math.max(0, seconds) / AXIS_SECONDS));
-  return Math.max(1 / (COLS * ROWS), reach);
-}
+// The rooms start further along the pool than the kits do, so the two panels
+// are not the same seven colours in the same order one above the other.
+const OFFSET = 7;
 
 /**
  * Draw one room's card.
  *
  * @param {CanvasRenderingContext2D} ctx
- * @param {object} spec  a SPACES entry: label, seconds
+ * @param {object} spec  a SPACES entry
  * @param {object} o
  * @param {number} o.w
  * @param {number} o.h
  * @param {object} o.palette  a palette's `colors`
+ * @param {number} [o.index]  position in the grid; decides which colour
  * @returns {boolean} false if it could not be drawn at all
  */
-export function drawSpaceArt(ctx, spec, { w, h, palette } = {}) {
+export function drawSpaceArt(ctx, spec, { w, h, palette, index = 0 } = {}) {
   if (!ctx || !palette || !spec || !(w > 0) || !(h > 0)) return false;
   ctx.save();
   try {
-    drawMosaic(ctx, {
-      w, h, palette,
-      seed: hashOf(spec.label || String(spec.seconds)),
-      cols: COLS,
-      rows: ROWS,
-      filled: spaceReachOf(spec),
-    });
+    // Strided, so seven rooms taken from a pool of twenty-four are spread
+    // across it rather than being seven neighbours.
+    drawSwatch(ctx, { w, h, palette, index: OFFSET + index * 3 });
   } catch (e) {
     ctx.restore();
     ctx.globalAlpha = 1;
@@ -63,4 +41,9 @@ export function drawSpaceArt(ctx, spec, { w, h, palette } = {}) {
   ctx.restore();
   ctx.globalAlpha = 1;
   return true;
+}
+
+/** The colour a room card takes at a given position, for checking. */
+export function spaceArtOf(palette, index) {
+  return swatchColour(palette, OFFSET + index * 3);
 }

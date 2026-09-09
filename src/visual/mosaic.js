@@ -1,28 +1,29 @@
-// Flat colour, in blocks, with the ground showing between them.
+// One flat colour per card, taken from the palette.
 //
 // The card grids have now been pictograms, engraved vignettes, plates from an
-// image model, and gradients. The first three lost the same argument -- at a
-// hundred and fifty pixels wide a picture of a marimba is a smudge -- and the
-// gradient lost a different one: it was tasteful and it was dull, and a picker
-// nobody wants to touch has failed at the only job a picker has.
+// image model, gradients, and mosaics of eighteen blocks. The first three lost
+// the same argument -- at a hundred and fifty pixels wide a picture of a
+// marimba is a smudge. The gradient lost a different one: tasteful and dull.
+// The mosaic lost a third: twenty-two charts side by side are a quilt, busy
+// enough that no single card stands out, which is the opposite of what a
+// picker is for.
 //
-// So: a colour chart. Flat squares, thin gutters, nothing shaded, nothing lit.
-// It is the oldest way of showing that a thing is one of a set and that the
-// set is worth going through, and it is why paint charts are pleasant to look
-// at and gradient ramps are not.
+// So: one colour. The pool is the palette's own four category colours at six
+// values each, and the grid walks it in order, which is what makes the picker
+// read as a colour chart rather than as twenty-two unrelated squares.
 //
-// Everything still comes out of the palette. The blocks are the palette's own
-// four category colours at three values each, so a grid of them follows a
-// palette change exactly as the canvas does, and no colour is ever named here.
+// Nothing here names a colour. The pool is derived from the palette, so both
+// grids follow a palette change exactly as the canvas does.
 
 import { lighten, lightnessOf, mixColors } from './color.js';
 
 /**
  * A small stable hash of a name.
  *
- * FNV-1a. It has to give the same number in every browser and on every visit:
- * a card that changed between sessions would stop being recognisable, and
- * being recognisable is the whole job.
+ * FNV-1a. Kept for anything that needs a per-name number; the colour itself is
+ * chosen by position rather than by hash, because a hash into a pool of
+ * twenty-four collides long before twenty-two cards are placed and two kits
+ * sharing a colour is the one thing this grid must not do.
  */
 export function hashOf(name) {
   let h = 0x811c9dc5;
@@ -34,26 +35,24 @@ export function hashOf(name) {
   return h >>> 0;
 }
 
-/** A tiny deterministic generator, so a card is drawn the same way every time. */
-function rngFrom(seed) {
-  let s = (seed || 1) >>> 0;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
+// Six values per hue. Fewer and twenty-two cards run out of colours; more and
+// neighbouring steps stop being tellable apart at this size.
+const STEPS = [0.2, 0.12, 0.04, -0.04, -0.13, -0.22];
+const ROLES = ['user', 'anon', 'bot', 'alert'];
 
 /**
- * The colours a mosaic may use, drawn from a palette.
+ * The colours a card may take, drawn from a palette.
  *
- * The four category colours, each at three values. `default` is left out on
- * purpose: on every light palette it is the ink, a near-black, and a chart
- * with a black square in it stops looking like a chart.
+ * `default` is left out on purpose: on every light palette it is the ink, a
+ * near-black, and a chart with a black square in it stops looking like a
+ * chart.
  *
- * Each is pushed clear of the ground, because a block at the ground's own
- * lightness is not a block, it is a hole.
+ * Each is pushed clear of the ground, because a card at the ground's own
+ * lightness is not a card, it is a hole.
+ *
+ * Interleaved by value rather than grouped by hue, so a grid walking the pool
+ * in order alternates colours instead of running four blues and then four
+ * greens.
  */
 export function mosaicPool(palette) {
   const ground = palette.background;
@@ -65,67 +64,40 @@ export function mosaicPool(palette) {
     return short > 0 ? lighten(colour, dir * short) : colour;
   };
   const out = [];
-  for (const role of ['user', 'anon', 'bot', 'alert']) {
-    const base = palette[role] || palette.default;
-    // Light, as it is, and deep. Three values of four hues is twelve, which is
-    // enough that a card of eighteen blocks never looks like a repeat.
-    for (const step of [0.13, 0, -0.15]) {
-      out.push(clear(step ? lighten(mixColors(base, ground, 0.06), step) : base));
+  for (const step of STEPS) {
+    for (const role of ROLES) {
+      const base = palette[role] || palette.default;
+      out.push(clear(lighten(mixColors(base, ground, 0.06), step)));
     }
   }
   return out;
 }
 
+/** How many colours a palette offers the cards. */
+export function poolSize(palette) {
+  return mosaicPool(palette).length;
+}
+
+/** Which colour a position lands on, without drawing anything. */
+export function swatchColour(palette, index) {
+  const pool = mosaicPool(palette);
+  return pool[((index % pool.length) + pool.length) % pool.length];
+}
+
 /**
- * Draw a chart of flat colour blocks.
+ * Fill a card with one colour.
  *
  * @param {CanvasRenderingContext2D} ctx
  * @param {object} o
  * @param {number} o.w
  * @param {number} o.h
- * @param {object} o.palette   a palette's `colors`
- * @param {number} o.seed      decides which colour goes where
- * @param {number} [o.cols]
- * @param {number} [o.rows]
- * @param {number} [o.filled]  0..1, how many blocks get a colour at all
- * @returns {number} how many blocks were given a colour
+ * @param {object} o.palette  a palette's `colors`
+ * @param {number} o.index    position in the grid; decides which colour
+ * @returns {string} the colour used
  */
-export function drawMosaic(ctx, { w, h, palette, seed, cols = 6, rows = 3, filled = 1 }) {
-  const ground = palette.background;
-  ctx.fillStyle = ground;
+export function drawSwatch(ctx, { w, h, palette, index = 0 }) {
+  const colour = swatchColour(palette, index);
+  ctx.fillStyle = colour;
   ctx.fillRect(0, 0, w, h);
-
-  const pool = mosaicPool(palette);
-  const rnd = rngFrom(seed);
-  // The gutter is the ground showing through, not a drawn line: one fill and
-  // then the blocks inset into their cells. A stroked grid at this size turns
-  // into a smear the moment the device ratio is not a whole number.
-  const gap = Math.max(1.5, Math.min(w, h) * 0.035);
-  const cw = (w - gap) / cols;
-  const ch = (h - gap) / rows;
-
-  // Which cells get a colour. Filled from the left, so a card that is only
-  // part filled reads as a bar rather than as a scatter of holes.
-  const total = cols * rows;
-  const want = Math.max(1, Math.round(total * Math.min(1, Math.max(0, filled))));
-
-  let painted = 0;
-  let previous = -1;
-  for (let i = 0; i < total; i++) {
-    const col = i % cols;
-    const row = (i / cols) | 0;
-    // Column-major order for the fill, so "how far it reaches" means how far
-    // across rather than how far down.
-    const rank = col * rows + row;
-    if (rank >= want) continue;
-    // Never the same colour twice running: two identical neighbours read as
-    // one wide block and the chart loses its count.
-    let pick = (rnd() * pool.length) | 0;
-    if (pick === previous) pick = (pick + 1 + ((rnd() * (pool.length - 1)) | 0)) % pool.length;
-    previous = pick;
-    ctx.fillStyle = pool[pick];
-    ctx.fillRect(gap + col * cw, gap + row * ch, cw - gap, ch - gap);
-    painted++;
-  }
-  return painted;
+  return colour;
 }

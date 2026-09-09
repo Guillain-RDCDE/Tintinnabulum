@@ -6,6 +6,22 @@ import { SPACES, DEFAULT_SPACE, impulse } from './space.js';
 // resumes the context. The original hid this behind a Chrome version sniff.
 // Here it is part of the public API — call unlock() from a click handler.
 
+/**
+ * A tanh transfer curve, sampled for a WaveShaper.
+ *
+ * `k` sets how hard the bend is. At 2.2 the curve is within a percent of the
+ * identity below 0.35, which is where nearly every sample sits, so quiet
+ * material passes through untouched and only the peaks are shaped.
+ */
+function softClipCurve(points = 8192, k = 2.2) {
+  const curve = new Float32Array(points);
+  for (let i = 0; i < points; i++) {
+    const x = (i / (points - 1)) * 2 - 1;
+    curve[i] = Math.tanh(k * x) / Math.tanh(k);
+  }
+  return curve;
+}
+
 export class AudioEngine {
   constructor({ volume = 0.7, latencyHint = 'interactive', space = DEFAULT_SPACE } = {}) {
     this._volume = volume;
@@ -13,6 +29,12 @@ export class AudioEngine {
     this._latencyHint = latencyHint;
     this._ctx = null;
     this._master = null;
+    this._limiter = null;
+    this._ceiling = null;
+    this._watchdog = 0;
+    // How many times the context had to be brought back. Exposed rather than
+    // hidden: a page that keeps recovering is a page with a real problem.
+    this.recoveries = 0;
     this._capture = null;
     // The room. Instruments connect to a bus, the bus goes two ways --
     // straight through, and through a convolver -- and both arrive at the
@@ -32,7 +54,42 @@ export class AudioEngine {
       this._ctx = new AC({ latencyHint: this._latencyHint });
       this._master = this._ctx.createGain();
       this._master.gain.value = this._muted ? 0 : this._volume;
-      this._master.connect(this._ctx.destination);
+      // A limiter between the master and the speakers, and it is not a polish
+      // item. Measured through the real engine at the rate Bluesky actually
+      // produces -- thirty events a second, sixteen voices, a cathedral --
+      // the output peaked at 25.1 with 8.6% of samples hard-clipped, and on
+      // Gongs 14.3%. That is the "saturation, and then the sound gives up"
+      // this was reported as: the destination clips everything past 1.0, and
+      // an audio thread asked to render that on an old machine falls behind
+      // and stops.
+      //
+      // Settings are a limiter's rather than a compressor's: no knee, a high
+      // ratio, and a fast attack, so it does nothing at all until the sum
+      // actually exceeds the threshold. Below that it is a wire.
+      this._limiter = this._ctx.createDynamicsCompressor();
+      this._limiter.threshold.value = -6;
+      this._limiter.knee.value = 0;
+      this._limiter.ratio.value = 20;
+      this._limiter.attack.value = 0.002;
+      // Long enough not to pump on a bell's decay, short enough to recover
+      // between bursts.
+      this._limiter.release.value = 0.25;
+
+      // And a soft clip after it, because a compressor is not a guarantee.
+      // With the limiter alone the same measurement still peaked at 3.5 --
+      // a two-millisecond attack lets the front of a transient through, and
+      // a ratio of twenty is not infinity. This curve is a tanh: it is a
+      // straight wire under about a third of full scale, bends above it, and
+      // cannot return a value outside [-1, 1] whatever it is handed. Hard
+      // clipping is what a speaker does with anything past 1.0 and it is the
+      // ugliest sound in digital audio; this is the same job done gently.
+      this._ceiling = this._ctx.createWaveShaper();
+      this._ceiling.curve = softClipCurve();
+      this._ceiling.oversample = '2x';
+
+      this._master.connect(this._limiter);
+      this._limiter.connect(this._ceiling);
+      this._ceiling.connect(this._ctx.destination);
       this._buildBus();
     }
     return this._ctx;
@@ -159,6 +216,25 @@ export class AudioEngine {
         }
       });
     }
+
+    // A context can also stop while the tab is in front, and nothing tells
+    // the page when it does: an audio thread that misses its deadlines often
+    // enough is suspended by the browser, the device it was playing to can be
+    // taken away, and on some machines it simply stops. All of them are felt
+    // the same way -- the sound gives up and never comes back, with nothing on
+    // screen admitting it. Two seconds is often enough to be unnoticeable and
+    // rare enough to cost nothing.
+    if (!this._watchdog) {
+      this._watchdog = setInterval(() => {
+        const c = this._ctx;
+        if (!c || this._muted) return;
+        if (typeof document !== 'undefined' && document.hidden) return;
+        if (c.state === 'suspended' || c.state === 'interrupted') {
+          this.recoveries++;
+          c.resume().catch(() => {});
+        }
+      }, 2000);
+    }
     return ctx.state === 'running';
   }
 
@@ -192,9 +268,12 @@ export class AudioEngine {
   captureStream() {
     if (!this._capture) {
       this._capture = this.ctx.createMediaStreamDestination();
-      // The master, not the bus: a recording has to carry the room, and the
-      // bus is upstream of it.
-      this._master.connect(this._capture);
+      // After the limiter, not before it. A recording has to carry the room,
+      // so it cannot be taken from the bus -- and it has to carry what you
+      // actually heard, so it cannot be taken from the master either: tapped
+      // there it would keep every peak the limiter had just held back, and a
+      // recording of a busy feed would clip where the speakers did not.
+      (this._ceiling || this._limiter || this._master).connect(this._capture);
     }
     return this._capture.stream;
   }

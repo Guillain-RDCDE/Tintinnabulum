@@ -44,7 +44,8 @@ export { strike, strikesHeldMB } from './audio/modal.js';
 export { AMBIENCES, AMBIENCE_NAMES } from './audio/ambiences.js';
 export { noiseBuffer, noiseSource } from './audio/noise.js';
 export { drawKitArt, kitArtOf } from './visual/kit-art.js';
-export { drawSpaceArt, spaceReachOf } from './visual/space-art.js';
+export { mosaicPool, swatchColour, poolSize } from './visual/mosaic.js';
+export { drawSpaceArt, spaceArtOf } from './visual/space-art.js';
 
 export { CanvasSink, DEFAULT_PALETTE } from './visual/canvas-sink.js';
 export {
