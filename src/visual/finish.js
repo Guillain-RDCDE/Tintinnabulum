@@ -661,11 +661,12 @@ function separation(pool, key, src, W, H, palette, channels, gain) {
   const og = out.getContext('2d');
   og.save();
   og.globalCompositeOperation = 'copy';
-  og.filter = 'grayscale(1)';
+  // Brought up in one filter rather than by adding the layer to itself once per
+  // doubling: drawing a canvas onto itself costs a copy each time, and three of
+  // them per plate measured over a quarter of a second on a card.
+  og.filter = `grayscale(1) brightness(${2 ** gain})`;
   og.drawImage(cv, 0, 0);
   og.filter = 'none';
-  og.globalCompositeOperation = 'lighter';
-  for (let i = 0; i < gain; i++) og.drawImage(out, 0, 0);
   og.globalCompositeOperation = 'difference';
   og.fillStyle = '#ffffff';
   og.fillRect(0, 0, w, h);

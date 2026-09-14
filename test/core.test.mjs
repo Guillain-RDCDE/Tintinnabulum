@@ -774,5 +774,31 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('no hour of the day turns a ground violet', violet.length === 0, violet.slice(0, 6).join(', ') || 'none');
 }
 
+// --- accents have a ceiling of their own -------------------------------------
+// They bypass the voice pool on purpose, and with no limit of their own a
+// flood of notable events started one ringing note each: the browser suite's
+// flood grew the audio graph until the tab crashed.
+{
+  const { AudioSink } = await import('../src/audio/audio-sink.js');
+  let accents = 0;
+  let notes = 0;
+  let clock = 1000;
+  const note = { play: () => { notes++; return { stop() {}, duration: 1 }; } };
+  const accent = { play: () => { accents++; return {}; } };
+  const sink = new AudioSink({ ctx: { currentTime: 0 }, destination: {} }, {
+    kit: { add: note, accent },
+    pool: new VoicePool({ maxVoices: 8 }),
+    now: () => clock,
+  });
+  const ev = () => ({ accent: true, polarity: 1, category: 'user', map: { salience: 0.9, semitone: 0, velocity: 0.5 } });
+  for (let i = 0; i < 2500; i++) sink.handle(ev());
+  ok('a flood of accents sounds one accent, not two and a half thousand', accents === 1,
+     `accents=${accents} held=${sink.stats.accentsHeld}`);
+  ok('the accents held back still take their turn as ordinary notes', notes > 0, `notes=${notes}`);
+  clock += 300;
+  sink.handle(ev());
+  ok('the next accent sounds once the gap has passed', accents === 2, `accents=${accents}`);
+}
+
 console.log(fails ? `\n${fails} FAILURE(S): ${failedNames.join(' | ')}` : '\nall core checks passed');
 process.exit(fails ? 1 : 0);

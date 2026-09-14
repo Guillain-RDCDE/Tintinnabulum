@@ -2063,10 +2063,15 @@ ok('the overlay goes away once sound is possible, however it was unblocked',
 // started bringing back a context that stopped on its own.
 const afterWatchdog = await page.evaluate(async () => {
   const el = document.querySelector('#unlock');
+  // Watched rather than sampled. A sample 120 ms after the suspend raced the
+  // watchdog, which can have the sound back before then, and read "never
+  // asked" when the overlay had asked and already stood down.
+  let asking = el.classList.contains('show');
+  const watch = new MutationObserver(() => { if (el.classList.contains('show')) asking = true; });
+  watch.observe(el, { attributes: true, attributeFilter: ['class'] });
   await window.son.engine.ctx.suspend();
-  await new Promise((r) => setTimeout(r, 120));
-  const asking = el.classList.contains('show');
   await new Promise((r) => setTimeout(r, 3500));
+  watch.disconnect();
   return { asking, still: el.classList.contains('show'), state: window.son.engine.ctx.state };
 });
 ok('the overlay stops asking once the engine has brought the sound back',

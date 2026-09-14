@@ -24,7 +24,17 @@ Nothing to install; it runs in a browser, and on a phone.
 <p align="center">
   <img src=".github/fireworks-across-the-bay.png" width="100%" alt="Fireworks across the bay: small bursts over a far shore, reflected in the water">
 </p>
-<p align="center"><sub><i>Fireworks across the bay</i>, one of the thirty-six works in the sandbox. Each shell is one event.</sub></p>
+<p align="center"><sub><i>Fireworks across the bay</i>, one of the works in the Gallery. Each shell is one event.</sub></p>
+
+<p align="center">
+  <img src=".github/the-lily-pond.png" width="100%" alt="The lily pond: a pond painted in broken strokes, with the sky in it and flowers opening on the water">
+</p>
+<p align="center"><sub><i>The lily pond</i>. Each flower is one event.</sub></p>
+
+<p align="center">
+  <img src=".github/lanterns-on-the-lake.png" width="100%" alt="Lanterns on the lake: paper lanterns rising from a dark shore, their light lying in the water">
+</p>
+<p align="center"><sub><i>Lanterns on the lake</i>. Each lantern is one event.</sub></p>
 
 > *tintinnabulum* — Latin, a small bell.
 
@@ -34,9 +44,8 @@ Nothing to install; it runs in a browser, and on a phone.
   the speaker, in plain language first.
 - **[The input standard](spec/README.md)** — one required field, and a mapping
   document that plugs anything else in without writing code.
-- **[Reference](docs/REFERENCE.md)** — the library API, the eight built-in
-  feeds, the twenty-two kits, the hundred and three scenes, the eighty palettes,
-  the thirteen finishes and the thirty-six works.
+- **[Reference](docs/REFERENCE.md)** — the library API, the built-in feeds,
+  the kits, the scenes, the palettes, the finishes and the works.
 
 ## Thanks
 

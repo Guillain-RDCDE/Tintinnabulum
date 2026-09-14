@@ -312,6 +312,12 @@ export const MATERIAL_SCENES = {
     event(p, api) {
       const g = bufferFor(api);
       if (!g) return;
+      // A wall takes only so many passes of the can in one frame. A flood drew
+      // every one of them, and two and a half thousand passes took eight
+      // seconds; past a handful, the rest are simply not painted.
+      const s = api.scene;
+      s.passes = (s.passes || 0) + 1;
+      if (s.passes > 8) return;
       const nozzle = Math.max(6, p.r * 0.45) * api.param('width');
       const len = 60 + Math.random() * 160;
       let a = Math.random() * TAU;
@@ -355,6 +361,7 @@ export const MATERIAL_SCENES = {
       const cv = scratch(api);
       const g = bufferFor(api);
       if (!g) return;
+      api.scene.passes = 0;
       // Walls get painted over, eventually.
       g.save();
       g.globalCompositeOperation = 'destination-out';

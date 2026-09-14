@@ -24,7 +24,17 @@ export class AudioSink {
     // most of them, so nothing here costs anything unless one is chosen.
     this.bed = null;
     this._lastAt = 0;
-    this.stats = { played: 0, dropped: 0, passedOver: 0 };
+    // Accents bypass the voice pool, so that a burst of ordinary events can
+    // never bury a notable one. They still need a ceiling of their own: with
+    // none, a source that marks everything notable started a note per event,
+    // every one of them ringing out its full decay. Two and a half thousand in
+    // a second grew the audio graph until the tab crashed, which is also what
+    // saturating the speakers sounds like. So one accent per gap, and the
+    // others in that gap still take their ordinary turn through the pool.
+    this.accentGap = opts.accentGap ?? 250;
+    this._accentAt = -Infinity;
+    this._now = opts.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
+    this.stats = { played: 0, dropped: 0, passedOver: 0, accentsHeld: 0 };
   }
 
   /**
@@ -285,10 +295,16 @@ export class AudioSink {
     const when = this._onset(ctx);
 
     if (ev.accent && this.kit.accent) {
-      try {
-        this.kit.accent.play(ctx, dest, { semitone: ev.map.semitone, velocity: 1, when });
-      } catch (e) {
-        console.warn('accent failed', e);
+      const now = this._now();
+      if (now - this._accentAt >= this.accentGap) {
+        this._accentAt = now;
+        try {
+          this.kit.accent.play(ctx, dest, { semitone: ev.map.semitone, velocity: 1, when });
+        } catch (e) {
+          console.warn('accent failed', e);
+        }
+      } else {
+        this.stats.accentsHeld++;
       }
     }
 
