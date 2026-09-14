@@ -16,8 +16,8 @@ Open the sandbox and change one thing at a time.
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Works** | Twenty-five finished pieces in five rooms. One click sets the picture, the palette, the sound, the room, the finish, the frame and the pace. Try **Nocturne in Kyoto**, then **Rain in the city**. |
-| **Look** | Ninety-three visualisations on eleven shelves, twelve finishes and eighty palettes. Marks already on screen recolour at once, and the palette can be left to change on its own. |
+| **Gallery** | Thirty-six finished pieces in four rooms named for their light: dawn, daylight, dusk and night. One click sets the picture, the palette, the sound, the room, the finish, the frame, the pace and the living colour. A filter for calm or lively, and an exhibition mode that moves on every few minutes. Try **A drop in the glass**, then **Lanterns on the lake**. |
+| **Studio** | A hundred and three visualisations on eight shelves, thirteen finishes and eighty palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -734,14 +734,16 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. Ninety-three ship. They are
-shown on shelves by what they look like -- *Painters' rooms*, *Nature and
-night*, *Materials*, *Light and marks* and so on -- each with one line saying
-what it feels like, and the construction behind it one click away under
-**How it's made**. A person choosing a picture wants the first; the second is
-kept because it is true and somebody will ask. The demonstrations that are
-more interesting than beautiful (Ulam, Collatz, Rule 30) have a shelf of their
-own, *Curiosities*, at the end.
+A scene decides what a moment of data looks like. A hundred and three ship.
+They sit on eight shelves named for what is on them -- *Painting*, *Nature*,
+*Water*, *Night*, *Materials*, *Pattern*, *Drawing machines* and *Forms and
+numbers* -- each scene with one line saying what it feels like, and the
+construction behind it one click away under **How it's made**. The first
+arrangement had twelve shelves, several named for the mathematics ("Deep
+structures", "Pattern and tile"), which is how the code is organised and not
+how anybody looks; no shelf now holds more than twenty. The demonstrations
+that are more interesting than beautiful (Ulam, Collatz, Rule 30) are on the
+last shelf.
 
 Forty-nine of them are constructions anyone can look up: nodal figures, polar
 curves, space-filling curves, aperiodic tilings, recursive packings,
@@ -888,7 +890,7 @@ O(cells) and costs less — and because the pile is Abelian, toppling every read
 cell at once reaches exactly the same final state as toppling them one at a
 time.
 
-#### Painters' rooms
+#### Painting
 
 Twelve pictures in the spirit of twentieth-century painting. They are homages to
 ways of painting, never copies of paintings, and the painters are named only in
@@ -936,6 +938,21 @@ place has one, and still takes every colour from the palette.
 | **Spray paint** | A soft core, a halo of droplets thinning with distance, and the odd drip. |
 | **Tesserae** | Stones laid in rows that follow the floor. Laid once, then only the stones an event touches are reset: re-laying four thousand every frame cost seventeen milliseconds. |
 | **Torn paper** | Coloured sheets with ragged edges, the white core showing and a thin shadow under each. |
+
+#### Water, air and night
+
+| | |
+|---|---|
+| **Colour in water** | Drops of watercolour falling into a glass. Each drop is seventy parcels of pigment that sink, slow, spread from where the drop went in and are then taken by small curls of the water, laid down as soft discs that grow as they thin and multiplied onto the water, so where two clouds meet the colours mix. |
+| **Wet on wet** | Washes touched onto wet paper: each spreads with an edge wandering by noise sampled round a circle, so it closes; pigment gathers at the edge as it dries, and late in the drying the small ragged blooms watercolourists call cauliflowers appear. |
+| **Falling petals** | Cherry blossom turning as it falls, with its shadow on the water below; it lands with a ring and drifts on a current made visible only by the petals. |
+| **Water lilies** | A pond in broken strokes, colour chosen by where each stroke is so the reflected sky comes in patches rather than speckle; the water is repainted a little every frame, and events open flowers. |
+| **Raked garden** | Straight raked lines broken wherever a stone's rings own the gravel, and rings kept only where they are nearer, in proportion, to their own stone than to any other -- which is how two sets of rings meet. Laid once, and again only while a new stone's rings are growing. |
+| **Lanterns on the lake** | Lanterns rising, slower and smaller as they go, their light a broken wobbling column in the water. |
+| **Jellyfish** | Bells that close quickly and open slowly, which is what moves them, trailing threads; an event sends a pulse through the nearest and makes it glow. |
+| **Soap bubbles** | Iridescent skins in teal, gold and coral -- never a blue beside a red, where a gradient passes through violet -- that wobble and burst. |
+| **Snow on the city** | Three depths of snow, the far one behind the buildings; lit windows switched by events, snow settling on the roofs over minutes. |
+| **Paper forest** | Layers of paper trees, palest at the back, each casting a shadow on the one behind, swaying in the wind; events send a paper bird across. |
 
 #### Dials
 
@@ -1066,6 +1083,7 @@ scene:
 | **Cyanotype** | The sun print, in Prussian blue. |
 | **Chalk** | On a slate board, with the dust still on it. |
 | **Gold leaf** | Marks in gold on black lacquer. |
+| **Pointillism** | The picture rebuilt from dots of pure colour in two offset grids, the second pushed in saturation, for the eye to mix. Shrunk to a pixel a dot, blown up without smoothing and cut to the dots: no readback. |
 
 Every finish takes its inks from the palette and leaves the drawing state as it
 found it; the suite checks both, on a dark palette and a light one.
@@ -1083,18 +1101,60 @@ sink.setGrain(true);
 sink.setPace(0.5);
 ```
 
-### Works
+### Living colour
 
-A work is one finished combination -- scene, palette, kit, room, finish, frame,
-grain and pace -- with a title and a museum label, hung in one of five rooms:
-*Japan*, *The painters*, *Nature*, *Night* and *The workshop*. Choosing one is a
-click; everything it sets goes through the ordinary controls, so it can still be
-changed and survives a reload. Which work is on show is read back from the page
-rather than stored, so changing any one thing by hand takes the label off.
+Palette rotation jumps from one scheme to another at intervals, which suits a
+demonstration and not a room: every change is an event, and nobody wants events
+from the wall. Living colour never changes anything at once. It computes, from
+the chosen palette, the colours it should have now, and the canvas walks to
+them a few times a second, so the change is continuous and at any moment
+invisible.
+
+| | |
+|---|---|
+| **Slow drift** | Out to one of the palettes nearest the chosen one -- the same dominant colour, a ground of about the same lightness -- and back, a few minutes each way. It always returns to the palette you chose. |
+| **Time of day** | Tinted by the real hour: blue at night, rose at dawn, plain at midday, amber at the end of the afternoon. A tint that would turn a wine or rose ground violet is backed off, and failing that the night is a neutral slate. |
+| **Mood of the feed** | Warmer as the feed gets busy and cooler as it quietens, from the rate over the last twenty seconds, eased, so a single burst warms the room a little rather than flashing it. |
+
+The chosen palette stays the chosen one (`paletteName` does not move), marks
+already on screen follow, and the projection window follows. The colour
+functions are pure and tested without a canvas, including that no hour of the
+day turns any of the eighty grounds violet.
 
 ```js
-import { WORKS, WORK_ROOMS, worksIn } from './src/index.js';
-WORKS.kyoto;   // { title: 'Nocturne in Kyoto', scene: 'floatingink', palette: 'ink', kit: 'koto', ... }
+sink.setLiving('daylight');                 // or 'drift', 'mood', 'still'
+sink.setLiving('daylight', { hour: 21 });   // a fixed hour, for a preview
+daylightColours('papyrus', 19);             // what a palette looks like at seven
+```
+
+### The Gallery
+
+A work is one finished combination -- scene, palette, kit, room, finish, frame,
+grain, pace and living colour -- with a title and a museum label.
+
+Works hang in four rooms named for their light: *Dawn*, *Daylight*, *Dusk* and
+*Night*. The first version named its rooms after a country, a group of
+painters, a time of day and a trade, which are four different kinds of thing,
+and nobody could guess where to look. Light is the one question anybody can
+answer about a picture before reading a word, and the practical one: a bright
+room wants a light work and a dark room a dark one. The suite checks that the
+labels do not lie -- every night work is on a dark ground, every dawn and
+daylight work on a light one.
+
+Each room says in a line what it holds and hangs its first work large. A
+filter shows only the calm works or only the lively ones, and a room left empty
+by it disappears rather than staying as a heading. **Exhibition mode** walks
+through whatever is showing, one work every five minutes to every hour,
+dipping through the ground between them rather than cutting.
+
+Choosing a work is a click; everything it sets goes through the ordinary
+controls, so it can still be changed and survives a reload. Which work is on
+show is read back from the page rather than stored, so changing any one thing
+by hand takes the label off.
+
+```js
+import { WORKS, WORK_ROOMS, WORK_ROOM_NOTES, worksIn } from './src/index.js';
+WORKS.glass;   // { room: 'Dawn', energy: 'calm', title: 'A drop in the glass', scene: 'inkwater', ... }
 ```
 
 The suite checks that every work names a scene, palette, kit, room, finish and
@@ -1232,13 +1292,14 @@ src/visual/
   engrave.js            the burin: hatching, contour, stipple, white line
   mosaic.js             the colour pool the kit and room cards take from
   kit-art.js            the colour on each kit card
+  living.js             living colour: drift, time of day, mood of the feed
   finish.js             finishes, frames and film grain, on the finished frame
   space-art.js          the colour on each room card
   scenes/               marks, fields, structures, physical, generative,
                         fantasia (attractors, packings), automata (things
                         that are run), tilings (tilings and fractals),
                         geometry, recursive, systems, painters, nature,
-                        materials, budget, paint; catalogue.js puts them
+                        materials, water, air, budget, paint; catalogue.js puts them
                         on shelves and says what each looks like
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation
@@ -1264,7 +1325,7 @@ demo/
   broadcast.js          forwarding events to that window
   connect.js            the "Your data" panel: the standard, without a server
   look.js               scenes, finishes, palettes, shapes, colour variety, the ceiling
-  works.js              the Works panel: rooms, cards and the museum label
+  works.js              the Gallery: rooms by light, filter, exhibition mode, the label
   dom.js                picker, canvas sizing and caption helpers
   store.js              guarded local storage
   feed-catalog.js       what the sandbox can listen to, as data

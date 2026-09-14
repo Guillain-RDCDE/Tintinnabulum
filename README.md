@@ -24,7 +24,7 @@ Nothing to install; it runs in a browser, and on a phone.
 <p align="center">
   <img src=".github/fireworks-across-the-bay.png" width="100%" alt="Fireworks across the bay: small bursts over a far shore, reflected in the water">
 </p>
-<p align="center"><sub><i>Fireworks across the bay</i>, one of the twenty-five works in the sandbox. Each shell is one event.</sub></p>
+<p align="center"><sub><i>Fireworks across the bay</i>, one of the thirty-six works in the sandbox. Each shell is one event.</sub></p>
 
 > *tintinnabulum* — Latin, a small bell.
 
@@ -35,8 +35,8 @@ Nothing to install; it runs in a browser, and on a phone.
 - **[The input standard](spec/README.md)** — one required field, and a mapping
   document that plugs anything else in without writing code.
 - **[Reference](docs/REFERENCE.md)** — the library API, the eight built-in
-  feeds, the twenty-two kits, the ninety-three scenes, the eighty palettes,
-  the twelve finishes and the twenty-five works.
+  feeds, the twenty-two kits, the hundred and three scenes, the eighty palettes,
+  the thirteen finishes and the thirty-six works.
 
 ## Thanks
 
