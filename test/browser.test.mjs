@@ -722,6 +722,7 @@ const dressing = await page.evaluate(async () => {
     pace: sink.pace,
     stored: ['finish', 'mat', 'grain', 'pace'].map((k) => localStorage.getItem('t:' + k)),
     cards: document.querySelectorAll('#finishes .card').length,
+    finishCount: (await import('../src/index.js')).FINISH_ORDER.length,
   };
   // A mark lives on the scene's clock: at a quarter speed it ages a quarter
   // as fast, which is what makes a slow room slow.
@@ -744,7 +745,7 @@ ok('finish, frame, grain and pace reach the canvas',
    JSON.stringify(dressing));
 ok('finish, frame, grain and pace are remembered', JSON.stringify(dressing.stored) === JSON.stringify(['cyanotype', 'thin', '1', '0']),
    JSON.stringify(dressing.stored));
-ok('there is a card for every finish', dressing.cards === 12, String(dressing.cards));
+ok('there is a card for every finish', dressing.cards === dressing.finishCount, `${dressing.cards} of ${dressing.finishCount}`);
 ok('a slow pace slows the picture', dressing.slow < dressing.real * 0.45, `slow ${dressing.slow.toFixed(0)} ms vs real ${dressing.real.toFixed(0)} ms`);
 ok('and back to real time afterwards', JSON.stringify(dressing.after) === JSON.stringify(['none', 'none', false, 1]), JSON.stringify(dressing.after));
 
@@ -2515,9 +2516,10 @@ const worksPainted = await page.evaluate(async () => {
     if (seen.size < 4) blank.push(card.dataset.work);
   }
   window.scrollTo(0, 0);
-  return { total: cards.length, expected: Object.keys(WORKS).length, blank, headings: document.querySelectorAll('#works .sub-label').length };
+  const { WORK_ROOMS } = await import('../src/index.js');
+  return { total: cards.length, expected: Object.keys(WORKS).length, blank, headings: document.querySelectorAll('#works .sub-label').length, rooms: WORK_ROOMS.length };
 });
-ok('every work has a card, hung in its room', worksPainted.total === worksPainted.expected && worksPainted.headings >= 5,
+ok('every work has a card, hung in its room', worksPainted.total === worksPainted.expected && worksPainted.headings === worksPainted.rooms,
    `${worksPainted.total}/${worksPainted.expected} cards, ${worksPainted.headings} rooms`);
 ok('every work card shows its picture', worksPainted.blank.length === 0, worksPainted.blank.join(', ') || 'all painted');
 
@@ -2554,6 +2556,47 @@ ok('the chosen work is marked and labelled', chosen.pressed === 'true' && /Noctu
    chosen.cartel);
 ok('the panel header names the work on show', chosen.summary === 'Nocturne in Kyoto', chosen.summary);
 ok('changing anything by hand takes the label off', chosen.afterTouch === null && chosen.pressedAfter === 'false');
+
+// The rooms read as rooms: a line under each, a first work hung large, and a
+// filter that hides what does not fit and whole rooms left empty by it.
+const gallery = await page.evaluate(async () => {
+  const { WORKS, WORK_ROOMS } = await import('../src/index.js');
+  const works = window.son.works;
+  const host = document.querySelector('#works');
+  const out = {
+    notes: [...host.querySelectorAll('.room-note')].filter((n) => n.textContent.length > 20).length,
+    featured: [...host.querySelectorAll('.cards')].map((g) => [...g.children].filter((b) => b.classList.contains('featured')).length),
+    rooms: WORK_ROOMS.length,
+  };
+  works.selectEnergy('lively');
+  const shownLively = [...host.querySelectorAll('.card')].filter((b) => !b.hidden).map((b) => b.dataset.work);
+  out.livelyOk = shownLively.length > 0 && shownLively.every((n) => WORKS[n].energy === 'lively') &&
+    shownLively.length === Object.values(WORKS).filter((w) => w.energy === 'lively').length;
+  out.pressed = document.querySelector('#works-energy [data-energy="lively"]').getAttribute('aria-pressed');
+  out.hiddenRooms = [...host.querySelectorAll('.cards')].filter((g) => g.hidden).length;
+  out.emptyRoomsExpected = WORK_ROOMS.filter((r) => !Object.values(WORKS).some((w) => w.room === r && w.energy === 'lively')).length;
+  // Exhibition mode: the next work among those showing, put up for real.
+  const before = works.current();
+  const next = works.tourStep();
+  const t0 = performance.now();
+  while (works.current() !== next && performance.now() - t0 < 20000) await new Promise((r) => setTimeout(r, 100));
+  out.tour = { before, next, now: works.current(), lively: next && WORKS[next].energy === 'lively' };
+  works.selectTour(10);
+  out.tourSet = { minutes: works.tourMinutes, stored: localStorage.getItem('t:works-tour'), note: document.querySelector('#works-tour-note').textContent.length > 10 };
+  works.selectTour(0);
+  works.selectEnergy('all');
+  out.allBack = [...host.querySelectorAll('.card')].filter((b) => !b.hidden).length === Object.keys(WORKS).length;
+  return out;
+});
+ok('every room says what light it holds', gallery.notes === gallery.rooms, `${gallery.notes} of ${gallery.rooms}`);
+ok('every room hangs its first work large', gallery.featured.every((n) => n === 1), JSON.stringify(gallery.featured));
+ok('the lively filter shows the lively works and only those', gallery.livelyOk && gallery.pressed === 'true');
+ok('a room with nothing lively is hidden, not left as an empty heading', gallery.hiddenRooms === gallery.emptyRoomsExpected,
+   `${gallery.hiddenRooms} hidden, ${gallery.emptyRoomsExpected} expected`);
+ok('exhibition mode moves on to the next work showing, and puts it up', gallery.tour.next && gallery.tour.now === gallery.tour.next && gallery.tour.lively,
+   JSON.stringify(gallery.tour));
+ok('exhibition mode is remembered', gallery.tourSet.minutes === 10 && gallery.tourSet.stored === '10' && gallery.tourSet.note, JSON.stringify(gallery.tourSet));
+ok('and "All" brings every work back', gallery.allBack);
 
 // --- phone-sized, touch-driven ------------------------------------------
 // The report that started this was "I see the circles and hear nothing on my

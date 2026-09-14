@@ -22,7 +22,7 @@ import { lightnessOf, mixColors, lighten } from './color.js';
 
 export const FINISH_ORDER = [
   'none', 'paper', 'watercolour', 'ink', 'riso', 'lino',
-  'neon', 'glass', 'stitch', 'cyanotype', 'chalk', 'gold',
+  'neon', 'glass', 'stitch', 'cyanotype', 'chalk', 'gold', 'pointillist',
 ];
 
 export const FINISHES = {
@@ -38,6 +38,7 @@ export const FINISHES = {
   cyanotype: { label: 'Cyanotype', note: 'The old sun print: everything in Prussian blue, the marks left pale.' },
   chalk: { label: 'Chalk', note: 'Drawn in chalk on a slate board, with the dust still on it.' },
   gold: { label: 'Gold leaf', note: 'Marks laid in gold on black lacquer, catching a slow light.' },
+  pointillist: { label: 'Pointillism', note: 'The picture rebuilt from dots of colour set side by side, left for the eye to mix.' },
 };
 
 export const MAT_ORDER = ['none', 'thin', 'gallery'];
@@ -162,6 +163,40 @@ function inked(pool, key, dens, W, H, ink) {
 
 const APPLY = {
   none() {},
+
+  pointillist(ctx, o) {
+    const { W, H, pool, palette } = o;
+    const src = snapshot(ctx, pool, W, H);
+    const cell = Math.max(4, Math.round(Math.min(W, H) / 110));
+    const cols = Math.ceil(W / cell) + 1;
+    const rows = Math.ceil(H / cell) + 1;
+    const small = buffer(pool, 'finish:dotsmall', cols, rows);
+    const sg = small.getContext('2d');
+    const layer = buffer(pool, 'finish:dotlayer', W, H);
+    const lg = layer.getContext('2d');
+    ctx.fillStyle = lightnessOf(palette.background) > 0.5 ? paperOf(palette) : palette.background;
+    ctx.fillRect(0, 0, W, H);
+    // Two passes of dots, the second pushed in colour and set between the
+    // first: pure touches side by side, for the eye to mix, is the method.
+    // No readback anywhere: the picture is shrunk to one pixel a dot, blown
+    // up without smoothing, and cut to the dots.
+    for (let pass = 0; pass < 2; pass++) {
+      sg.save();
+      sg.globalCompositeOperation = 'copy';
+      sg.imageSmoothingEnabled = true;
+      if (canFilter(sg)) sg.filter = pass === 0 ? 'saturate(1.35)' : 'saturate(1.9) brightness(1.08)';
+      sg.drawImage(src, 0, 0, W, H, 0, 0, W / cell, H / cell);
+      sg.restore();
+      lg.save();
+      lg.globalCompositeOperation = 'copy';
+      lg.imageSmoothingEnabled = false;
+      lg.drawImage(small, 0, 0, cols, rows, 0, 0, cols * cell, rows * cell);
+      lg.globalCompositeOperation = 'destination-in';
+      lg.drawImage(dots(pool, W, H, cell, pass), 0, 0);
+      lg.restore();
+      ctx.drawImage(layer, 0, 0);
+    }
+  },
 
   paper(ctx, o) {
     const { W, H, pool } = o;
@@ -636,6 +671,34 @@ function separation(pool, key, src, W, H, palette, channels, gain) {
   og.fillRect(0, 0, w, h);
   og.restore();
   return out;
+}
+
+/**
+ * The dots of a pointillist finish, opaque where paint is, drawn once per size.
+ * Two grids, the second offset by half a cell, each dot a little out of line.
+ */
+function dots(pool, W, H, cell, pass) {
+  const key = `tex:dots:${W}:${H}:${cell}:${pass}`;
+  if (pool[key]) return pool[key];
+  const cv = buffer(pool, key, W, H);
+  const g = cv.getContext('2d');
+  g.clearRect(0, 0, W, H);
+  g.fillStyle = '#000';
+  const rnd = seeded(97 + pass);
+  const off = pass ? cell / 2 : 0;
+  const r = cell * (pass ? 0.28 : 0.36);
+  g.beginPath();
+  for (let y = off - cell; y < H + cell; y += cell) {
+    for (let x = off - cell; x < W + cell; x += cell) {
+      const jx = x + cell / 2 + (rnd() - 0.5) * cell * 0.35;
+      const jy = y + cell / 2 + (rnd() - 0.5) * cell * 0.35;
+      const rr = r * (0.8 + rnd() * 0.4);
+      g.moveTo(jx + rr, jy);
+      g.arc(jx, jy, rr, 0, Math.PI * 2);
+    }
+  }
+  g.fill();
+  return cv;
 }
 
 function parseHex(c) {

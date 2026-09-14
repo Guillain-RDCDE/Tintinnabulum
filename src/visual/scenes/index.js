@@ -38,6 +38,8 @@ import { TILING_SCENES } from './tilings.js';
 import { PAINTER_SCENES } from './painters.js';
 import { MATERIAL_SCENES } from './materials.js';
 import { NATURE_SCENES } from './nature.js';
+import { WATER_SCENES } from './water.js';
+import { AIR_SCENES } from './air.js';
 import { applyCatalogue, SCENE_SHELVES, shelfOf as shelfIn } from './catalogue.js';
 
 export { noise2 } from './noise.js';
@@ -57,6 +59,8 @@ export const SCENES = {
   ...PAINTER_SCENES,
   ...MATERIAL_SCENES,
   ...NATURE_SCENES,
+  ...WATER_SCENES,
+  ...AIR_SCENES,
 };
 
 // Presentation is applied once, here, across every family at once. See

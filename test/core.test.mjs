@@ -682,6 +682,7 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
 {
   const lib = await import('../src/index.js');
   const { SCENES, SCENE_SHELVES, PALETTES, KITS, SPACES, FINISHES, FINISH_ORDER, MATS, WORKS, WORK_ROOMS } = lib;
+  const { lightnessOf } = await import('../src/visual/color.js');
 
   // A scene with no catalogue entry still works but lands on "Other" with its
   // technical note showing first. That is the fallback, not the intent.
@@ -692,8 +693,11 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('every shelf a scene names is in the shelf order', stray.length === 0, stray.join(', ') || [...shelves].length + ' shelves');
   const mute = Object.entries(SCENES).filter(([, s]) => !s.note || !s.how).map(([n]) => n);
   ok('every scene says what it looks like, and how it is made', mute.length === 0, mute.join(', ') || 'all described');
-  ok('the demonstrations are on their own shelf',
-     ['ulam', 'collatz', 'rule30'].every((n) => SCENES[n].shelf === 'Curiosities'));
+  ok('the demonstrations sit together on the last shelf',
+     ['ulam', 'collatz', 'rule30'].every((n) => SCENES[n].shelf === 'Forms and numbers') &&
+     SCENE_SHELVES[SCENE_SHELVES.length - 2] === 'Forms and numbers');
+  const crowded = SCENE_SHELVES.filter((sh) => Object.values(SCENES).filter((x) => x.shelf === sh).length > 20);
+  ok('no shelf is a wall of more than twenty', crowded.length === 0, crowded.join(', ') || `${SCENE_SHELVES.length - 1} shelves`);
   ok('there are at least ninety scenes to choose from', Object.keys(SCENES).length >= 90, String(Object.keys(SCENES).length));
 
   ok('the finishes are all declared, in order', FINISH_ORDER.length === Object.keys(FINISHES).length &&
@@ -711,6 +715,15 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
     if (!w.title || !w.cartel) broken.push(`${name} has no label`);
   }
   ok('every work names things that exist', broken.length === 0, broken.join(', ') || `${Object.keys(WORKS).length} works`);
+  // A room named for its light must hang works in that light: a night room on
+  // a light palette, or a dawn room on a dark one, is a label that lies.
+  const wrongLight = Object.entries(WORKS).filter(([, w]) => {
+    const L = lightnessOf(PALETTES[w.palette].colors.background);
+    return (w.room === 'Night' && L >= 0.5) || ((w.room === 'Dawn' || w.room === 'Daylight') && L < 0.5);
+  }).map(([n]) => n);
+  ok('every work hangs in a room that matches its light', wrongLight.length === 0, wrongLight.join(', ') || 'all match');
+  ok('every work is calm or lively', Object.values(WORKS).every((w) => lib.WORK_ENERGIES.includes(w.energy)));
+  ok('every room says what it holds', WORK_ROOMS.every((r) => lib.WORK_ROOM_NOTES[r]));
   const emptyRooms = WORK_ROOMS.filter((r) => Object.values(WORKS).filter((w) => w.room === r).length < 3);
   ok('every room has at least three works', emptyRooms.length === 0, emptyRooms.join(', ') || WORK_ROOMS.join(', '));
   const titles = Object.values(WORKS).map((w) => w.title);
@@ -721,7 +734,7 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
 
   // --- living colour: pure functions, so checked without a canvas ----------------
   const { LIVING, LIVING_ORDER, driftNeighbours, driftColours, daylightColours, moodColours, busyness } = lib;
-  const { parseColor, lightnessOf } = await import('../src/visual/color.js');
+  const { parseColor } = await import('../src/visual/color.js');
   const rgb = (c) => parseColor(c);
   ok('every living mode is declared, with words for it', LIVING_ORDER.every((m) => LIVING[m] && LIVING[m].label && LIVING[m].note));
   const strays = Object.keys(PALETTES).filter((n) => {

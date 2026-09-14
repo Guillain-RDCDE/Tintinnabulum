@@ -145,7 +145,24 @@
   #works .card .cap { display: block; padding: .45rem .6rem .5rem; }
   #works .card b { font-size: .875rem; }
   #works .card span { font-size: .7rem; }
-  #work-cartel { margin-bottom: .9rem; }
+  #work-cartel { margin: .6rem 0 .9rem; }
+  .works-bar { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; align-items: flex-end; }
+  .works-bar .field { margin: 0; min-width: 12rem; }
+  .seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: var(--r-ctl); overflow: hidden; }
+  .seg button { border: 0; background: var(--surface); color: inherit; font: inherit; font-size: .8125rem;
+    padding: .45rem .9rem; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line-strong); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .room-note { color: var(--muted); font-size: .8125rem; margin: -.1rem 0 .55rem; }
+  /* The first work of a room hangs large: two columns by two rows, filled, so
+     the small cards beside it pack round it instead of stretching to its height. */
+  #works .cards { grid-auto-flow: row dense; }
+  #works .card.featured { grid-column: span 2; grid-row: span 2; display: flex; flex-direction: column; }
+  #works .card.featured canvas { flex: 1 1 auto; height: auto; min-height: 200px; }
+  @media (max-width: 560px) {
+    #works .card.featured { grid-column: auto; grid-row: auto; display: block; }
+    #works .card.featured canvas { height: 96px; min-height: 0; }
+  }
   #work-cartel .note { margin-top: 0; }
   .cartel { border-left: 2px solid var(--accent); padding: .15rem 0 .15rem .8rem; }
   .cartel b { display: block; font-size: 1rem; font-weight: 600; }
@@ -276,8 +293,25 @@
   </div>
 
   <details class="panel" id="sec-works">
-    <summary><span class="t">Works</span><span class="v" id="sum-works"></span></summary>
+    <summary><span class="t">Gallery</span><span class="v" id="sum-works"></span></summary>
     <div class="body">
+      <div class="works-bar">
+        <div class="seg" id="works-energy" role="group" aria-label="Show">
+          <button type="button" data-energy="all" aria-pressed="true">All</button>
+          <button type="button" data-energy="calm" aria-pressed="false">Calm</button>
+          <button type="button" data-energy="lively" aria-pressed="false">Lively</button>
+        </div>
+        <label class="field tour"><span>Exhibition mode</span>
+          <select id="works-tour">
+            <option value="0">Off</option>
+            <option value="5">A new work every 5 minutes</option>
+            <option value="10">Every 10 minutes</option>
+            <option value="20">Every 20 minutes</option>
+            <option value="30">Every 30 minutes</option>
+            <option value="60">Every hour</option>
+          </select></label>
+      </div>
+      <p class="note" id="works-tour-note"></p>
       <div id="work-cartel"></div>
       <div class="cards" id="works"></div>
     </div>
@@ -370,7 +404,7 @@
   </details>
 
   <details class="panel" id="sec-look">
-    <summary><span class="t">Look</span><span class="v" id="sum-look"></span></summary>
+    <summary><span class="t">Studio</span><span class="v" id="sum-look"></span></summary>
     <div class="body">
       <p class="sub-label">Visualisation</p>
       <div class="cards" id="scenes"></div>
