@@ -21,6 +21,11 @@ editing an article, somewhere, at that moment. Click one to open it.
 Eleven other feeds are in the same list. You can send your own with one `curl`.
 Nothing to install; it runs in a browser, and on a phone.
 
+<p align="center">
+  <img src=".github/fireworks-across-the-bay.png" width="100%" alt="Fireworks across the bay: small bursts over a far shore, reflected in the water">
+</p>
+<p align="center"><sub><i>Fireworks across the bay</i>, one of the twenty-five works in the sandbox. Each shell is one event.</sub></p>
+
 > *tintinnabulum* — Latin, a small bell.
 
 ## More
