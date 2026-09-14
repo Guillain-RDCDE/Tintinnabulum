@@ -18,7 +18,13 @@ import {
   SHAPES,
   drawShape,
   SCENES,
+  SCENE_SHELVES,
+  shelfOf,
   previewScene,
+  FINISHES,
+  FINISH_ORDER,
+  MATS,
+  applyFinish,
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { store } from './store.js';
@@ -132,6 +138,10 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     if (!SCENES[name]) return;
     canvas.setScene(name);
     $('#scene-note').textContent = SCENES[name].note;
+    // The note says what a scene looks like; how it is made is one click
+    // further, for whoever wants it, and hidden for a scene that has none.
+    $('#scene-how').textContent = SCENES[name].how || '';
+    $('#scene-how-wrap').hidden = !SCENES[name].how;
     scenePicker.mark(name);
     const usesShapes = name === 'bloom';
     $('#shapes').style.opacity = usesShapes ? '1' : '.4';
@@ -140,6 +150,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     if (persist) store.set('scene', name);
     restoreParams(name);
     drawParams();
+    if (typeof repaintFinishCards === 'function') repaintFinishCards();
     onLookChange();
   }
 
@@ -156,8 +167,15 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
       richness: canvas.richness,
       depth: canvas.depth,
       params: Object.fromEntries(canvas.paramsOf(name).map((p) => [p.name, p.value])),
+      finish: canvas.finish,
+      mat: canvas.mat,
+      pool: previewPool,
     });
   }
+  // Textures for the cards are kept between repaints: generating a sheet of
+  // grain for every card on every palette change is work done sixty times
+  // over for the same few hundred kilobytes.
+  const previewPool = {};
 
   const scenePicker = createPicker($('#scenes'), Object.entries(SCENES), {
     key: 'scene',
@@ -170,12 +188,119 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
       );
     },
     onPick: (name) => selectScene(name),
+    gridClassName: 'cards',
   });
+  // On shelves, not in one grid. Sixty-odd cards in a single grid is a wall;
+  // under headings it is a handful of short rows, each of which can be passed
+  // over at a glance -- the same reasoning the palettes already follow.
+  scenePicker.group(shelfOf, SCENE_SHELVES);
   const repaintScenePreviews = () => scenePicker.repaint(paintScenePreview);
   const repaintPendingPreviews = () => {
     scenePicker.repaintPending(paintScenePreview);
     shapePicker.repaintPending(paintSwatch);
+    finishPicker.repaintPending(paintFinishCard);
   };
+
+  // --- finishes -------------------------------------------------------------
+  //
+  // Each card shows the scene that is on the canvas, dressed that way, so the
+  // choice is made by looking rather than by reading a word like "linocut".
+  // The scene is rendered once per repaint and every card starts from that one
+  // render: twelve full previews would be twelve simulations for one picture.
+  let finishBase = null;
+  const baseFor = (w, h) => {
+    const key = `${canvas.sceneName}:${canvas.paletteName}:${w}:${h}:${canvas.richness}`;
+    if (finishBase && finishBase.key === key) return finishBase.cv;
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(w * 2);
+    cv.height = Math.round(h * 2);
+    const g = cv.getContext('2d');
+    g.setTransform(2, 0, 0, 2, 0, 0);
+    previewScene(g, canvas.sceneName, {
+      w, h,
+      palette: PALETTES[canvas.paletteName].colors,
+      shape: canvas.shape,
+      richness: canvas.richness,
+      depth: canvas.depth,
+      params: Object.fromEntries(canvas.paramsOf().map((p) => [p.name, p.value])),
+    });
+    finishBase = { key, cv };
+    return cv;
+  };
+
+  function paintFinishCard(cv, name) {
+    const { ctx, w, h } = fitCanvas(cv, { height: 66, fallbackWidth: 118 });
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(baseFor(w, h), 0, 0, cv.width, cv.height);
+    ctx.restore();
+    applyFinish(ctx, name, { palette: PALETTES[canvas.paletteName].colors, pool: previewPool, now: 4000 });
+  }
+
+  const finishPicker = createPicker($('#finishes'), FINISH_ORDER.map((n) => [n, FINISHES[n]]), {
+    key: 'finish',
+    className: 'card',
+    title: (def) => def.note,
+    render: (btn, def) => {
+      btn.append(document.createElement('canvas'), caption(def.label, ''));
+    },
+    onPick: (name) => selectFinish(name),
+  });
+  const repaintFinishCards = () => finishPicker.repaint(paintFinishCard);
+
+  function selectFinish(name, persist = true) {
+    const pick = FINISHES[name] ? name : 'none';
+    canvas.setFinish(pick);
+    finishPicker.mark(pick);
+    $('#finish-note').textContent = FINISHES[pick].note;
+    if (persist) store.set('finish', pick);
+    repaintScenePreviews();
+    onLookChange();
+  }
+
+  function selectMat(name, persist = true) {
+    const pick = MATS[name] ? name : 'none';
+    canvas.setMat(pick);
+    $('#mat').value = pick;
+    if (persist) store.set('mat', pick);
+    repaintScenePreviews();
+    onLookChange();
+  }
+
+  function selectGrain(on, persist = true) {
+    canvas.setGrain(on);
+    $('#grain').checked = Boolean(on);
+    if (persist) store.setFlag('grain', Boolean(on));
+    onLookChange();
+  }
+
+  // How fast the picture lives. The words describe the feeling rather than a
+  // multiplier, because nobody choosing a pace for a room thinks in decimals.
+  const PACE_STEPS = [
+    [0.25, 'very slow', 'Everything at a quarter speed. For a screen people sit in front of for a long time.'],
+    [0.5, 'slow', 'Half speed: marks linger and drift, and a busy feed stops looking busy.'],
+    [0.75, 'unhurried', 'A little slower than life, which is where most things look their best.'],
+    [1, 'real time', 'The picture moves exactly as fast as the data arrives.'],
+    [1.3, 'lively', 'Slightly quicker, for a feed that is too quiet to hold attention.'],
+    [1.7, 'brisk', 'Noticeably fast. Good for a demonstration, tiring for a room.'],
+  ];
+  let paceWord = 'real time';
+
+  function selectPace(index, persist = true) {
+    const i = Math.max(0, Math.min(PACE_STEPS.length - 1, Math.round(index)));
+    const [x, word, note] = PACE_STEPS[i];
+    canvas.setPace(x);
+    paceWord = word;
+    $('#pace').value = String(i);
+    $('#pace-val').textContent = word;
+    $('#pace-note').textContent = note;
+    if (persist) store.set('pace', String(i));
+    onLookChange();
+  }
+
+  $('#mat').addEventListener('change', (e) => selectMat(e.target.value));
+  $('#grain').addEventListener('change', (e) => selectGrain(e.target.checked));
+  $('#pace').addEventListener('input', (e) => selectPace(Number(e.target.value)));
 
   // --- palettes -----------------------------------------------------------
 
@@ -189,6 +314,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     // they follow the choice rather than lying about it.
     repaintShapeSwatches();
     repaintScenePreviews();
+    repaintFinishCards();
     paintKitArts();
     onLookChange();
   }
@@ -484,7 +610,15 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     },
     /** True while the cards are still catching up with a palette change. */
     get previewsBusy() {
-      return scenePicker.busy || shapePicker.busy;
+      return scenePicker.busy || shapePicker.busy || finishPicker.busy;
+    },
+    selectFinish,
+    selectMat,
+    selectGrain,
+    selectPace,
+    repaintFinishCards,
+    get paceWord() {
+      return paceWord;
     },
   };
 }

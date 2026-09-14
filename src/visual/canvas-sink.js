@@ -1,3 +1,4 @@
+import { FINISHES, MATS, applyFinish, drawMat, drawGrain } from './finish.js';
 import { rngFrom } from '../core/event.js';
 import { PALETTES, DEFAULT_PALETTE_NAME, resolvePalette } from './palettes.js';
 import { shadeOf, lighten, lightnessOf, mixColors } from './color.js';
@@ -50,6 +51,17 @@ export class CanvasSink {
     this.showLabels = opts.showLabels !== false;
     this.showHud = opts.showHud !== false;
     this.maxParticles = opts.maxParticles ?? 800;
+
+    // What the scene is printed on, and how it is hung. See finish.js.
+    this.finish = FINISHES[opts.finish] ? opts.finish : 'none';
+    this.mat = MATS[opts.mat] ? opts.mat : 'none';
+    this.grain = opts.grain === true;
+    // How fast the scene lives. Below one everything breathes more slowly --
+    // motion, drift and how long a mark stays -- because all of it runs on a
+    // clock of the scene's own rather than on the wall clock. See _clockNow.
+    this.pace = Number.isFinite(opts.pace) ? Math.max(0.1, Math.min(2, opts.pace)) : 1;
+    this._sceneNow = null;
+    this._finishPool = {};
     this.margin = opts.margin ?? 8;
 
     this.shape =
@@ -176,6 +188,19 @@ export class CanvasSink {
     return g;
   }
 
+  /**
+   * The scene's clock, which is the wall clock slowed or hurried by `pace`.
+   *
+   * Marks are dated on it too, not on the wall clock. Slowing only the scenes'
+   * motion would leave every mark dying at its old speed, so a slow scene
+   * would empty itself; slowing only the lifetimes would leave the motion
+   * racing. Everything that belongs to the picture runs on this one, and only
+   * the interface -- banners, the dip between scenes -- keeps real time.
+   */
+  _clockNow() {
+    return this._sceneNow == null ? performance.now() : this._sceneNow;
+  }
+
   /** The surface handed to the active scene each frame. */
   _sceneApi(now = 0) {
     return {
@@ -186,7 +211,7 @@ export class CanvasSink {
       shape: this.shape,
       ringLife: this.ringLife,
       now,
-      dt: this._dt || 16,
+      dt: (this._dt || 16) * this.pace,
       scene: this._scene,
       // Offscreen canvases, pooled per renderer rather than per scene: see
       // the note in scenes/paint.js.
@@ -214,7 +239,7 @@ export class CanvasSink {
     const scene = SCENES[this.sceneName];
     if (scene && scene.init) {
       try {
-        scene.init(this._sceneApi(this._lastFrame));
+        scene.init(this._sceneApi(this._clockNow()));
       } catch (e) {
         console.error('scene "' + this.sceneName + '" failed to start', e);
       }
@@ -374,6 +399,31 @@ export class CanvasSink {
     return this;
   }
 
+  /** Print the picture with a finish, or 'none'. See finish.js. */
+  setFinish(name) {
+    this.finish = FINISHES[name] ? name : 'none';
+    return this;
+  }
+
+  /** Hang the picture in a mat, or 'none'. */
+  setMat(name) {
+    this.mat = MATS[name] ? name : 'none';
+    return this;
+  }
+
+  /** Moving film grain over the picture. */
+  setGrain(on) {
+    this.grain = Boolean(on);
+    return this;
+  }
+
+  /** How fast the picture lives, 0.1 to 2. One is real time. */
+  setPace(x) {
+    const v = Number(x);
+    this.pace = Number.isFinite(v) ? Math.max(0.1, Math.min(2, v)) : 1;
+    return this;
+  }
+
   /** True while a palette change is still under way. */
   get fading() {
     return Boolean(this._fade);
@@ -496,7 +546,7 @@ export class CanvasSink {
       r,
       x: 0,
       y: 0,
-      born: now,
+      born: this._clockNow(),
       life: this.life,
       category: ev.category,
       base,
@@ -518,7 +568,7 @@ export class CanvasSink {
     const scene = SCENES[this.sceneName];
     if (scene && scene.event) {
       try {
-        scene.event(p, this._sceneApi(now));
+        scene.event(p, this._sceneApi(this._clockNow()));
       } catch (e) {
         console.error('scene "' + this.sceneName + '" failed on an event', e);
       }
@@ -568,6 +618,11 @@ export class CanvasSink {
     // against it, and a zero dt freezes everything that moves.
     this._dt = this._lastFrame ? Math.min(100, now - this._lastFrame) : 16;
     this._lastFrame = now;
+    // The picture's clock advances by the wall's gap, scaled. The clamp above
+    // matters here too: a tab that slept for a minute should not wake to find
+    // every mark a minute old.
+    this._sceneNow = this._sceneNow == null ? now : this._sceneNow + this._dt * this.pace;
+    const clock = this._sceneNow;
 
     ctx.fillStyle = this.palette.background;
     ctx.fillRect(0, 0, this.w, this.h);
@@ -577,7 +632,7 @@ export class CanvasSink {
       ctx.fillStyle = this.palette.text;
       for (const s of this._stars) {
         // Slow, per-star phase so the sky breathes instead of blinking together.
-        const tw = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin((now / 1000) * s.speed + s.phase));
+        const tw = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin((clock / 1000) * s.speed + s.phase));
         const x = s.u * this.w;
         const y = s.v * this.h;
         ctx.globalAlpha = 0.55 * tw;
@@ -599,11 +654,11 @@ export class CanvasSink {
     // Lifetimes are managed here, not in the scenes: every scene shares one
     // event model, and only decides what a moment of data looks like.
     for (let i = this.particles.length - 1; i >= 0; i--) {
-      if (now - this.particles[i].born >= this.particles[i].life) this.particles.splice(i, 1);
+      if (clock - this.particles[i].born >= this.particles[i].life) this.particles.splice(i, 1);
     }
 
     const scene = SCENES[this.sceneName] || SCENES[DEFAULT_SCENE];
-    const api = this._sceneApi(now);
+    const api = this._sceneApi(clock);
     ctx.save();
     try {
       scene.frame(ctx, api);
@@ -613,10 +668,18 @@ export class CanvasSink {
     ctx.restore();
     ctx.globalAlpha = 1;
 
+    // The finish goes on the picture and nothing else: before the labels and
+    // the readout, which are the interface and must stay legible whatever the
+    // picture has been printed on.
+    if (this.finish !== 'none') {
+      applyFinish(ctx, this.finish, { palette: this.palette, pool: this._finishPool, now: clock });
+    }
+    if (this.grain) drawGrain(ctx, { pool: this._finishPool, now });
+
     // Labels only where the marks actually sit at their particle's position.
     if (scene.positional !== false) {
       for (const p of this.particles) {
-        const age = now - p.born;
+        const age = clock - p.born;
         const hovered = this._hover === p;
         if (p.label && (hovered || (this.showLabels && age < this.labelLife && p.ring))) {
           const a = hovered ? 1 : Math.min(1, 2 - (age / this.labelLife) * 2);
@@ -624,6 +687,10 @@ export class CanvasSink {
         }
       }
     }
+
+    // The mat over the picture and its labels, under the banner and the
+    // readout: a frame belongs to the picture, the interface sits on the glass.
+    if (this.mat !== 'none') drawMat(ctx, this.mat, { palette: this.palette });
 
     // Expiry first, drawing second. These used to be the same loop, walking
     // newest-first and breaking as soon as it had drawn one -- so on any feed

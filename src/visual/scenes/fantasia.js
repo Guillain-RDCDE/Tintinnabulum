@@ -281,7 +281,7 @@ export const FANTASIA_SCENES = {
   moire: {
     label: 'Moire',
     positional: false,
-    note: 'Two sets of concentric rings, their centres a little apart. The fringes you see are in neither of them: they are the beat between two spacings, and the eye supplies them. Silk weavers named the effect, printers spend their lives avoiding it, and Bridget Riley built a career on it. Each event moves the second centre.',
+    note: 'Two sets of concentric rings, their centres a little apart. The fringes you see are in neither of them: they are the beat between two spacings, and the eye supplies them. Silk weavers named the effect, printers spend their lives avoiding it, and the op-art painters of the 1960s built pictures on it. Each event moves the second centre.',
     params: {
       pitch: { label: 'Ring spacing', min: 3, max: 20, step: 0.5, default: 7 },
       apart: { label: 'How far apart', min: 0.01, max: 0.4, step: 0.005, default: 0.11 },

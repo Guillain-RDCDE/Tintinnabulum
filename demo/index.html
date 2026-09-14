@@ -106,7 +106,16 @@
 
   /* scene cards carry a live preview drawn by the scene itself */
   #scenes { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
+  /* grouped by shelf, the grid moves onto each shelf's own list */
+  #scenes .cards { grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); }
   #scenes .card { padding: 0; overflow: hidden; min-height: 0; }
+  /* finish cards: the current scene, dressed each way */
+  #finishes { grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); }
+  #finishes .card { padding: 0; overflow: hidden; min-height: 0; }
+  #finishes .card canvas { display: block; width: 100%; height: 66px; background: #04141c; }
+  #finishes .card .cap { display: block; padding: .35rem .5rem .4rem; }
+  #finishes .card b { font-size: .8125rem; }
+  #finishes .card span { font-size: .6875rem; }
   #scenes .card canvas { display: block; width: 100%; height: 84px; background: #04141c; }
   #scenes .card .cap { display: block; padding: .45rem .6rem .5rem; }
   #scenes .card b { font-size: .875rem; }
@@ -129,6 +138,19 @@
   #spaces .card .cap { display: block; padding: .4rem .55rem .45rem; }
   #spaces .card b { font-size: .8125rem; }
   #spaces .card span { font-size: .6875rem; }
+  /* works: finished pieces, with a museum label for the one on show */
+  #works .cards { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+  #works .card { padding: 0; overflow: hidden; min-height: 0; }
+  #works .card canvas { display: block; width: 100%; height: 96px; background: #04141c; }
+  #works .card .cap { display: block; padding: .45rem .6rem .5rem; }
+  #works .card b { font-size: .875rem; }
+  #works .card span { font-size: .7rem; }
+  #work-cartel { margin-bottom: .9rem; }
+  #work-cartel .note { margin-top: 0; }
+  .cartel { border-left: 2px solid var(--accent); padding: .15rem 0 .15rem .8rem; }
+  .cartel b { display: block; font-size: 1rem; font-weight: 600; }
+  .cartel .medium { display: block; font-size: .75rem; color: var(--muted); font-style: italic; margin-top: .15rem; }
+  .cartel p { margin: .45rem 0 0; font-size: .8125rem; max-width: 62ch; }
 
   .card { border: 1px solid var(--line-strong); border-radius: var(--r-ctl); background: var(--surface);
     cursor: pointer; padding: .65rem .7rem; text-align: left; font: inherit; color: var(--fg);
@@ -253,6 +275,14 @@
     <span id="audio-status"></span>
   </div>
 
+  <details class="panel" id="sec-works">
+    <summary><span class="t">Works</span><span class="v" id="sum-works"></span></summary>
+    <div class="body">
+      <div id="work-cartel"></div>
+      <div class="cards" id="works"></div>
+    </div>
+  </details>
+
   <details class="panel" id="sec-listen">
     <summary><span class="t">Listen to</span><span class="v" id="sum-listen"></span></summary>
     <div class="body">
@@ -345,10 +375,29 @@
       <p class="sub-label">Visualisation</p>
       <div class="cards" id="scenes"></div>
       <p class="note" id="scene-note"></p>
+      <details class="more" id="scene-how-wrap">
+        <summary>How it's made</summary>
+        <div class="more-body"><p class="note" id="scene-how"></p></div>
+      </details>
 
       <label class="field"><span>Change visualisation on its own, at random <span id="scene-rotate-val">never</span></span>
         <input type="range" id="scene-rotate" min="0" max="6" step="1" value="0"></label>
       <p class="note" id="scene-rotate-note"></p>
+
+      <p class="sub-label">Finish</p>
+      <div class="cards" id="finishes"></div>
+      <p class="note" id="finish-note"></p>
+
+      <label class="field"><span>Frame</span>
+        <select id="mat">
+          <option value="none">No frame</option>
+          <option value="thin">Thin mat</option>
+          <option value="gallery">Gallery mat</option>
+        </select></label>
+      <label class="check"><input type="checkbox" id="grain"> Film grain</label>
+      <label class="field"><span>Pace <span id="pace-val">real time</span></span>
+        <input type="range" id="pace" min="0" max="5" step="1" value="3"></label>
+      <p class="note" id="pace-note"></p>
 
       <p class="sub-label">Colours</p>
       <label class="field"><span>Arrange them by</span>

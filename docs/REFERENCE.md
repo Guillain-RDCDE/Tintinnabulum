@@ -16,11 +16,12 @@ Open the sandbox and change one thing at a time.
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Look** | Sixty-six visualisations and eighty palettes, grouped by ground or by dominant colour. Marks already on screen recolour at once, and the palette can be left to change on its own. |
+| **Works** | Twenty-five finished pieces in five rooms. One click sets the picture, the palette, the sound, the room, the finish, the frame and the pace. Try **Nocturne in Kyoto**, then **Rain in the city**. |
+| **Look** | Ninety-three visualisations on eleven shelves, twelve finishes and eighty palettes. Marks already on screen recolour at once, and the palette can be left to change on its own. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
-Everything lives on one page, in six sections you can fold away. Each says
+Everything lives on one page, in seven sections you can fold away. Each says
 what it is set to. Each keeps the rest behind **Advanced**. No setting exists
 twice.
 
@@ -733,8 +734,16 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. Sixty-six ship, and
-forty-nine of them are constructions anyone can look up: nodal figures, polar
+A scene decides what a moment of data looks like. Ninety-three ship. They are
+shown on shelves by what they look like -- *Painters' rooms*, *Nature and
+night*, *Materials*, *Light and marks* and so on -- each with one line saying
+what it feels like, and the construction behind it one click away under
+**How it's made**. A person choosing a picture wants the first; the second is
+kept because it is true and somebody will ask. The demonstrations that are
+more interesting than beautiful (Ulam, Collatz, Rule 30) have a shelf of their
+own, *Curiosities*, at the end.
+
+Forty-nine of them are constructions anyone can look up: nodal figures, polar
 curves, space-filling curves, aperiodic tilings, recursive packings,
 attractors, automata, growths and physics. None of that is anyone's property
 and none of it is engineering, so what each scene actually has to decide is the
@@ -854,7 +863,7 @@ figure follows within a frame.
 | **L-system** | Aristid Lindenmayer, 1968: a biologist wanting to describe how algae grow wrote a grammar rather than an equation. |
 | **Ulam spiral** | Stanisław Ulam, 1963, doodling through a dull lecture. The integers on a square spiral, and the primes fall on diagonals nobody has explained. |
 | **Collatz tree** | Halve it if even, treble and add one if odd. Every number tried reaches one and nobody can prove they all do. Grown backwards from one, it is a tree. |
-| **Riley waves** | Bridget Riley's wave paintings of the 1960s: bands whose curvature changes across the canvas, so a flat surface appears to turn. |
+| **Optical waves** | The op-art wave paintings of the 1960s: bands whose curvature changes across the canvas, so a flat surface appears to turn. |
 
 #### Systems
 
@@ -878,6 +887,55 @@ measured twenty thousand entries against a ceiling of eight hundred. A sweep is
 O(cells) and costs less — and because the pile is Abelian, toppling every ready
 cell at once reaches exactly the same final state as toppling them one at a
 time.
+
+#### Painters' rooms
+
+Twelve pictures in the spirit of twentieth-century painting. They are homages to
+ways of painting, never copies of paintings, and the painters are named only in
+the notes. Nobody living is imitated.
+
+| | |
+|---|---|
+| **Nested squares** | After Josef Albers: squares inside squares, their centres a little low, in colours close enough to change one another. An event shifts one square's colour, slowly. |
+| **Colour fields** | After Mark Rothko: soft-edged rectangles on a coloured ground, feathered by stacked glazes rather than a blur. Busy moments brighten a field. |
+| **Paper cut-outs** | After Matisse's late cut-outs: scissor-cut fronds, each a single closed outline, turning slowly. |
+| **Simultaneous discs** | After Sonia Delaunay: discs cut into rings and quarters. An event gives the nearest a push. |
+| **Night signs** | After Miró's *Constellations*: stars, crescents, eyes and spots strung on fine threads, one sign per event. |
+| **Hanging mobile** | After Calder: a three-level balance of arms, each a damped pendulum. An event is a breath on one arm. |
+| **Bauhaus** | Circles, bars, half-moons and triangles on a strict grid; an event swaps one cell. |
+| **Woven cloth** | After Anni Albers: plain weave, the weft carrying the colour, rows added as if on a loom. |
+| **Memphis** | Squiggles, confetti and terrazzo chips with black outlines. |
+| **Quiet grid** | After Agnes Martin: hand-wavering pencil lines and bands of colour you feel more than see. |
+| **Drip painting** | After Pollock: flicks of paint that loop, thin and spatter, piling up. |
+| **Temperament** | A picture that reads the rate of events. Quiet, it is a pale grid; busy, the lines loosen; in a rush the paint flies. |
+
+#### Nature and night
+
+Nine places rather than patterns. Each paints its own sky or ground, since a
+place has one, and still takes every colour from the palette.
+
+| | |
+|---|---|
+| **Rain on the window** | The street out of focus behind the glass, painted at a quarter size and blown up -- it is meant to be soft -- with drops that each hold an upside-down image of it. |
+| **Fireflies** | Each firefly blinks on its own rhythm; an event makes the ones nearby fall into step. |
+| **Murmuration** | Up to three thousand starlings placed on a folding sheet and projected flat, so density comes from the sheet turning edge-on. An event is a falcon, and a wave of alarm crosses the flock. |
+| **Sea glow** | Waves rolling in; the plankton lights where an event or a breaking wave stirs it. |
+| **Light through leaves** | Pinhole images of the sun trembling on a path. Events are gusts. |
+| **Northern lights** | Curtains of vertical rays, each ray a small gradient drawn once per colour and stretched: a gradient object per column cost eleven milliseconds a frame. |
+| **Dunes at sunset** | Ridges as flat layers, paler with distance, rimmed where the low sun catches them. Three attempts at shading the slip faces read as blinds, fins and curtains, and were removed. |
+| **City from the air** | Streets in sodium light laid out once per size and slid beneath the wing without a seam. Events are headlights. |
+| **Distant fireworks** | Shells over a far shore, and the sky redrawn upside down in the bay, broken into ripples. |
+
+#### Materials
+
+| | |
+|---|---|
+| **Marbled paper** | Ebru. Drops are kept as outlines, not pixels: a new drop moves every older point from distance *d* to √(*d*² + *r*²), which is the rule for an incompressible film, and a comb drags points along a line. Both preserve area, as the real thing does. |
+| **Floating ink** | Suminagashi: the same tray, alternating rings of ink and clear water. |
+| **Lava lamp** | Blobs on a third-size mask, blurred and pushed through a steep contrast so neighbours join with a neck. The mask is composed over black: multiplied onto a clear pixel, the wax colour came out as a glowing frame. |
+| **Spray paint** | A soft core, a halo of droplets thinning with distance, and the odd drip. |
+| **Tesserae** | Stones laid in rows that follow the floor. Laid once, then only the stones an event touches are reset: re-laying four thousand every frame cost seventeen milliseconds. |
+| **Torn paper** | Coloured sheets with ragged edges, the white core showing and a thin shadow under each. |
 
 #### Dials
 
@@ -987,6 +1045,60 @@ contract stay in one place.
 uses, so importing it would cost about a megabyte and the offline guarantee
 while buying no capability. What was missing was not a library but this
 extension point.
+
+### Finishes, frames and pace
+
+A scene decides where the marks go. A **finish** decides what they are made of,
+and works on the finished frame as a whole, so every finish applies to every
+scene:
+
+| | |
+|---|---|
+| **As drawn** | Nothing on top. |
+| **Paper** | A fine grain and a soft vignette. |
+| **Watercolour** | The picture bled into wet paper, then multiplied back sharp so the edges darken as drying pigment does. |
+| **Ink wash** | One ink, diluted to greys, on rice paper. |
+| **Risograph** | Two drums, two inks, a little out of register. Each plate is built from the picture's distance to its ground, split by colour, so a dark palette prints as well as a light one. |
+| **Linocut** | Hard-edged ink with the gouge of the cut through it. |
+| **Neon** | Only the marks glow, never the wall behind them, with a slow hum rather than a flicker. |
+| **Stained glass** | The picture as light through coloured glass, held in lead. |
+| **Embroidery** | Cross-stitch: the picture read back at one pixel per stitch, blown up without smoothing and cut to the shape of the crosses. One stroke call per stitch measured 464 ms a frame; this is two draws. |
+| **Cyanotype** | The sun print, in Prussian blue. |
+| **Chalk** | On a slate board, with the dust still on it. |
+| **Gold leaf** | Marks in gold on black lacquer. |
+
+Every finish takes its inks from the palette and leaves the drawing state as it
+found it; the suite checks both, on a dark palette and a light one.
+
+A **frame** (thin or gallery mat) is drawn over the edge of the picture, black on
+a dark ground and paper-coloured on a light one. **Film grain** is a separate
+switch. **Pace** runs the scene's clock at a quarter, a half, three quarters of
+real time or faster: marks are born, age and fade on that clock, so a slow room
+is genuinely slower rather than merely less busy.
+
+```js
+sink.setFinish('riso');
+sink.setMat('gallery');
+sink.setGrain(true);
+sink.setPace(0.5);
+```
+
+### Works
+
+A work is one finished combination -- scene, palette, kit, room, finish, frame,
+grain and pace -- with a title and a museum label, hung in one of five rooms:
+*Japan*, *The painters*, *Nature*, *Night* and *The workshop*. Choosing one is a
+click; everything it sets goes through the ordinary controls, so it can still be
+changed and survives a reload. Which work is on show is read back from the page
+rather than stored, so changing any one thing by hand takes the label off.
+
+```js
+import { WORKS, WORK_ROOMS, worksIn } from './src/index.js';
+WORKS.kyoto;   // { title: 'Nocturne in Kyoto', scene: 'floatingink', palette: 'ink', kit: 'koto', ... }
+```
+
+The suite checks that every work names a scene, palette, kit, room, finish and
+frame that exist, so a rename fails loudly instead of quietly falling back.
 
 ### The projection window
 
@@ -1120,14 +1232,18 @@ src/visual/
   engrave.js            the burin: hatching, contour, stipple, white line
   mosaic.js             the colour pool the kit and room cards take from
   kit-art.js            the colour on each kit card
+  finish.js             finishes, frames and film grain, on the finished frame
   space-art.js          the colour on each room card
   scenes/               marks, fields, structures, physical, generative,
                         fantasia (attractors, packings), automata (things
                         that are run), tilings (tilings and fractals),
-                        geometry, recursive, systems, budget, paint
+                        geometry, recursive, systems, painters, nature,
+                        materials, budget, paint; catalogue.js puts them
+                        on shelves and says what each looks like
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation
   shapes.js             mark geometry
+src/works.js            finished pieces: a scene, a sound and a frame, titled
 src/sources/
   transports.js         WebSocket, SSE, poll, manual, random, ingest
   feeds.js              Bitcoin, Coinbase, earthquakes, Bluesky, GitHub, NOAA, HN
@@ -1147,7 +1263,8 @@ demo/
   project.html/.js      the projection window: the picture, full screen, alone
   broadcast.js          forwarding events to that window
   connect.js            the "Your data" panel: the standard, without a server
-  look.js               scenes, palettes, shapes, colour variety, the ceiling
+  look.js               scenes, finishes, palettes, shapes, colour variety, the ceiling
+  works.js              the Works panel: rooms, cards and the museum label
   dom.js                picker, canvas sizing and caption helpers
   store.js              guarded local storage
   feed-catalog.js       what the sandbox can listen to, as data

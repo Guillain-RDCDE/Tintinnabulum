@@ -46,6 +46,8 @@ export { noiseBuffer, noiseSource } from './audio/noise.js';
 export { drawKitArt, kitArtOf } from './visual/kit-art.js';
 export { mosaicPool, swatchColour, poolSize } from './visual/mosaic.js';
 export { drawSpaceArt, spaceArtOf } from './visual/space-art.js';
+export { FINISHES, FINISH_ORDER, MATS, MAT_ORDER, applyFinish, drawMat, drawGrain } from './visual/finish.js';
+export { WORKS, WORK_ROOMS, worksIn } from './works.js';
 
 export { CanvasSink, DEFAULT_PALETTE } from './visual/canvas-sink.js';
 export {
@@ -63,6 +65,8 @@ export {
   registerScene,
   previewScene,
   noise2,
+  SCENE_SHELVES,
+  shelfOf,
 } from './visual/scenes/index.js';
 export {
   PALETTES,

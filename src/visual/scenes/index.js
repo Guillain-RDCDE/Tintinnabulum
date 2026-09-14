@@ -23,6 +23,7 @@
 // ordered grid into a study of controlled disorder.
 
 import { shadeOf, lighten, lightnessOf } from '../color.js';
+import { applyFinish, drawMat } from '../finish.js';
 import { MARK_SCENES } from './marks.js';
 import { FIELD_SCENES } from './fields.js';
 import { STRUCTURE_SCENES } from './structures.js';
@@ -34,6 +35,10 @@ import { SYSTEM_SCENES } from './systems.js';
 import { FANTASIA_SCENES } from './fantasia.js';
 import { AUTOMATA_SCENES } from './automata.js';
 import { TILING_SCENES } from './tilings.js';
+import { PAINTER_SCENES } from './painters.js';
+import { MATERIAL_SCENES } from './materials.js';
+import { NATURE_SCENES } from './nature.js';
+import { applyCatalogue, SCENE_SHELVES, shelfOf as shelfIn } from './catalogue.js';
 
 export { noise2 } from './noise.js';
 
@@ -49,7 +54,19 @@ export const SCENES = {
   ...FANTASIA_SCENES,
   ...AUTOMATA_SCENES,
   ...TILING_SCENES,
+  ...PAINTER_SCENES,
+  ...MATERIAL_SCENES,
+  ...NATURE_SCENES,
 };
+
+// Presentation is applied once, here, across every family at once. See
+// catalogue.js for why the note shown first is not the one beside the code.
+applyCatalogue(SCENES);
+
+export { SCENE_SHELVES };
+
+/** The shelf a scene sits on in the picker. */
+export const shelfOf = (name) => shelfIn(SCENES, name);
 
 export const SCENE_NAMES = Object.keys(SCENES);
 export const DEFAULT_SCENE = 'bloom';
@@ -95,6 +112,11 @@ export function previewScene(
     // and the card still cannot disagree with what you are about to launch.
     // Zero lifts the ceiling, which is what the contact sheet wants.
     budgetMs = 120,
+    // How the card is dressed: the same finish and mat the canvas would
+    // wear, so a card never shows a picture the canvas is not going to.
+    finish = 'none',
+    mat = 'none',
+    pool = null,
   } = {}
 ) {
   const scene = SCENES[name] || SCENES[DEFAULT_SCENE];
@@ -234,6 +256,10 @@ export function previewScene(
       ctx.fillRect(0, 0, w, h);
     }
   }
+  // Dressed once, on the frame that is kept, rather than on each of the
+  // hundred that were drawn to get there.
+  if (finish && finish !== 'none') applyFinish(ctx, finish, { palette, pool: pool || {}, now: frames * dt });
+  if (mat && mat !== 'none') drawMat(ctx, mat, { palette });
   return true;
 }
 

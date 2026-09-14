@@ -21,7 +21,7 @@
 //             explained.
 //   Collatz   Halve it if even, treble and add one if odd. Every number tried
 //             reaches one and nobody can prove they all do.
-//   Riley     Bridget Riley's wave paintings of the 1960s.
+//   Op waves  Op art of the 1960s: bands that swell and turn.
 
 import { cap } from './budget.js';
 import { scratch } from './paint.js';
@@ -668,10 +668,10 @@ export const TILING_SCENES = {
     },
   },
 
-  riley: {
-    label: 'Riley waves',
+  opwaves: {
+    label: 'Optical waves',
     positional: false,
-    note: "Bridget Riley's wave paintings of the 1960s: parallel bands whose curvature changes across the canvas, so a flat surface appears to swell and turn. She was painting what the eye does with a repeated line, which is the same subject as the moire next door approached from the other side.",
+    note: 'Op art, as painted in the 1960s: parallel bands whose curvature changes across the canvas, so a flat surface appears to swell and turn. The subject is what the eye does with a repeated line, which is the moire next door approached from the other side. Named for the movement rather than for any one painter, several of whom are still working.',
     params: {
       bands: { label: 'How many bands', min: 8, max: 60, step: 1, default: 26 },
       amp: { label: 'Swell', min: 0, max: 1, step: 0.02, default: 0.5 },
@@ -695,8 +695,8 @@ export const TILING_SCENES = {
       const phase = (s.phase || 0) + api.now / 6000;
       const steps = Math.max(16, Math.round(api.w / 8));
       for (let i = 0; i < bands; i++) {
-        // Every other band is inked; the gaps are the ground. Riley's are
-        // black on white and the reversal is the palette's business.
+        // Every other band is inked; the gaps are the ground. The op-art
+        // originals are black on white and the reversal is the palette's business.
         if (i % 2) continue;
         ctx.fillStyle = i % 4 === 0 ? (s.tint || api.palette.default) : api.palette.default;
         ctx.globalAlpha = 0.82;

@@ -678,5 +678,47 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('no family is a heading over a single swatch', lonely.length === 0, lonely.join(', ') || 'all earn their heading');
 }
 
+// --- the catalogue and the works --------------------------------------------
+{
+  const lib = await import('../src/index.js');
+  const { SCENES, SCENE_SHELVES, PALETTES, KITS, SPACES, FINISHES, FINISH_ORDER, MATS, WORKS, WORK_ROOMS } = lib;
+
+  // A scene with no catalogue entry still works but lands on "Other" with its
+  // technical note showing first. That is the fallback, not the intent.
+  const unshelved = Object.entries(SCENES).filter(([, s]) => !s.shelf || s.shelf === 'Other').map(([n]) => n);
+  ok('every scene sits on a named shelf', unshelved.length === 0, unshelved.join(', ') || `${Object.keys(SCENES).length} scenes`);
+  const shelves = new Set(Object.values(SCENES).map((s) => s.shelf));
+  const stray = [...shelves].filter((s) => !SCENE_SHELVES.includes(s));
+  ok('every shelf a scene names is in the shelf order', stray.length === 0, stray.join(', ') || [...shelves].length + ' shelves');
+  const mute = Object.entries(SCENES).filter(([, s]) => !s.note || !s.how).map(([n]) => n);
+  ok('every scene says what it looks like, and how it is made', mute.length === 0, mute.join(', ') || 'all described');
+  ok('the demonstrations are on their own shelf',
+     ['ulam', 'collatz', 'rule30'].every((n) => SCENES[n].shelf === 'Curiosities'));
+  ok('there are at least ninety scenes to choose from', Object.keys(SCENES).length >= 90, String(Object.keys(SCENES).length));
+
+  ok('the finishes are all declared, in order', FINISH_ORDER.length === Object.keys(FINISHES).length &&
+     FINISH_ORDER.every((f) => FINISHES[f] && FINISHES[f].label && FINISHES[f].note));
+
+  // A work names a scene, a palette, a kit, a room, a finish and a frame by
+  // key. A renamed key anywhere would otherwise fall back silently.
+  const broken = [];
+  for (const [name, w] of Object.entries(WORKS)) {
+    for (const [field, table] of [['scene', SCENES], ['palette', PALETTES], ['kit', KITS], ['space', SPACES], ['finish', FINISHES], ['mat', MATS]]) {
+      if (!table[w[field]]) broken.push(`${name}.${field}=${w[field]}`);
+    }
+    if (!WORK_ROOMS.includes(w.room)) broken.push(`${name}.room=${w.room}`);
+    if (!(Number.isInteger(w.pace) && w.pace >= 0 && w.pace <= 5)) broken.push(`${name}.pace=${w.pace}`);
+    if (!w.title || !w.cartel) broken.push(`${name} has no label`);
+  }
+  ok('every work names things that exist', broken.length === 0, broken.join(', ') || `${Object.keys(WORKS).length} works`);
+  const emptyRooms = WORK_ROOMS.filter((r) => Object.values(WORKS).filter((w) => w.room === r).length < 3);
+  ok('every room has at least three works', emptyRooms.length === 0, emptyRooms.join(', ') || WORK_ROOMS.join(', '));
+  const titles = Object.values(WORKS).map((w) => w.title);
+  ok('no two works share a title', new Set(titles).size === titles.length);
+  // Nobody living is named, anywhere a person reads first.
+  const named = Object.values(WORKS).filter((w) => /riley|hockney|kusama|richter/i.test(w.title + w.cartel)).map((w) => w.title);
+  ok('no work is sold on a living artist\'s name', named.length === 0, named.join(', '));
+}
+
 console.log(fails ? `\n${fails} FAILURE(S): ${failedNames.join(' | ')}` : '\nall core checks passed');
 process.exit(fails ? 1 : 0);

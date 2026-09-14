@@ -15,6 +15,7 @@ import {
   drawShape,
   SCENES,
   DEFAULT_SCENE,
+  FINISHES,
   SPACES,
   DEFAULT_SPACE,
   previewScene,
@@ -28,6 +29,7 @@ import { createFeedCatalog } from './feed-catalog.js';
 import { setupLook } from './look.js';
 import { createProjector } from './broadcast.js';
 import { setupConnect } from './connect.js';
+import { setupWorks } from './works.js';
 
 const storedPalette = store.pick('palette', PALETTES, DEFAULT_PALETTE_NAME);
 
@@ -380,6 +382,10 @@ const projector = createProjector({
     scene: canvas.sceneName,
     shape: canvas.shape,
     richness: canvas.richness,
+    finish: canvas.finish,
+    mat: canvas.mat,
+    grain: canvas.grain,
+    pace: canvas.pace,
     depth: canvas.depth,
     starfield: canvas.starfield,
     params: canvas._params,
@@ -393,6 +399,9 @@ const projector = createProjector({
 // control that refreshed the summary took the sandbox down.
 let restraintWord = 'everything';
 let connectSummary = 'Paste JSON, hear it';
+// Assigned once every other panel exists, because a work reaches into all of
+// them; read through a null check for the same reason as the two above.
+let worksPanel = null;
 
 const look = setupLook({
   canvas,
@@ -411,6 +420,11 @@ const { selectScene, selectPalette, selectShape, selectRichness, selectBudget, S
 // summary and the summary reads `look`.
 look.selectRotate(Number(store.get('rotate') || 0), false);
 look.selectSceneRotate(Number(store.get('scene-rotate') || 0), false);
+look.selectFinish(store.get('finish') || 'none', false);
+look.selectMat(store.get('mat') || 'none', false);
+look.selectGrain(store.flag('grain'), false);
+look.selectPace(store.get('pace') === null || store.get('pace') === undefined || store.get('pace') === ''
+  ? 3 : Number(store.get('pace')), false);
 
 // A card inside a folded panel is skipped rather than drawn -- see the note on
 // `repaint` in dom.js -- so unfolding a panel is when the cards inside it get
@@ -419,6 +433,7 @@ function paintWhatIsNowVisible() {
   kitPicker.repaintPending(paintKitArt);
   spacePicker.repaintPending(paintSpaceArt);
   look.repaintPendingPreviews();
+  if (worksPanel) worksPanel.repaintPending();
 }
 
 document.addEventListener('toggle', paintWhatIsNowVisible, true);
@@ -511,6 +526,21 @@ const spacePicker = createPicker($('#spaces'), Object.entries(SPACES), {
 const paintSpaceArts = () => spacePicker.repaint(paintSpaceArt);
 requestAnimationFrame(paintSpaceArts);
 selectSpace(store.pick('space', SPACES, DEFAULT_SPACE), false);
+
+// =========================================================================
+// Works
+// =========================================================================
+
+worksPanel = setupWorks({
+  canvas,
+  look,
+  selectKit,
+  selectSpace,
+  ensureAudio,
+  getKit: () => currentKit,
+  getSpace: () => son.space,
+});
+requestAnimationFrame(() => worksPanel.repaint());
 // =========================================================================
 // Filter
 // =========================================================================
@@ -536,6 +566,7 @@ function updateSummaries() {
     .map((c) => (WIKIPEDIA_LANGUAGES.find((l) => l.code === c) || {}).native || c)
     .slice(0, 3)
     .join(', ');
+  if (worksPanel) $('#sum-works').textContent = worksPanel.refresh() ? worksPanel.title : 'Your own';
   $('#sum-listen').textContent =
     FEEDS[feed].label + (FEEDS[feed].langs ? ` · ${langNames}${langs.length > 3 ? '…' : ''}` : '');
   $('#sum-sound').textContent =
@@ -548,6 +579,7 @@ function updateSummaries() {
     (look.sceneRotateWord === 'never' ? '' : ` ${look.sceneRotateWord}`) +
     ` · ${PALETTES[canvas.paletteName].label}` +
     (look.rotateWord === 'never' ? '' : ` ${look.rotateWord}`) +
+    (canvas.finish === 'none' ? '' : ` · ${FINISHES[canvas.finish].label}`) +
     (look.richnessWord === 'balanced' ? '' : ` · ${look.richnessWord} colour`);
   $('#sum-connect').textContent = connectSummary;
   $('#sum-filter').textContent =
@@ -657,6 +689,7 @@ setAudioStatus('');
 
 // Handy from the console: window.son.emit({magnitude: 5000, id: 'test'})
 window.son = son;
+son.works = worksPanel;
 // The look panel with it, so a setting can be driven from the console the same
 // way a click drives it.
 son.look = look;

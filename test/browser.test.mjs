@@ -629,6 +629,125 @@ ok('scene cards reflect the colour settings',
    previewFollows.rich > previewFollows.flat * 1.5,
    `flat=${previewFollows.flat} rich=${previewFollows.rich}`);
 
+// --- finishes: the same picture, printed ten ways -----------------------------
+// A finish works on the finished frame. It must change it (or it is a menu
+// entry that does nothing), leave the drawing state as it found it (or the
+// next frame inherits a filter or a blend mode), and cost a frame rather than
+// a second. The last is checked generously: this runs on a software renderer.
+const finishes = await page.evaluate(async () => {
+  const { previewScene, PALETTES, FINISH_ORDER, applyFinish, drawMat } = await import('../src/index.js');
+  const out = { changed: {}, leaked: [], slow: {}, mat: null };
+  const pool = {};
+  for (const palName of ['marine', 'papyrus']) {
+    const palette = PALETTES[palName].colors;
+    const W = 480;
+    const H = 270;
+    const base = document.createElement('canvas');
+    base.width = W;
+    base.height = H;
+    previewScene(base.getContext('2d'), 'bloom', { w: W, h: H, palette, richness: 0.6, depth: true, budgetMs: 0 });
+    const ref = base.getContext('2d').getImageData(0, 0, W, H).data;
+    for (const name of FINISH_ORDER) {
+      const cv = document.createElement('canvas');
+      cv.width = W;
+      cv.height = H;
+      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(base, 0, 0);
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      // Once untimed: textures are generated on first use at a size and kept,
+      // and that is a one-off, not the cost of a frame.
+      applyFinish(ctx, name, { palette, pool, now: 1000 });
+      ctx.drawImage(base, 0, 0);
+      const t0 = performance.now();
+      applyFinish(ctx, name, { palette, pool, now: 1000 });
+      ctx.getImageData(0, 0, 1, 1);
+      out.slow[name] = Math.max(out.slow[name] || 0, performance.now() - t0);
+      if (ctx.globalAlpha !== 1 || ctx.globalCompositeOperation !== 'source-over' || (ctx.filter && ctx.filter !== 'none')) {
+        out.leaked.push(`${name} on ${palName}`);
+      }
+      const d = ctx.getImageData(0, 0, W, H).data;
+      let differ = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (Math.abs(d[i] - ref[i]) + Math.abs(d[i + 1] - ref[i + 1]) + Math.abs(d[i + 2] - ref[i + 2]) > 30) differ++;
+      }
+      out.changed[`${name}/${palName}`] = differ / (W * H);
+    }
+    // The mat covers the edge and leaves the middle alone.
+    const cv = document.createElement('canvas');
+    cv.width = W;
+    cv.height = H;
+    const ctx = cv.getContext('2d', { willReadFrequently: true });
+    ctx.drawImage(base, 0, 0);
+    drawMat(ctx, 'gallery', { palette });
+    const px = (x, y) => [...ctx.getImageData(x, y, 1, 1).data.slice(0, 3)];
+    const mid = px(W / 2, H / 2);
+    const refMid = [ref[(Math.floor(H / 2) * W + Math.floor(W / 2)) * 4], ref[(Math.floor(H / 2) * W + Math.floor(W / 2)) * 4 + 1], ref[(Math.floor(H / 2) * W + Math.floor(W / 2)) * 4 + 2]];
+    const corner = px(4, 4);
+    const edge = px(W / 2, 6);
+    out.mat = out.mat || {};
+    out.mat[palName] = {
+      edgeUniform: corner.every((v, i) => Math.abs(v - edge[i]) < 12),
+      middleKept: mid.every((v, i) => Math.abs(v - refMid[i]) < 3),
+    };
+  }
+  return out;
+});
+ok('"As drawn" leaves the picture exactly as it was',
+   finishes.changed['none/marine'] === 0 && finishes.changed['none/papyrus'] === 0);
+const inert = Object.entries(finishes.changed).filter(([k, v]) => !k.startsWith('none/') && v < 0.05);
+ok('every other finish visibly changes the picture, on a dark palette and a light one', inert.length === 0,
+   inert.map(([k, v]) => `${k} ${(v * 100).toFixed(1)}%`).join(', ') || `${Object.keys(finishes.changed).length} renders`);
+ok('no finish leaves a filter, an alpha or a blend mode behind', finishes.leaked.length === 0, finishes.leaked.join(', '));
+const slowFinish = Object.entries(finishes.slow).filter(([, ms]) => ms > 250);
+ok('no finish costs more than a quarter of a second at card size', slowFinish.length === 0,
+   Object.entries(finishes.slow).map(([k, ms]) => `${k} ${ms.toFixed(0)}`).join(', '));
+ok('the gallery mat frames the edge and leaves the middle alone',
+   Object.values(finishes.mat).every((m) => m.edgeUniform && m.middleKept), JSON.stringify(finishes.mat));
+
+// The live canvas: finish, grain and pace actually reach the renderer, and
+// are remembered.
+const dressing = await page.evaluate(async () => {
+  const look = window.son.look;
+  const sink = window.son.sinks.find((s) => s.particles);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  look.selectFinish('cyanotype');
+  look.selectMat('thin');
+  look.selectGrain(true);
+  look.selectPace(0);
+  await wait(200);
+  const held = {
+    finish: sink.finish,
+    mat: sink.mat,
+    grain: sink.grain,
+    pace: sink.pace,
+    stored: ['finish', 'mat', 'grain', 'pace'].map((k) => localStorage.getItem('t:' + k)),
+    cards: document.querySelectorAll('#finishes .card').length,
+  };
+  // A mark lives on the scene's clock: at a quarter speed it ages a quarter
+  // as fast, which is what makes a slow room slow.
+  window.son.emit({ magnitude: 4000, id: 'pace-slow' });
+  const a = sink.particles[sink.particles.length - 1];
+  await wait(800);
+  const slow = sink._clockNow() - a.born;
+  look.selectPace(3);
+  window.son.emit({ magnitude: 4000, id: 'pace-real' });
+  const b = sink.particles[sink.particles.length - 1];
+  await wait(800);
+  const real = sink._clockNow() - b.born;
+  look.selectFinish('none');
+  look.selectMat('none');
+  look.selectGrain(false);
+  return { ...held, slow, real, after: [sink.finish, sink.mat, sink.grain, sink.pace] };
+});
+ok('finish, frame, grain and pace reach the canvas',
+   dressing.finish === 'cyanotype' && dressing.mat === 'thin' && dressing.grain === true && Math.abs(dressing.pace - 0.25) < 1e-9,
+   JSON.stringify(dressing));
+ok('finish, frame, grain and pace are remembered', JSON.stringify(dressing.stored) === JSON.stringify(['cyanotype', 'thin', '1', '0']),
+   JSON.stringify(dressing.stored));
+ok('there is a card for every finish', dressing.cards === 12, String(dressing.cards));
+ok('a slow pace slows the picture', dressing.slow < dressing.real * 0.45, `slow ${dressing.slow.toFixed(0)} ms vs real ${dressing.real.toFixed(0)} ms`);
+ok('and back to real time afterwards', JSON.stringify(dressing.after) === JSON.stringify(['none', 'none', false, 1]), JSON.stringify(dressing.after));
+
 // --- offscreen canvases are pooled, not bought ---------------------------
 // A buffer the size of the visible canvas is several megabytes, and a scene's
 // state is thrown away every time the scene changes. Allocating a fresh one
@@ -2087,7 +2206,10 @@ const followed = await page.evaluate(async () => {
     });
   const read = (cv) => cv.getContext('2d').getImageData(0, 0, 4, 4).data.join(',');
 
-  document.querySelector('#palettes .sw[data-palette="papyrus"]').scrollIntoView({ block: 'center' });
+  // A scene card is brought on screen, not the swatch: with ninety-odd cards
+  // and the finish controls between them, the swatch and the cards no longer
+  // fit in one viewport. The click below goes through the DOM and scrolls nothing.
+  [...document.querySelectorAll('#scenes .card')].pop().scrollIntoView({ block: 'center' });
   await new Promise((r) => setTimeout(r, 400));
   const cv = onScreen();
   if (!cv) return { found: false };
@@ -2365,6 +2487,73 @@ ok('every resource the page requests resolves', badResponses.length === 0,
    badResponses.slice(0, 4).join(' | '));
 ok('no console errors on the page', consoleErrors.length === 0,
    consoleErrors.slice(0, 3).join(' | '));
+
+// --- works: one click sets the picture, the sound and the frame ----------------
+// Last of the desktop checks, because choosing a work changes -- and remembers
+// -- a scene, a palette and a kit that the checks above take as given.
+await page.evaluate(() => { document.querySelector('#sec-works').open = true; });
+await page.waitForFunction(() => document.querySelectorAll('#works .card').length > 0, null, { timeout: 10000 });
+const worksPainted = await page.evaluate(async () => {
+  const { WORKS } = await import('../src/index.js');
+  window.son.works.repaint();
+  const start = performance.now();
+  while (window.son.works.busy && performance.now() - start < 30000) await new Promise((r) => setTimeout(r, 100));
+  const cards = [...document.querySelectorAll('#works .card')];
+  const blank = [];
+  for (const card of cards) {
+    card.scrollIntoView();
+    await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  }
+  const s2 = performance.now();
+  while (window.son.works.busy && performance.now() - s2 < 30000) await new Promise((r) => setTimeout(r, 100));
+  for (const card of cards) {
+    const cv = card.querySelector('canvas');
+    const ctx = cv.getContext('2d');
+    const { data } = ctx.getImageData(0, 0, cv.width, cv.height);
+    const seen = new Set();
+    for (let i = 0; i < data.length; i += 4 * 13) seen.add((data[i] >> 3) << 10 | (data[i + 1] >> 3) << 5 | (data[i + 2] >> 3));
+    if (seen.size < 4) blank.push(card.dataset.work);
+  }
+  window.scrollTo(0, 0);
+  return { total: cards.length, expected: Object.keys(WORKS).length, blank, headings: document.querySelectorAll('#works .sub-label').length };
+});
+ok('every work has a card, hung in its room', worksPainted.total === worksPainted.expected && worksPainted.headings >= 5,
+   `${worksPainted.total}/${worksPainted.expected} cards, ${worksPainted.headings} rooms`);
+ok('every work card shows its picture', worksPainted.blank.length === 0, worksPainted.blank.join(', ') || 'all painted');
+
+const chosen = await page.evaluate(async () => {
+  const son = window.son;
+  const sink = son.sinks.find((s) => s.particles);
+  document.querySelector('#works [data-work="kyoto"]').click();
+  const start = performance.now();
+  while (son.works.current() !== 'kyoto' && performance.now() - start < 20000) await new Promise((r) => setTimeout(r, 100));
+  const result = {
+    current: son.works.current(),
+    scene: sink.sceneName,
+    palette: sink.paletteName,
+    finish: sink.finish,
+    mat: sink.mat,
+    pace: sink.pace,
+    space: son.space,
+    pressed: document.querySelector('#works [data-work="kyoto"]').getAttribute('aria-pressed'),
+    cartel: document.querySelector('#work-cartel').textContent,
+    summary: document.querySelector('#sum-works').textContent,
+  };
+  // Change one thing by hand: the work's label must come off, not linger.
+  son.look.selectPalette('marine');
+  son.works.refresh();
+  result.afterTouch = son.works.current();
+  result.pressedAfter = document.querySelector('#works [data-work="kyoto"]').getAttribute('aria-pressed');
+  return result;
+});
+ok('choosing a work sets scene, palette, finish, frame, pace and room at once',
+   chosen.current === 'kyoto' && chosen.scene === 'floatingink' && chosen.palette === 'ink' && chosen.finish === 'ink' &&
+   chosen.mat === 'gallery' && Math.abs(chosen.pace - 0.5) < 1e-9 && chosen.space === 'hall',
+   JSON.stringify(chosen));
+ok('the chosen work is marked and labelled', chosen.pressed === 'true' && /Nocturne in Kyoto/.test(chosen.cartel) && /Koto/.test(chosen.cartel),
+   chosen.cartel);
+ok('the panel header names the work on show', chosen.summary === 'Nocturne in Kyoto', chosen.summary);
+ok('changing anything by hand takes the label off', chosen.afterTouch === null && chosen.pressedAfter === 'false');
 
 // --- phone-sized, touch-driven ------------------------------------------
 // The report that started this was "I see the circles and hear nothing on my

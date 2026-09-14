@@ -91,6 +91,12 @@ function applySettings(s) {
   if (typeof s.richness === 'number') sink.setRichness(s.richness);
   if (typeof s.depth === 'boolean') sink.setDepth(s.depth);
   if (typeof s.starfield === 'boolean') sink.setStarfield(s.starfield);
+  // The finish, the mat, the grain and the pace, so a wall shows the picture
+  // exactly as it was dressed on the laptop and not as it was drawn.
+  if (typeof s.finish === 'string') sink.setFinish(s.finish);
+  if (typeof s.mat === 'string') sink.setMat(s.mat);
+  if (typeof s.grain === 'boolean') sink.setGrain(s.grain);
+  if (typeof s.pace === 'number') sink.setPace(s.pace);
   if (s.params) {
     for (const [scene, dials] of Object.entries(s.params)) {
       for (const [name, value] of Object.entries(dials)) sink.setParam(name, value, scene);
