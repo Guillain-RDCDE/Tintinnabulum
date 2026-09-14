@@ -71,6 +71,19 @@ function petal(ctx, x, y, a, s) {
   ctx.closePath();
 }
 
+/** The shadow of a cloud drifting slowly over the ground. */
+function cloud(ctx, api) {
+  const t = api.now / 1000;
+  const R = Math.max(api.w, api.h) * 0.35;
+  const x = ((t * 18) % (api.w + R * 2)) - R;
+  const y = api.h * (0.45 + 0.2 * Math.sin(t * 0.05));
+  const g = ctx.createRadialGradient(x, y, 0, x, y, R);
+  g.addColorStop(0, 'rgba(40,35,30,0.2)');
+  g.addColorStop(1, 'rgba(40,35,30,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(x - R, y - R, R * 2, R * 2);
+}
+
 export const WATER_SCENES = {
   // --- colour in water ------------------------------------------------------------
   inkwater: {
@@ -647,8 +660,16 @@ export const WATER_SCENES = {
       const g = s.bufCtx;
       const sp = api.param('spacing');
       const key = `${cv.width}x${cv.height}:${pal.background}:${sp}`;
+      // Every few seconds the rake goes round one stone again, and a cloud's
+      // shadow drifts over the gravel: a garden is tended, and has weather.
+      if (s.built && s.count && api.now >= (s.rakeAt || 0)) {
+        s.rakeAt = api.now + 5000 + Math.random() * 4000;
+        s.sb[Math.floor(Math.random() * s.count)] = api.now;
+        s.animating = true;
+      }
       if (s.built === key && !s.animating) {
         ctx.drawImage(cv, 0, 0, W, H);
+        cloud(ctx, api);
         return;
       }
       const k = cv.width / W;
@@ -763,6 +784,7 @@ export const WATER_SCENES = {
       }
       s.built = key;
       ctx.drawImage(cv, 0, 0, W, H);
+      cloud(ctx, api);
     },
   },
 };

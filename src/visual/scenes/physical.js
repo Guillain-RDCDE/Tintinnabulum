@@ -32,6 +32,13 @@ export const PHYSICAL_SCENES = {
       if (!s.drops) return;
       const step = Math.min(0.05, api.dt / 1000);
       const surface = api.h * 0.86;
+      // A light drizzle of its own between events, fine and pale, so a quiet
+      // feed is a quiet evening's rain rather than a stopped picture.
+      if (api.now >= (s.drizzleAt || 0)) {
+        s.drizzleAt = api.now + 140 + Math.random() * 220;
+        s.drops.push({ x: Math.random() * api.w, y: -10, v: 70, r: 1, color: api.palette.default, rim: api.palette.default });
+        if (s.drops.length > cap(api, 0.5)) s.drops.shift();
+      }
       for (let i = s.drops.length - 1; i >= 0; i--) {
         const d = s.drops[i];
         d.v += 900 * step; // gravity, so the fall accelerates rather than drifts
@@ -258,6 +265,22 @@ export const PHYSICAL_SCENES = {
         }
         x += bw + gap;
       }
+      // Lit windows, coming and going on their own, bar by bar out of step:
+      // a record of the day that still looks lived in when nothing arrives.
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = api.palette.text;
+      ctx.beginPath();
+      let wx = api.w - s.bars.length * (bw + gap);
+      for (let i = 0; i < s.bars.length; i++) {
+        const h = Math.max(2, s.bars[i].h * 1.5);
+        const tick = Math.floor(api.now / 600 + i * 0.37);
+        for (let yy = baseline - h + 3; yy < baseline - 3; yy += 4) {
+          const hash = ((i * 73856093) ^ (Math.round(yy) * 19349663) ^ (tick * 83492791)) >>> 0;
+          if (hash % 5 < 2) ctx.rect(wx + 1, yy, 3, 2.5);
+        }
+        wx += bw + gap;
+      }
+      ctx.fill();
       ctx.globalAlpha = 0.25;
       ctx.strokeStyle = api.palette.default;
       ctx.lineWidth = 1;

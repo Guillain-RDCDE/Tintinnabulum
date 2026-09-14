@@ -544,7 +544,13 @@ export const FANTASIA_SCENES = {
     frame(ctx, api) {
       const marks = api.particles.slice(-Math.round(api.param('points')));
       if (marks.length < 3) return;
-      const pts = marks.map((p) => [p.x, p.y, p]);
+      // Each point drifts a little on its own, so the triangles keep flipping
+      // and re-forming between events instead of freezing into a diagram.
+      const t = api.now / 1000;
+      const pts = marks.map((p) => {
+        const k = p.pick !== undefined ? p.pick : ((p.x * 0.013 + p.y * 0.007) % 1);
+        return [p.x + Math.sin(t * 0.5 + k * 20) * 9, p.y + Math.cos(t * 0.43 + k * 31) * 9, p];
+      });
       // The naive O(n^3) construction: a triangle is Delaunay when no other
       // point is inside its circumcircle. At forty points that is sixty
       // thousand tests a frame, which is nothing, and the alternative is

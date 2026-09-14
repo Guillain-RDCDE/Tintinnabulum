@@ -78,6 +78,7 @@ export const CATALOGUE = {
   snowfall: S('Night', 'Snow falling past lit windows and settling on the roofs.'),
   constellation: S('Night', 'Events become stars, and the busy ones find each other across the dark.'),
   radar: S('Night', 'A slow sweep of light that finds each event as it passes, like a lighthouse over a night sea.'),
+  digitalrain: S('Night', 'The titles of events falling in green down a black screen, letter by letter, among a softer rain of code.'),
   nebula: S('Night', 'Soft light piled on soft light, so the busy moments glow and the quiet ones stay dim.'),
 
   // --- materials ---------------------------------------------------------

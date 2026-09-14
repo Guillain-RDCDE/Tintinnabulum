@@ -16,8 +16,8 @@ Open the sandbox and change one thing at a time.
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Gallery** | Thirty-six finished pieces in four rooms named for their light: dawn, daylight, dusk and night. One click sets the picture, the palette, the sound, the room, the finish, the frame, the pace and the living colour. A filter for calm or lively, and an exhibition mode that moves on every few minutes. Try **A drop in the glass**, then **Lanterns on the lake**. |
-| **Studio** | A hundred and three visualisations on eight shelves, thirteen finishes and eighty palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
+| **Gallery** | Thirty-seven finished pieces in four rooms named for their light: dawn, daylight, dusk and night. One click sets the picture, the palette, the sound, the room, the finish, the frame, the pace and the living colour. A filter for calm or lively, and an exhibition mode that moves on every few minutes. Try **A drop in the glass**, then **Lanterns on the lake**. |
+| **Studio** | A hundred and four visualisations on eight shelves, thirteen finishes and eighty palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -734,7 +734,7 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. A hundred and three ship.
+A scene decides what a moment of data looks like. A hundred and four ship.
 They sit on eight shelves named for what is on them -- *Painting*, *Nature*,
 *Water*, *Night*, *Materials*, *Pattern*, *Drawing machines* and *Forms and
 numbers* -- each scene with one line saying what it feels like, and the
@@ -952,6 +952,7 @@ place has one, and still takes every colour from the palette.
 | **Jellyfish** | Bells that close quickly and open slowly, which is what moves them, trailing threads; an event sends a pulse through the nearest and makes it glow. |
 | **Soap bubbles** | Iridescent skins in teal, gold and coral -- never a blue beside a red, where a gradient passes through violet -- that wobble and burst. |
 | **Snow on the city** | Three depths of snow, the far one behind the buildings; lit windows switched by events, snow settling on the roofs over minutes. |
+| **Digital rain** | Columns of characters falling down a black screen, and the title each event carries falling in a column of its own, letter by letter. Nothing is redrawn: each column writes one character as its head reaches a new row, onto a buffer darkened a little every frame, so a few hundred characters are written a second rather than thousands a frame. Green on black, or the palette's own colours. |
 | **Paper forest** | Layers of paper trees, palest at the back, each casting a shadow on the one behind, swaying in the wind; events send a paper bird across. |
 
 #### Dials

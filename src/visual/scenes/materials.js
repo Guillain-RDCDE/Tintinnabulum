@@ -362,6 +362,12 @@ export const MATERIAL_SCENES = {
       const g = bufferFor(api);
       if (!g) return;
       api.scene.passes = 0;
+      // A pass of the can every few seconds of its own: a wall in use.
+      if (api.now >= (api.scene.passAt || 0)) {
+        api.scene.passAt = api.now + 1200 + Math.random() * 1200;
+        const ink = inks(api.palette)[Math.floor(Math.random() * 4)];
+        MATERIAL_SCENES.spray.event({ x: Math.random() * api.w, y: Math.random() * api.h, r: 30 + Math.random() * 50, color: ink }, api);
+      }
       // Walls get painted over, eventually.
       g.save();
       g.globalCompositeOperation = 'destination-out';
@@ -476,7 +482,23 @@ export const MATERIAL_SCENES = {
         }
         s.built = key;
       }
+      // Now and then a patch of stones is set by itself, in one of the
+      // palette's colours, and a soft light travels slowly across the floor.
+      if (s.built && api.now >= (s.patchAt || 0)) {
+        s.patchAt = api.now + 2500 + Math.random() * 3000;
+        const ink = inks(pal)[Math.floor(Math.random() * 4)];
+        MATERIAL_SCENES.tesserae.event({ x: Math.random() * api.w, y: Math.random() * api.h, r: 30 + Math.random() * 40, color: ink }, api);
+      }
       ctx.drawImage(cv, 0, 0, api.w, api.h);
+      const t = api.now / 1000;
+      const lx = api.w * (0.5 + 0.45 * Math.sin(t * 0.21));
+      const ly = api.h * (0.5 + 0.4 * Math.cos(t * 0.17));
+      const R = Math.max(api.w, api.h) * 0.45;
+      const light = ctx.createRadialGradient(lx, ly, 0, lx, ly, R);
+      light.addColorStop(0, 'rgba(255,245,225,0.16)');
+      light.addColorStop(1, 'rgba(255,245,225,0)');
+      ctx.fillStyle = light;
+      ctx.fillRect(0, 0, api.w, api.h);
     },
   },
 
@@ -525,11 +547,20 @@ export const MATERIAL_SCENES = {
       const n = Math.round(api.param('pieces'));
       const base = [...inks(pal), pal.default];
       const core = lightnessOf(pal.background) > 0.85 ? '#fffdf8' : '#f6f1e6';
+      // A new piece laid on top every few seconds of its own, and every piece
+      // lifting very slightly, as paper does in a draught.
+      if (api.now >= (s.layAt || 0)) {
+        s.layAt = api.now + 3500 + Math.random() * 3500;
+        const ink = base[Math.floor(Math.random() * base.length)];
+        MATERIAL_SCENES.tornpaper.event({ x: Math.random() * api.w, y: Math.random() * api.h, color: ink }, api);
+      }
+      const t = api.now / 1000;
       for (let o = 0; o < 30; o++) {
         const i = s.order[o];
         if (i >= n) continue;
-        const cx = s.x[i] * api.w;
-        const cy = s.y[i] * api.h;
+        const cx = s.x[i] * api.w + Math.sin(t * 0.4 + i * 1.9) * 3;
+        const cy = s.y[i] * api.h + Math.cos(t * 0.33 + i * 2.3) * 3;
+        const ang = s.a[i] + 0.025 * Math.sin(t * 0.5 + i);
         const hw = (s.w[i] * api.w) / 2;
         const hh = (s.h[i] * api.h) / 2;
         const edge = (inset) => {
@@ -547,8 +578,8 @@ export const MATERIAL_SCENES = {
             const rag = noise2(s.seed[i] + t * 38, s.seed[i]) * Math.min(hw, hh) * 0.18;
             const x = u * (hw - inset + rag);
             const y = v * (hh - inset + rag);
-            const px = cx + x * Math.cos(s.a[i]) - y * Math.sin(s.a[i]);
-            const py = cy + x * Math.sin(s.a[i]) + y * Math.cos(s.a[i]);
+            const px = cx + x * Math.cos(ang) - y * Math.sin(ang);
+            const py = cy + x * Math.sin(ang) + y * Math.cos(ang);
             if (k === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
           }
           ctx.closePath();

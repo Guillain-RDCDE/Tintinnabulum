@@ -202,6 +202,10 @@ export const WORKS = {
     scene: 'lavalamp', palette: 'amber', kit: 'synth', space: 'plate', pace: SLOW,
     cartel: 'Warm wax rising and sinking in a glass, and a soft synthesiser for the hours it keeps you company.',
   }),
+  fallingcode: work('Night', 'lively', 'Falling code', {
+    scene: 'digitalrain', palette: 'ink', kit: 'synth', space: 'plate', grain: true,
+    cartel: "Every event's title falling down a black screen in green, one letter at a time, among a softer rain of characters. A synthesiser note for each line as it starts to fall.",
+  }),
   fireworks: work('Night', 'lively', 'Fireworks across the bay', {
     scene: 'fireworks', palette: 'cobalt', kit: 'hatnote', space: 'canyon', mat: 'thin',
     cartel: 'Small silent bursts over a far shore, trembling in the water. The bells arrive a moment late, as sound does over water.',

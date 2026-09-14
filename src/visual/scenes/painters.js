@@ -57,8 +57,10 @@ export const PAINTER_SCENES = {
     },
     init(api) {
       const s = api.scene;
-      s.tones = new Float32Array(20);   // per panel, per square: 0..1 drift
-      s.targets = new Float32Array(20);
+      s.tones = new Float32Array(20).fill(0.5);   // per panel, per square: 0..1 drift
+      s.targets = new Float32Array(20).fill(0.5);
+      s.pulse = new Float32Array(20);
+      s.turnAt = 0;
     },
     event(p, api) {
       const s = api.scene;
@@ -66,6 +68,7 @@ export const PAINTER_SCENES = {
       const panel = Math.min(panels - 1, Math.floor((p.x / api.w) * panels));
       const sq = Math.floor(Math.random() * 4);
       s.targets[panel * 4 + sq] = Math.random();
+      s.pulse[panel * 4 + sq] = 1;
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -77,6 +80,17 @@ export const PAINTER_SCENES = {
       const side = Math.min(pw, api.h - gap * 2);
       const top = (api.h - side) / 2;
       const base = inks(pal);
+      const t = api.now / 1000;
+      // A painting that only changed when an event arrived was a still image
+      // with a soundtrack. The squares now live on their own: every few
+      // seconds one of them sets off towards a new value, each breathes a
+      // little lighter and darker on its own rhythm, and the inner squares
+      // swell and settle -- slowly enough to be felt more than watched, which
+      // is how these colours are meant to work on the eye.
+      if (api.now >= s.turnAt) {
+        s.turnAt = api.now + 1800 + Math.random() * 2200;
+        s.targets[Math.floor(Math.random() * panels * 4)] = Math.random();
+      }
       for (let k = 0; k < panels; k++) {
         const x0 = gap + k * (pw + gap) + (pw - side) / 2;
         // One hue per panel; the four squares are that hue at four values.
@@ -84,13 +98,17 @@ export const PAINTER_SCENES = {
         for (let i = 0; i < 4; i++) {
           const idx = k * 4 + i;
           s.tones[idx] = ease(s.tones[idx], s.targets[idx], api.dt, 2600);
-          const shift = (s.tones[idx] - 0.5) * 0.18;
+          s.pulse[idx] *= Math.exp(-api.dt / 1600);
+          const breath = 0.06 * Math.sin(t * 1.1 + idx * 1.7);
+          const shift = (s.tones[idx] - 0.5) * 0.22 + breath + s.pulse[idx] * 0.12;
           const toward = i % 2 ? pal.background : lighten(hue, 0.18);
           const colour = lighten(mixColors(hue, toward, (i / 4) * close), shift);
-          const size = side * (1 - i * 0.2);
-          // The Albers offset: each inner square sits lower than centre.
+          const swell = i ? 0.018 * i * Math.sin(t * 0.8 + k * 2.1 + i) : 0;
+          const size = side * (1 - i * 0.2 + swell);
+          // The Albers offset: each inner square sits lower than centre, and
+          // the offset itself drifts, so the squares seem to rise and settle.
           const x = x0 + (side - size) / 2;
-          const y = top + (side - size) * 0.62;
+          const y = top + (side - size) * (0.62 + 0.06 * Math.sin(t * 0.6 + k));
           ctx.fillStyle = colour;
           ctx.fillRect(x, y, size, size);
         }
@@ -475,6 +493,16 @@ export const PAINTER_SCENES = {
       const cw = api.w / s.cols;
       const ch = api.h / s.rows;
       const u = Math.min(cw, ch);
+      const t = api.now / 1000;
+      // The poster rearranges itself a cell at a time even when nothing
+      // happens, and every shape rocks and breathes on its centre.
+      if (api.now >= (s.turnAt || 0)) {
+        s.turnAt = api.now + 1600 + Math.random() * 2000;
+        const j = Math.floor(Math.random() * s.cols * s.rows);
+        s.kind[j] = (s.kind[j] + 1 + Math.floor(Math.random() * 5)) % 6;
+        s.ink[j] = Math.floor(Math.random() * 5);
+        s.turn[j] = (s.turn[j] + 1) % 4;
+      }
       for (let r = 0; r < s.rows; r++) {
         for (let c = 0; c < s.cols; c++) {
           const i = r * s.cols + c;
@@ -482,7 +510,9 @@ export const PAINTER_SCENES = {
           const cy = r * ch + ch / 2;
           ctx.save();
           ctx.translate(cx, cy);
-          ctx.rotate((s.turn[i] * Math.PI) / 2);
+          ctx.rotate((s.turn[i] * Math.PI) / 2 + 0.12 * Math.sin(t * 0.9 + i * 1.3));
+          const breathe = 1 + 0.05 * Math.sin(t * 1.3 + i * 0.7);
+          ctx.scale(breathe, breathe);
           ctx.fillStyle = inksHere[s.ink[i]];
           ctx.beginPath();
           const h = u * 0.42;
@@ -532,6 +562,13 @@ export const PAINTER_SCENES = {
       if (!s.rowInk) return;
       const pal = api.palette;
       const threads = [pal.user, pal.anon, pal.alert, pal.default, pal.default];
+      // The weaver changes thread on their own every couple of seconds, so the
+      // cloth goes on growing in bands when no event arrives: rows of a single
+      // colour scrolling past each other cannot be seen to move.
+      if (api.now >= (s.changeAt || 0)) {
+        s.changeAt = api.now + 1400 + Math.random() * 1600;
+        s.current = (s.current + 1 + Math.floor(Math.random() * 3)) % 5;
+      }
       s.acc += (api.param('speed') * api.dt) / 1000;
       while (s.acc >= 1) {
         s.acc -= 1;
@@ -751,6 +788,13 @@ export const PAINTER_SCENES = {
       const cv = scratch(api);
       const g = bufferFor(api);
       if (!g) return;
+      // A flick of the stick every few seconds of its own, so the painting
+      // goes on being painted when the feed goes quiet.
+      if (api.now >= (api.scene.flickAt || 0)) {
+        api.scene.flickAt = api.now + 1100 + Math.random() * 1300;
+        const ink = inks(api.palette)[Math.floor(Math.random() * 4)];
+        PAINTER_SCENES.drip.event({ x: Math.random() * api.w, y: Math.random() * api.h, r: 20 + Math.random() * 40, color: ink }, api);
+      }
       const keep = api.param('hold');
       if (keep < 0.999) {
         g.save();
@@ -760,6 +804,17 @@ export const PAINTER_SCENES = {
         g.restore();
       }
       ctx.drawImage(cv, 0, 0, api.w, api.h);
+      // Light moving slowly over wet paint: the canvas is always catching it
+      // somewhere, whether or not a flick has just landed.
+      const t = api.now / 1000;
+      const lx = api.w * (0.5 + 0.45 * Math.sin(t * 0.37));
+      const ly = api.h * (0.5 + 0.4 * Math.cos(t * 0.29));
+      const R = Math.max(api.w, api.h) * 0.4;
+      const sheen = ctx.createRadialGradient(lx, ly, 0, lx, ly, R);
+      sheen.addColorStop(0, 'rgba(255,250,235,0.16)');
+      sheen.addColorStop(1, 'rgba(255,250,235,0)');
+      ctx.fillStyle = sheen;
+      ctx.fillRect(0, 0, api.w, api.h);
     },
   },
 

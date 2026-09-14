@@ -326,6 +326,17 @@ export const AUTOMATA_SCENES = {
     frame(ctx, api) {
       const marks = api.particles.slice(-Math.min(36, cap(api, 0.06)));
       if (marks.length < 2) return;
+      // The feature points drift, so the cells swell and give way to one
+      // another between events -- stone that is slowly, visibly shifting.
+      const t = api.now / 1000;
+      const mx = new Float32Array(marks.length);
+      const my = new Float32Array(marks.length);
+      for (let m = 0; m < marks.length; m++) {
+        const p = marks[m];
+        const k = p.pick !== undefined ? p.pick : ((p.x * 0.013 + p.y * 0.007) % 1);
+        mx[m] = p.x + Math.sin(t * 0.45 + k * 20) * 14;
+        my[m] = p.y + Math.cos(t * 0.38 + k * 31) * 14;
+      }
       const step = Math.max(3, Math.round(api.param('grid')));
       const order = Math.round(api.param('order'));
       const contrast = api.param('contrast');
@@ -339,8 +350,9 @@ export const AUTOMATA_SCENES = {
           const y = r * step;
           d[0] = d[1] = d[2] = d[3] = Infinity;
           let owner = marks[0];
-          for (const p of marks) {
-            const dist = Math.hypot(x - p.x, y - p.y);
+          for (let m = 0; m < marks.length; m++) {
+            const p = marks[m];
+            const dist = Math.hypot(x - mx[m], y - my[m]);
             // The three nearest, kept in order by insertion: a sort per cell
             // would be several thousand sorts a frame for three numbers.
             if (dist < d[0]) { d[2] = d[1]; d[1] = d[0]; d[0] = dist; owner = p; }

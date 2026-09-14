@@ -651,13 +651,22 @@ const finishes = await page.evaluate(async () => {
       const cv = document.createElement('canvas');
       cv.width = W;
       cv.height = H;
-      const ctx = cv.getContext('2d', { willReadFrequently: true });
+      // An ordinary canvas, as the page's own is. Asking for willReadFrequently
+      // put this one in software, where every step of a finish copies the
+      // whole frame back from the graphics card, and the timing measured that
+      // copying rather than the finish. The 1-pixel read below still makes the
+      // work finish before the clock stops.
+      const ctx = cv.getContext('2d');
       ctx.drawImage(base, 0, 0);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       // Once untimed: textures are generated on first use at a size and kept,
       // and that is a one-off, not the cost of a frame.
       applyFinish(ctx, name, { palette, pool, now: 1000 });
       ctx.drawImage(base, 0, 0);
+      // Flushed before the clock starts as well as after it stops: without
+      // this the timing picked up whatever was still queued from the line
+      // above, and 'As drawn', which does nothing, measured 125 ms.
+      ctx.getImageData(0, 0, 1, 1);
       const t0 = performance.now();
       applyFinish(ctx, name, { palette, pool, now: 1000 });
       ctx.getImageData(0, 0, 1, 1);
@@ -2602,6 +2611,51 @@ ok('exhibition mode moves on to the next work showing, and puts it up', gallery.
    JSON.stringify(gallery.tour));
 ok('exhibition mode is remembered', gallery.tourSet.minutes === 10 && gallery.tourSet.stored === '10' && gallery.tourSet.note, JSON.stringify(gallery.tourSet));
 ok('and "All" brings every work back', gallery.allBack);
+
+// --- every picture keeps living between events --------------------------------
+// A scene that moves only when an event arrives is a still image with a
+// soundtrack whenever the feed is quiet or a work runs slowly -- which is how
+// the Homage to the Square was reported. Every scene must keep changing on its
+// own once the events stop.
+const stillness = await page.evaluate(async () => {
+  const son = window.son;
+  const sink = son.sinks.find((s) => s.particles);
+  son.look.selectFinish('none');
+  son.look.selectMat('none');
+  son.look.selectGrain(false);
+  son.look.selectPace(3);
+  son.look.selectLiving('still');
+  const { SCENES } = await import('../src/index.js');
+  const src = document.querySelector('#canvas');
+  const snap = () => {
+    const c = document.createElement('canvas');
+    c.width = 320;
+    c.height = 180;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(src, 0, 0, 320, 180);
+    return g.getImageData(0, 0, 320, 180).data;
+  };
+  const diff = (a, b) => {
+    let n = 0;
+    for (let i = 0; i < a.length; i += 4) if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 12) n++;
+    return n / (a.length / 4);
+  };
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const out = [];
+  for (const name of Object.keys(SCENES)) {
+    sink.setScene(name);
+    for (let i = 0; i < 12; i++) son.emit({ magnitude: 100 + i * 300, category: ['user', 'anon', 'bot'][i % 3], label: 'Event ' + i, id: `still-${name}-${i}` });
+    await wait(900);
+    const a = snap();
+    await wait(2500);
+    out.push([name, diff(a, snap())]);
+  }
+  sink.setScene('bloom');
+  return out;
+});
+const frozen = stillness.filter(([, d]) => d < 0.001);
+ok('every scene keeps moving when the events stop', frozen.length === 0,
+   frozen.map(([n, d]) => `${n} ${(d * 100).toFixed(2)}%`).join(', ') || `${stillness.length} scenes all moving`);
 
 // --- phone-sized, touch-driven ------------------------------------------
 // The report that started this was "I see the circles and hear nothing on my

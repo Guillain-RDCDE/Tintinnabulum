@@ -90,6 +90,23 @@ export const STRUCTURE_SCENES = {
         ctx.arc(cx, cy, maxR * frac, 0, TAU);
         ctx.stroke();
       }
+      // The hand of the clock, sweeping round whether or not anything arrives,
+      // so the face is always telling the time.
+      if (!s.startedAt) s.startedAt = api.now;
+      const hand = ((api.now - (s.t0 || s.startedAt)) / PERIOD) * TAU - Math.PI / 2;
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = api.palette.default;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.arc(cx, cy, maxR, hand - 0.5, hand);
+      ctx.closePath();
+      ctx.fill();
+      ctx.globalAlpha = 0.45;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + Math.cos(hand) * maxR, cy + Math.sin(hand) * maxR);
+      ctx.stroke();
       for (const m of s.marks) {
         const a = ((m.born - s.t0) / PERIOD) * TAU - Math.PI / 2;
         const rad = 18 + (m.r / 90) * (maxR - 18);
@@ -98,7 +115,7 @@ export const STRUCTURE_SCENES = {
         const y = cy + Math.sin(a) * rad;
         const dot = Math.max(1.5, m.r * 0.09);
         if (api.depth) halo(ctx, x, y, dot * 3.4, m.color, fade * 0.14);
-        ctx.globalAlpha = fade * 0.85;
+        ctx.globalAlpha = fade * (0.7 + 0.25 * Math.sin(api.now / 650 + m.born));
         ctx.fillStyle = api.depth ? m.rim || m.color : m.color;
         ctx.beginPath();
         ctx.arc(x, y, dot, 0, TAU);

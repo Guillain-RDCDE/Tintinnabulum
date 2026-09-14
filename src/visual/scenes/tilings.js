@@ -241,7 +241,8 @@ export const TILING_SCENES = {
           const inset = s * gap;
           // An event colours the square it landed in, at whatever depth that
           // square happens to be: a big event lands in a big square.
-          ctx.fillRect(x + inset, y + inset, s - inset * 2, s - inset * 2);
+          const band = Math.floor(3 + 2.99 * Math.sin(clock * 0.9 - ((x + y - x0 - y0) / side) * 7));
+          bands[band].push(x + inset, y + inset, s - inset * 2);
           return;
         }
         const t = s / 3;
@@ -252,9 +253,22 @@ export const TILING_SCENES = {
           }
         }
       };
-      ctx.globalAlpha = 0.5;
-      ctx.fillStyle = api.palette.default;
+      // The carpet is fixed by definition, so it is given weather instead:
+      // slow diagonal waves of light run across it, in six bands of alpha.
+      // Named `clock`, not `t`: the drawing function below already has a `t`
+      // of its own, and sharing the name threw on every leaf and drew nothing.
+      const clock = api.now / 1000;
+      const bands = [[], [], [], [], [], []];
       draw(x0, y0, side, depth);
+      ctx.fillStyle = api.palette.default;
+      for (let b = 0; b < 6; b++) {
+        const list = bands[b];
+        if (!list.length) continue;
+        ctx.globalAlpha = 0.28 + b * 0.08;
+        ctx.beginPath();
+        for (let q = 0; q < list.length; q += 3) ctx.rect(list[q], list[q + 1], list[q + 2], list[q + 2]);
+        ctx.fill();
+      }
 
       // The events afterwards, each colouring the one square it landed in.
       // Testing every square against every mark was four thousand squares

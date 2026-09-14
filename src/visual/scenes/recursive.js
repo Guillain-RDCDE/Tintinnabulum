@@ -218,8 +218,19 @@ export const RECURSIVE_SCENES = {
         g.globalAlpha = 1;
       }
 
+      // The finished dragon breathes: drawn very slightly larger and smaller
+      // and turned a hair either way, so a creature that has stopped unfolding
+      // is still a creature rather than a diagram.
+      const t = api.now / 1000;
+      const breath = 1 + 0.012 * Math.sin(t * 0.8);
+      ctx.save();
+      ctx.translate(api.w / 2, api.h / 2);
+      ctx.rotate(0.012 * Math.sin(t * 0.5));
+      ctx.scale(breath, breath);
+      ctx.translate(-api.w / 2, -api.h / 2);
       ctx.globalAlpha = 1;
       ctx.drawImage(cv, 0, 0, api.w, api.h);
+      ctx.restore();
     },
   },
 
