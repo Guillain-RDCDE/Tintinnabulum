@@ -16,6 +16,7 @@ import {
   SCENES,
   DEFAULT_SCENE,
   FINISHES,
+  LIVING,
   SPACES,
   DEFAULT_SPACE,
   previewScene,
@@ -386,6 +387,7 @@ const projector = createProjector({
     mat: canvas.mat,
     grain: canvas.grain,
     pace: canvas.pace,
+    living: canvas.living,
     depth: canvas.depth,
     starfield: canvas.starfield,
     params: canvas._params,
@@ -423,6 +425,7 @@ look.selectSceneRotate(Number(store.get('scene-rotate') || 0), false);
 look.selectFinish(store.get('finish') || 'none', false);
 look.selectMat(store.get('mat') || 'none', false);
 look.selectGrain(store.flag('grain'), false);
+look.selectLiving(store.get('living') || 'still', false);
 look.selectPace(store.get('pace') === null || store.get('pace') === undefined || store.get('pace') === ''
   ? 3 : Number(store.get('pace')), false);
 
@@ -579,6 +582,7 @@ function updateSummaries() {
     (look.sceneRotateWord === 'never' ? '' : ` ${look.sceneRotateWord}`) +
     ` · ${PALETTES[canvas.paletteName].label}` +
     (look.rotateWord === 'never' ? '' : ` ${look.rotateWord}`) +
+    (canvas.living === 'still' ? '' : ` · ${LIVING[canvas.living].label.toLowerCase()}`) +
     (canvas.finish === 'none' ? '' : ` · ${FINISHES[canvas.finish].label}`) +
     (look.richnessWord === 'balanced' ? '' : ` · ${look.richnessWord} colour`);
   $('#sum-connect').textContent = connectSummary;

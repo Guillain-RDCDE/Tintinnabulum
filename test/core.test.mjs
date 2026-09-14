@@ -718,6 +718,47 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   // Nobody living is named, anywhere a person reads first.
   const named = Object.values(WORKS).filter((w) => /riley|hockney|kusama|richter/i.test(w.title + w.cartel)).map((w) => w.title);
   ok('no work is sold on a living artist\'s name', named.length === 0, named.join(', '));
+
+  // --- living colour: pure functions, so checked without a canvas ----------------
+  const { LIVING, LIVING_ORDER, driftNeighbours, driftColours, daylightColours, moodColours, busyness } = lib;
+  const { parseColor, lightnessOf } = await import('../src/visual/color.js');
+  const rgb = (c) => parseColor(c);
+  ok('every living mode is declared, with words for it', LIVING_ORDER.every((m) => LIVING[m] && LIVING[m].label && LIVING[m].note));
+  const strays = Object.keys(PALETTES).filter((n) => {
+    const L = lightnessOf(PALETTES[n].colors.background);
+    return driftNeighbours(n).some((m) => Math.abs(lightnessOf(PALETTES[m].colors.background) - L) >= 0.16);
+  });
+  ok('a drift only visits palettes on a ground of the same lightness', strays.length === 0, strays.join(', ') || 'none strays');
+  const d0 = driftColours('marine', 0, 1000);
+  const dHalf = driftColours('marine', 500, 1000);
+  const dBack = driftColours('marine', 2000, 1000);
+  ok('a drift starts on the chosen palette, moves, and comes back to it',
+     d0.background === mixKey('marine') && dHalf.background !== d0.background && dBack.background === d0.background,
+     `${d0.background} -> ${dHalf.background} -> ${dBack.background}`);
+  function mixKey(n) { return driftColours(n, 0, 1000).background; }
+  const night = rgb(daylightColours('papyrus', 0).background);
+  const noon = rgb(daylightColours('papyrus', 13).background);
+  const dusk = rgb(daylightColours('papyrus', 19).background);
+  ok('by the clock, night is bluer than noon', night.b - night.r > noon.b - noon.r, JSON.stringify({ night, noon }));
+  ok('and dusk is warmer than noon', dusk.r - dusk.b > noon.r - noon.b, JSON.stringify({ dusk, noon }));
+  const quietC = rgb(moodColours('papyrus', 0).background);
+  const busyC = rgb(moodColours('papyrus', 1).background);
+  const flat = moodColours('papyrus', 0.4);
+  ok('a quiet feed cools the colours and a busy one warms them',
+     quietC.b - quietC.r > busyC.b - busyC.r, JSON.stringify({ quietC, busyC }));
+  ok('at an ordinary pace the mood leaves the palette alone', ['background', 'user', 'alert'].every((k) => {
+    const a = rgb(flat[k]); const e = rgb(PALETTES.papyrus.colors[k]);
+    return Math.abs(a.r - e.r) + Math.abs(a.g - e.g) + Math.abs(a.b - e.b) <= 3;
+  }));
+  ok('busyness is a 0..1 dial that rises with the rate', busyness(0) === 0 && busyness(10) < busyness(100) && busyness(1e6) === 1);
+  const violet = [];
+  for (const n of Object.keys(PALETTES)) {
+    for (const h of [0, 7, 13, 19, 21]) {
+      const c = rgb(daylightColours(n, h).background);
+      if (c.b > c.g + 25 && c.r > c.g + 25) violet.push(`${n}@${h}`);
+    }
+  }
+  ok('no hour of the day turns a ground violet', violet.length === 0, violet.slice(0, 6).join(', ') || 'none');
 }
 
 console.log(fails ? `\n${fails} FAILURE(S): ${failedNames.join(' | ')}` : '\nall core checks passed');

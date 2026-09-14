@@ -97,6 +97,7 @@ function applySettings(s) {
   if (typeof s.mat === 'string') sink.setMat(s.mat);
   if (typeof s.grain === 'boolean') sink.setGrain(s.grain);
   if (typeof s.pace === 'number') sink.setPace(s.pace);
+  if (typeof s.living === 'string' && s.living !== sink.living) sink.setLiving(s.living);
   if (s.params) {
     for (const [scene, dials] of Object.entries(s.params)) {
       for (const [name, value] of Object.entries(dials)) sink.setParam(name, value, scene);

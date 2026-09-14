@@ -20,7 +20,7 @@ const UNHURRIED = 2;
 const REAL_TIME = 3;
 const LIVELY = 4;
 
-const work = (room, title, o) => ({ room, title, grain: false, mat: 'none', finish: 'none', space: 'none', pace: REAL_TIME, ...o });
+const work = (room, title, o) => ({ room, title, grain: false, mat: 'none', finish: 'none', space: 'none', pace: REAL_TIME, living: 'still', ...o });
 
 export const WORKS = {
   // --- Japan -------------------------------------------------------------------

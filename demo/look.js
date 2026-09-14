@@ -25,6 +25,7 @@ import {
   FINISH_ORDER,
   MATS,
   applyFinish,
+  LIVING,
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { store } from './store.js';
@@ -455,6 +456,18 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
   });
 
   const selectRotate = paletteRotation.select;
+
+  // Living colour: the palette changing by itself, continuously. See living.js.
+  function selectLiving(mode, persist = true) {
+    const pick = LIVING[mode] ? mode : 'still';
+    canvas.setLiving(pick);
+    $('#living').value = pick;
+    $('#living-note').textContent = LIVING[pick].note;
+    if (persist) store.set('living', pick);
+    updateSummaries();
+    onLookChange();
+  }
+  $('#living').addEventListener('change', (e) => selectLiving(e.target.value));
   const stepPalette = paletteRotation.step;
 
   const palettePicker = createPicker($('#palettes'), Object.entries(PALETTES), {
@@ -592,6 +605,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
   return {
     selectScene, selectPalette, selectShape, selectRichness, selectBudget,
     selectRotate,
+    selectLiving,
     selectSceneRotate: sceneRotation.select,
     // Exposed so a step can be checked without waiting out the shortest
     // interval, which is three quarters of a minute.

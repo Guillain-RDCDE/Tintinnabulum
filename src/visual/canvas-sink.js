@@ -1,6 +1,7 @@
 import { FINISHES, MATS, applyFinish, drawMat, drawGrain } from './finish.js';
 import { rngFrom } from '../core/event.js';
 import { PALETTES, DEFAULT_PALETTE_NAME, resolvePalette } from './palettes.js';
+import { LIVING, driftColours, daylightColours, moodColours, busyness } from './living.js';
 import { shadeOf, lighten, lightnessOf, mixColors } from './color.js';
 import { SHAPES, DEFAULT_SHAPE } from './shapes.js';
 import { SCENES, DEFAULT_SCENE } from './scenes/index.js';
@@ -84,6 +85,9 @@ export class CanvasSink {
     this._fade = null;
     // A visualisation change under way, if one is: see fadeScene.
     this._sceneFade = null;
+    // Living colour, if any: see living.js and setLiving.
+    this.living = 'still';
+    this._living = null;
     this._lastFrame = 0;
 
     this.particles = [];
@@ -114,6 +118,8 @@ export class CanvasSink {
 
   stop() {
     this._running = false;
+    if (this._living) clearInterval(this._living.timer);
+    this._living = null;
     cancelAnimationFrame(this._raf);
     window.removeEventListener('resize', this._onResize);
     this.canvas.removeEventListener('mousemove', this._onMove);
@@ -350,6 +356,7 @@ export class CanvasSink {
         : this.paletteName;
     this._darkGround = lightnessOf(this.palette.background) < 0.5;
     this._recolor();
+    if (this._living && this.living !== 'still') this.setLiving(this.living, this._living.opts);
     return this;
   }
 
@@ -421,6 +428,59 @@ export class CanvasSink {
   setPace(x) {
     const v = Number(x);
     this.pace = Number.isFinite(v) ? Math.max(0.1, Math.min(2, v)) : 1;
+    return this;
+  }
+
+  /**
+   * Let the palette change by itself, slowly: 'drift', 'daylight', 'mood', or
+   * 'still' to stop. The chosen palette stays the chosen one -- `paletteName`
+   * does not move -- and the colours are walked a few times a second towards
+   * what the mode says they should be now. See living.js.
+   *
+   * @param {string} mode
+   * @param {object} [opts]
+   * @param {number} [opts.legMs]  drift: how long one way takes
+   * @param {number} [opts.hour]   daylight: a fixed hour instead of the clock
+   * @param {number} [opts.every]  ms between steps
+   */
+  setLiving(mode, opts = {}) {
+    const next = LIVING[mode] ? mode : 'still';
+    if (this._living) clearInterval(this._living.timer);
+    this._living = null;
+    this.living = next;
+    if (next === 'still') {
+      // Back to the palette itself, exactly, unless a walk is still arriving.
+      if (!this._fade && PALETTES[this.paletteName]) this.setPalette(this.paletteName);
+      return this;
+    }
+    const state = { started: performance.now(), opts, busy: null, timer: 0 };
+    const step = () => {
+      if (this._fade || !PALETTES[this.paletteName]) return;
+      const name = this.paletteName;
+      let colours;
+      if (next === 'drift') {
+        colours = driftColours(name, performance.now() - state.started, opts.legMs);
+      } else if (next === 'daylight') {
+        const d = new Date();
+        const hour = Number.isFinite(opts.hour) ? opts.hour : d.getHours() + d.getMinutes() / 60;
+        colours = daylightColours(name, hour);
+      } else {
+        // The rate over the last twenty seconds, eased, so one burst warms the
+        // room a little rather than flashing it.
+        const now = Date.now();
+        let n = 0;
+        for (let i = this._recent.length - 1; i >= 0 && this._recent[i] >= now - 20000; i--) n++;
+        const want = busyness(n * 3);
+        state.busy = state.busy === null ? want : state.busy + (want - state.busy) * 0.08;
+        colours = moodColours(name, state.busy);
+      }
+      this.palette = { ...this.palette, ...colours };
+      this._darkGround = lightnessOf(this.palette.background) < 0.5;
+      this._recolor();
+    };
+    state.timer = setInterval(step, opts.every || 400);
+    this._living = state;
+    step();
     return this;
   }
 

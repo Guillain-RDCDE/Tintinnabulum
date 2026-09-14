@@ -16,6 +16,7 @@ import {
   SPACES,
   FINISHES,
   MATS,
+  LIVING,
   previewScene,
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
@@ -78,6 +79,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
       KITS[w.kit].label,
       w.space === 'none' ? '' : SPACES[w.space].label.toLowerCase(),
       PACE_WORDS[w.pace],
+      w.living === 'still' ? '' : LIVING[w.living].label.toLowerCase(),
     ].filter(Boolean).join(' · ');
   }
 
@@ -94,6 +96,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     look.selectMat(w.mat);
     look.selectGrain(w.grain);
     look.selectPace(w.pace);
+    look.selectLiving(w.living);
     selectSpace(w.space);
     store.set('work', name);
     refresh();
@@ -112,6 +115,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
         canvas.mat === w.mat &&
         Boolean(canvas.grain) === Boolean(w.grain) &&
         Math.abs(canvas.pace - PACE[w.pace]) < 1e-6 &&
+        canvas.living === w.living &&
         getKit() === w.kit &&
         getSpace() === w.space
       ) return name;
