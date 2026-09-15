@@ -1155,7 +1155,9 @@ labels do not lie -- every night work is on a dark ground, every dawn and
 daylight work on a light one.
 
 Each room is a row that scrolls sideways, says in a line what it holds and
-hangs its first work large. A card comes alive under the pointer -- the scene
+hangs its first work large. A finger or a trackpad moves the row directly; with
+a mouse, an arrow at either end moves it along, shown only when there is more
+that way, with a fade at the edge that says the row goes on. A card comes alive under the pointer -- the scene
 itself runs in it, through `animateScene`, the live counterpart of
 `previewScene` -- and choosing one puts the work up full screen and starts it
 playing. A

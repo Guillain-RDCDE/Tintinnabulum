@@ -134,6 +134,47 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
   const visible = () =>
     Object.keys(WORKS).filter((n) => energy === 'all' || WORKS[n].energy === energy);
 
+  // --- a row you can move along with a mouse --------------------------------------
+  //
+  // A row that scrolls sideways is natural under a finger or on a trackpad and
+  // invisible to a mouse: the wheel scrolls the inspector, the scrollbar is
+  // hidden, and the works past the edge simply are not there. So each row has
+  // an arrow at either end, shown only when there is somewhere to go, and a
+  // fade at the edge that says the row goes on.
+  const CHEVRON_LEFT = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg>';
+  const CHEVRON_RIGHT = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7.5 4.5L13 10l-5.5 5.5"/></svg>';
+
+  function updateRow(wrap) {
+    const grid = wrap.querySelector('.cards');
+    const max = grid.scrollWidth - grid.clientWidth;
+    const atStart = grid.scrollLeft <= 2;
+    const atEnd = grid.scrollLeft >= max - 2;
+    wrap.classList.toggle('at-start', atStart);
+    wrap.classList.toggle('at-end', atEnd || max <= 2);
+  }
+
+  function makeRow(grid, room) {
+    const wrap = document.createElement('div');
+    wrap.className = 'rowwrap';
+    grid.before(wrap);
+    wrap.append(grid);
+    for (const [dir, icon, word] of [[-1, CHEVRON_LEFT, 'back'], [1, CHEVRON_RIGHT, 'on']]) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `row-nav ${dir < 0 ? 'prev' : 'next'}`;
+      b.setAttribute('aria-label', `Scroll ${room} ${word}`);
+      b.innerHTML = icon;
+      b.addEventListener('click', () => {
+        grid.scrollBy({ left: dir * Math.max(160, grid.clientWidth * 0.8), behavior: 'smooth' });
+      });
+      wrap.append(b);
+    }
+    grid.addEventListener('scroll', () => updateRow(wrap), { passive: true });
+    if (typeof ResizeObserver === 'function') new ResizeObserver(() => updateRow(wrap)).observe(grid);
+    requestAnimationFrame(() => updateRow(wrap));
+    return wrap;
+  }
+
   function layout() {
     stopLive();
     picker.group((name) => WORKS[name].room, WORK_ROOMS);
@@ -143,6 +184,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
       note.className = 'room-note';
       note.textContent = WORK_ROOM_NOTES[heading.textContent] || '';
       heading.after(note);
+      makeRow(note.nextElementSibling, heading.textContent);
     }
     const shown = new Set(visible());
     for (const grid of host.querySelectorAll('.cards')) {
@@ -155,10 +197,13 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
         if (on) { first = false; any = true; }
       }
       // A room with nothing in it under this filter disappears, heading and all.
+      const wrap = grid.parentElement;
       grid.hidden = !any;
-      grid.previousElementSibling.hidden = !any;
-      grid.previousElementSibling.previousElementSibling.hidden = !any;
+      wrap.hidden = !any;
+      wrap.previousElementSibling.hidden = !any;
+      wrap.previousElementSibling.previousElementSibling.hidden = !any;
       grid.scrollLeft = 0;
+      requestAnimationFrame(() => updateRow(wrap));
     }
     for (const b of document.querySelectorAll('#works-energy button')) {
       b.setAttribute('aria-pressed', String(b.dataset.energy === energy));

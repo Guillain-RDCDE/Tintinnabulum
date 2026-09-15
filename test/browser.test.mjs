@@ -574,6 +574,15 @@ const variety = await page.evaluate(async () => {
   // gradients swamped the count and hid the very thing being measured.
   const depthWas = sink.depth;
   sink.setDepth(false);
+  // And on a fresh set of marks. By now the stage holds everything the
+  // arrival animation and the checks above have left on it, half faded, and
+  // fading marks are many colours whatever the variety: counted on that, the
+  // two settings came out within a few percent of each other on some runs.
+  sink.clear();
+  for (let i = 0; i < 40; i++) {
+    son.emit({ magnitude: Math.round(Math.exp((i % 9) + 0.5)) * (i % 3 ? 1 : -1), id: 'variety-' + i });
+  }
+  await new Promise((r) => setTimeout(r, 300));
   const flat = await count(0);
   const varied = await count(0.6);
   sink.setDepth(depthWas);
@@ -2624,6 +2633,35 @@ const worksPainted = await page.evaluate(async () => {
 ok('every work has a card, hung in its room', worksPainted.total === worksPainted.expected && worksPainted.headings === worksPainted.rooms,
    `${worksPainted.total}/${worksPainted.expected} cards, ${worksPainted.headings} rooms`);
 ok('every work card shows its picture', worksPainted.blank.length === 0, worksPainted.blank.join(', ') || 'all painted');
+
+// A row that scrolls sideways has to be movable with a mouse: an arrow at
+// each end, shown only when there is somewhere to go, reaching the last work.
+await page.evaluate(() => { const g = document.querySelector('#works .cards'); g.scrollLeft = 0; });
+await page.waitForTimeout(300);
+const rowStart = await page.evaluate(() => {
+  const wrap = document.querySelector('#works .rowwrap');
+  const style = (sel) => getComputedStyle(wrap.querySelector(sel)).opacity;
+  return { rows: document.querySelectorAll('#works .rowwrap').length, prev: style('.row-nav.prev'), next: style('.row-nav.next') };
+});
+await page.locator('#works .rowwrap .row-nav.next').first().click();
+await page.waitForTimeout(900);
+const rowMoved = await page.evaluate(async () => {
+  const wrap = document.querySelector('#works .rowwrap');
+  const grid = wrap.querySelector('.cards');
+  const moved = grid.scrollLeft;
+  const prevShown = getComputedStyle(wrap.querySelector('.row-nav.prev')).opacity;
+  for (let i = 0; i < 12 && !wrap.classList.contains('at-end'); i++) {
+    wrap.querySelector('.row-nav.next').click();
+    await new Promise((r) => setTimeout(r, 700));
+  }
+  const last = [...grid.children].filter((c) => !c.hidden).pop().getBoundingClientRect();
+  const box = grid.getBoundingClientRect();
+  return { moved, prevShown, atEnd: wrap.classList.contains('at-end'), lastInView: last.right <= box.right + 2 && last.left >= box.left - 2 };
+});
+ok('every room row has its arrows', rowStart.rows === 4, `${rowStart.rows} rows`);
+ok('at the start of a row only the forward arrow shows', rowStart.prev === '0' && rowStart.next === '1', JSON.stringify(rowStart));
+ok('the forward arrow moves the row along, and the back arrow appears', rowMoved.moved > 100 && rowMoved.prevShown === '1', JSON.stringify(rowMoved));
+ok('the arrows reach the last work in the row', rowMoved.atEnd && rowMoved.lastInView, JSON.stringify(rowMoved));
 
 const hoverLive = await page.evaluate(async () => {
   const card = document.querySelector('#works .card:not([hidden])');
