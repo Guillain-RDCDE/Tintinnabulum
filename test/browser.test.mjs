@@ -120,61 +120,111 @@ ok('root returned 200', rootResp && rootResp.ok());
 await page.waitForFunction(() => window.son, null, { timeout: 15000 });
 ok('engine is exposed on the page', true);
 
-// --- one surface, progressively disclosed --------------------------------
-// There used to be a "simple" and an "advanced" screen that duplicated most
-// controls, with the same setting offered two different ways. Now every
-// setting exists exactly once, and the deeper ones are revealed in place.
+// --- the shell: the picture first, the settings over it ----------------------
+// The work fills the window. Four tabs open an inspector over it, a dock
+// carries play and what is on, and every setting still exists exactly once, in
+// the panel it always lived in -- now shown by its tab.
 const openMore = async (sel) => {
   await page.evaluate((s) => {
     const d = document.querySelector(s);
     if (d && !d.open) d.open = true;
   }, sel);
 };
+/** Bring a tab up, and give the inspector time to slide in. */
+const showTab = async (name, p = page) => {
+  await p.evaluate((n) => window.son.shell.show(n), name);
+  await p.waitForTimeout(650);
+};
 
-const PANELS = ['#sec-listen', '#sec-sound', '#sec-look', '#sec-connect', '#sec-filter', '#sec-activity'];
-for (const sec of PANELS) {
-  ok(`${sec.replace('#sec-', '')} is on the page from the start`,
-     await page.locator(sec).isVisible());
-}
-ok('there is a single obvious start button', await page.locator('#start').isVisible());
+// A genuine first visit: the suite has already loaded the page twice (the root
+// redirects here), which is exactly what the gallery greeting remembers.
+await page.evaluate(() => localStorage.removeItem('t:shell-seen'));
+await page.reload({ waitUntil: 'domcontentloaded' });
+await page.waitForFunction(() => window.son && window.son.shell, null, { timeout: 15000 });
+await page.waitForTimeout(400);
 
-// The page opens as folded rows and one button, so it stays short no matter
-// how many feeds, kits, palettes and scenes exist behind them.
-const folded = await page.evaluate((sels) =>
-  sels.map((s) => ({ id: s, open: document.querySelector(s).open })), PANELS);
-ok('every panel starts folded', folded.every((p) => !p.open), folded.filter((p) => p.open).map((p) => p.id).join(', '));
+const arrival = await page.evaluate(() => ({
+  marks: window.son.sinks.find((s) => s.particles).particles.length,
+  received: window.son.stats.received,
+  unlock: document.querySelector('#unlock').classList.contains('show'),
+}));
+ok('before anything plays the stage is already alive, and silent',
+   arrival.marks > 0 && arrival.received === 0, `${arrival.marks} marks, ${arrival.received} real events`);
+ok('no sound notice across the picture before sound is asked for', !arrival.unlock);
 
-// A fixed ceiling on the total was the wrong guard: adding a sixth panel
-// pushed it over by five pixels, which says nothing about whether folding
-// works. What matters is that a folded panel stays one compact row, so the
-// page grows by a row per panel and never by a section.
-const folding = await page.evaluate((sels) => ({
-  total: document.querySelector('main').getBoundingClientRect().height,
-  rows: sels.map((s) => Math.round(document.querySelector(s).getBoundingClientRect().height)),
-}), PANELS);
-ok('every folded panel is a single compact row',
-   folding.rows.every((h) => h <= 80), folding.rows.join(', ') + 'px');
-ok('the folded page fits a phone screen without scrolling far',
-   folding.total < 80 * PANELS.length + 260,
-   Math.round(folding.total) + 'px for ' + PANELS.length + ' panels');
+const PANELS = ['#sec-works', '#sec-listen', '#sec-sound', '#sec-look', '#sec-connect', '#sec-filter', '#sec-activity'];
+const shellInfo = await page.evaluate((sels) => {
+  const cv = document.querySelector('#canvas').getBoundingClientRect();
+  return {
+    tabs: [...document.querySelectorAll('#tabs [role="tab"]')].map((b) => b.textContent.trim()),
+    inInspector: sels.every((s) => document.querySelector('#inspector').contains(document.querySelector(s))),
+    tabbed: sels.every((s) => Boolean(document.querySelector(s).dataset.tab)),
+    fills: cv.width >= innerWidth - 1 && cv.height >= innerHeight - 1,
+    pageScrolls: document.documentElement.scrollHeight > innerHeight + 1,
+    active: window.son.shell.active,
+  };
+}, PANELS);
+ok('four tabs: Gallery, Sound, Picture, Data',
+   JSON.stringify(shellInfo.tabs) === JSON.stringify(['Gallery', 'Sound', 'Picture', 'Data']), shellInfo.tabs.join(', '));
+ok('every panel lives in the inspector, under a tab', shellInfo.inInspector && shellInfo.tabbed);
+ok('the picture fills the window', shellInfo.fills);
+ok('the page itself never scrolls; the inspector does', !shellInfo.pageScrolls);
+ok('a first visit opens on the gallery', shellInfo.active === 'gallery', String(shellInfo.active));
+ok('there is a single obvious play button, in the dock', await page.locator('#dock #start').isVisible());
+const playBox = await page.locator('#start').boundingBox();
+ok('the play button is a comfortable target', playBox && playBox.height >= 44,
+   playBox ? `${Math.round(playBox.height)}px tall` : 'missing');
+
+const tabbing = await page.evaluate(async () => {
+  const shell = window.son.shell;
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const shown = () => [...document.querySelectorAll('#inspector-body > .panel')].filter((p) => !p.hidden).map((p) => p.id);
+  const key = (k) => window.dispatchEvent(new KeyboardEvent('keydown', { key: k }));
+  const out = {};
+  document.querySelector('#tabs [data-tab="sound"]').click();
+  await wait(80);
+  out.sound = {
+    active: shell.active,
+    shown: shown(),
+    open: document.querySelector('#sec-sound').open,
+    selected: document.querySelector('#tabs [data-tab="sound"]').getAttribute('aria-selected'),
+  };
+  document.querySelector('#tabs [data-tab="sound"]').click();
+  await wait(80);
+  out.closed = { active: shell.active, inspecting: document.body.classList.contains('inspecting') };
+  document.querySelector('#sec-look').open = true;
+  await wait(80);
+  out.panelBringsTab = shell.active;
+  key('Escape');
+  await wait(50);
+  out.escape = shell.active;
+  key('4');
+  await wait(50);
+  out.key4 = { active: shell.active, shown: shown() };
+  key('g');
+  await wait(50);
+  out.keyG = shell.active;
+  return out;
+});
+ok('a tab opens the inspector on its own panel',
+   tabbing.sound.active === 'sound' && JSON.stringify(tabbing.sound.shown) === '["sec-sound"]' &&
+   tabbing.sound.open && tabbing.sound.selected === 'true', JSON.stringify(tabbing.sound));
+ok('the same tab again closes it', tabbing.closed.active === null && !tabbing.closed.inspecting, JSON.stringify(tabbing.closed));
+ok('a panel opened by any route brings up its tab', tabbing.panelBringsTab === 'picture', String(tabbing.panelBringsTab));
+ok('Escape closes the inspector', tabbing.escape === null, String(tabbing.escape));
+ok('the number keys open the tabs, and Data holds its four panels',
+   tabbing.key4.active === 'data' && tabbing.key4.shown.length === 4, JSON.stringify(tabbing.key4));
+ok('G brings up the gallery', tabbing.keyG === 'gallery', String(tabbing.keyG));
 
 // Each header states its own value, so the whole configuration reads at a glance.
 const summaries = await page.evaluate(() =>
   ['listen', 'sound', 'look', 'connect', 'filter'].map((k) => document.querySelector('#sum-' + k).textContent.trim()));
-ok('each folded panel shows its current setting', summaries.every((s) => s.length > 0), summaries.join(' | '));
-
-// The start button is the one action, and it is centred rather than pushed aside.
-const centring = await page.evaluate(() => {
-  const b = document.querySelector('#start').getBoundingClientRect();
-  const m = document.querySelector('main').getBoundingClientRect();
-  return Math.abs((b.left + b.right) / 2 - (m.left + m.right) / 2);
-});
-ok('the start button is centred', centring < 2, 'off centre by ' + centring.toFixed(1) + 'px');
+ok('each panel states its current setting', summaries.every((s) => s.length > 0), summaries.join(' | '));
 
 const disclosures = await page.evaluate(() =>
   [...document.querySelectorAll('details.more')].map((d) => ({ id: d.id, open: d.open }))
 );
-ok('advanced options exist but stay folded away', disclosures.length >= 3 && disclosures.every((d) => !d.open),
+ok('the finer settings exist but stay folded away', disclosures.length >= 3 && disclosures.every((d) => !d.open),
    disclosures.map((d) => d.id).join(', '));
 
 // Everything below drives the controls, which means opening the panels.
@@ -207,11 +257,13 @@ const paintEverything = async (p = page) => {
         if (i > 2 && !window.son.look.previewsBusy) return;
       }
     };
-    for (let y = 0; y < document.body.scrollHeight; y += Math.round(innerHeight * 0.7)) {
-      window.scrollTo(0, y);
+    // The inspector scrolls, not the page.
+    const box = document.querySelector('#inspector-body');
+    for (let y = 0; y < box.scrollHeight; y += Math.round(box.clientHeight * 0.7)) {
+      box.scrollTop = y;
       await settled();
     }
-    window.scrollTo(0, 0);
+    box.scrollTop = 0;
     await settled();
   });
 };
@@ -385,6 +437,7 @@ ok('there are several kits to choose from', Object.keys(kitPeaks).length >= 6,
 
 // Each kit card carries its own waveform, rendered from the instrument. A
 // blank one would be a card promising a sound it cannot show.
+await showTab('sound');
 await paintEverything();
 await page.waitForFunction(
   () => {
@@ -504,7 +557,9 @@ const variety = await page.evaluate(async () => {
   const count = async (richness) => {
     sink.setRichness(richness);
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
-    const { data } = ctx.getImageData(0, 0, c.width, Math.min(c.height, 400));
+    // The whole canvas: it fills the window now, and its top strip alone is
+    // mostly the soft edges of gradients, which are many colours at any setting.
+    const { data } = ctx.getImageData(0, 0, c.width, c.height);
     const seen = new Set();
     for (let i = 0; i < data.length; i += 4) {
       // Ignore the ground, which is most of the canvas and one colour.
@@ -514,8 +569,14 @@ const variety = await page.evaluate(async () => {
     return seen.size;
   };
 
+  // Counted with shading off. A shaded mark is a radial gradient, which is
+  // thousands of colours whatever the variety; on a full-window canvas those
+  // gradients swamped the count and hid the very thing being measured.
+  const depthWas = sink.depth;
+  sink.setDepth(false);
   const flat = await count(0);
   const varied = await count(0.6);
+  sink.setDepth(depthWas);
   sink.setRichness(0.45);
   return { flat, varied };
 });
@@ -1696,6 +1757,7 @@ const flood = await page.evaluate(async () => {
 ok('polyphony is limited under flood', flood.limited > 0, 'stolen+denied=' + flood.limited);
 ok('voice count stays bounded under flood', flood.active <= 16, 'active=' + flood.active);
 
+await showTab('picture');
 // --- palette picker -----------------------------------------------------
 const swatchCount = await page.locator('#palettes .sw').count();
 ok('every palette has a swatch in the picker', swatchCount >= 8, swatchCount + ' swatches');
@@ -1783,6 +1845,7 @@ ok('the chosen palette stays marked through a regrouping',
 // does not even light up, so it reads as a click that did nothing. The fix is
 // that no repaint may hold the main thread, and the test is the symptom rather
 // than the mechanism -- a click made mid-repaint has to land, first time.
+await showTab('sound');
 await page.locator('#kits .card').first().scrollIntoViewIfNeeded();
 await page.waitForTimeout(300);
 const midRepaint = await page.evaluate(async () => {
@@ -1995,6 +2058,7 @@ ok('each step lands on a visualisation that is not the one before it',
 ok('it can be turned off again', sceneRotateUi.after === 'never', sceneRotateUi.after);
 
 // The choice must survive a reload, and must not break when storage is denied.
+await showTab('picture');
 await page.click('#palettes .sw[data-palette="bronze"]');
 await page.waitForTimeout(100);
 await page.reload({ waitUntil: 'domcontentloaded' });
@@ -2040,6 +2104,12 @@ ok('notes still sound once the new kit is in', swap.after > 0, 'played=' + swap.
 ok('the engine exposes a synchronous resume for use inside a gesture',
    await page.evaluate(() => typeof window.son.engine.resumeSync === 'function'));
 
+// The notice is for sound that has been asked for, so ask first -- as a person
+// does, by tapping. A reload above left this page with nobody having asked.
+await page.evaluate(async () => {
+  document.querySelector('#unlock').click();
+  await new Promise((r) => setTimeout(r, 800));
+});
 const overlayTruth = await page.evaluate(async () => {
   const el = document.querySelector('#unlock');
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -2050,10 +2120,23 @@ const overlayTruth = await page.evaluate(async () => {
   // against the repair. What has to be true is that the overlay follows the
   // context -- showing while it is down, gone once it is up -- and both halves
   // are asserted here.
+  //
+  // Watched rather than sampled, like the check below it: the watchdog can
+  // have the sound back inside 120 ms, and a sample then read "never shown"
+  // for an overlay that had shown and already stood down.
+  let whileBlocked = el.classList.contains('show');
+  let blockedState = window.son.engine.ctx.state;
+  const watch = new MutationObserver(() => {
+    if (el.classList.contains('show')) {
+      whileBlocked = true;
+      blockedState = window.son.engine.ctx.state;
+    }
+  });
+  watch.observe(el, { attributes: true, attributeFilter: ['class'] });
   await window.son.engine.ctx.suspend();
   await wait(120);
-  const whileBlocked = el.classList.contains('show');
-  const blockedState = window.son.engine.ctx.state;
+  if (!whileBlocked) await wait(600);
+  watch.disconnect();
   // Resume by some other means than the overlay, which is exactly what
   // pressing Start ended up doing.
   await window.son.engine.ctx.resume();
@@ -2135,6 +2218,7 @@ const shapeCount = await page.locator('#shapes .sw').count();
 ok('every shape has a swatch', shapeCount >= 8, shapeCount + ' shapes');
 // The swatches are painted lazily like every other card, so they have to be
 // on screen before their pixels mean anything.
+await showTab('picture');
 await page.locator('#shapes .sw').first().scrollIntoViewIfNeeded();
 await page.waitForTimeout(400);
 ok('the shape swatches are drawn, not empty', await page.evaluate(() => {
@@ -2190,6 +2274,7 @@ ok('every scene is offered in the picker',
 // seconds -- so the page is walked the way a person walks it. Scrolling past
 // every card and then checking is also the only honest test of the lazy path:
 // a card that never got painted would be found here rather than by a visitor.
+await showTab('picture');
 await paintEverything();
 
 const previews = await page.evaluate(() =>
@@ -2329,6 +2414,7 @@ const emptyGround = async () =>
     return sum;
   });
 const plainGround = await emptyGround();
+await showTab('picture');
 await openMore('#more-look');
 await page.check('#starfield');
 const starryGround = await emptyGround();
@@ -2345,6 +2431,7 @@ await page.uncheck('#starfield');
 // The pickers are exercised, not the remote feeds: asserting on live Bitcoin
 // or GitHub traffic would make this suite fail for reasons that have nothing
 // to do with the code.
+await showTab('data');
 const feedCount = await page.locator('#feeds .card').count();
 ok('several live feeds are offered', feedCount >= 6, feedCount + ' feeds');
 
@@ -2472,6 +2559,7 @@ if (rec.supported) {
 
 // --- ingest server -> browser, end to end -------------------------------
 if (USE_LOCAL_SERVER) {
+  await showTab('data');
   await page.click('#feeds .card[data-feed="ingest"]');
   ok('the ingest URL field appears with the ingest feed',
      await page.locator('#ingest-wrap').isVisible());
@@ -2506,7 +2594,7 @@ ok('no console errors on the page', consoleErrors.length === 0,
 // --- works: one click sets the picture, the sound and the frame ----------------
 // Last of the desktop checks, because choosing a work changes -- and remembers
 // -- a scene, a palette and a kit that the checks above take as given.
-await page.evaluate(() => { document.querySelector('#sec-works').open = true; });
+await showTab('gallery');
 await page.waitForFunction(() => document.querySelectorAll('#works .card').length > 0, null, { timeout: 10000 });
 const worksPainted = await page.evaluate(async () => {
   const { WORKS } = await import('../src/index.js');
@@ -2536,6 +2624,26 @@ const worksPainted = await page.evaluate(async () => {
 ok('every work has a card, hung in its room', worksPainted.total === worksPainted.expected && worksPainted.headings === worksPainted.rooms,
    `${worksPainted.total}/${worksPainted.expected} cards, ${worksPainted.headings} rooms`);
 ok('every work card shows its picture', worksPainted.blank.length === 0, worksPainted.blank.join(', ') || 'all painted');
+
+const hoverLive = await page.evaluate(async () => {
+  const card = document.querySelector('#works .card:not([hidden])');
+  card.dispatchEvent(new PointerEvent('pointerenter'));
+  const cv = card.querySelector('canvas');
+  const g = cv.getContext('2d');
+  await new Promise((r) => setTimeout(r, 300));
+  const a = g.getImageData(0, 0, cv.width, cv.height).data.slice();
+  await new Promise((r) => setTimeout(r, 800));
+  const b = g.getImageData(0, 0, cv.width, cv.height).data;
+  let changed = 0;
+  for (let i = 0; i < a.length; i += 4 * 7) {
+    if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 10) changed++;
+  }
+  const live = window.son.works.live;
+  card.dispatchEvent(new PointerEvent('pointerleave'));
+  return { live, changed, after: window.son.works.live };
+});
+ok('a work card comes alive under the pointer, and rests when it leaves',
+   hoverLive.live && hoverLive.live.frames > 5 && hoverLive.changed > 0 && hoverLive.after === null, JSON.stringify(hoverLive));
 
 const chosen = await page.evaluate(async () => {
   const son = window.son;
@@ -2612,6 +2720,85 @@ ok('exhibition mode moves on to the next work showing, and puts it up', gallery.
 ok('exhibition mode is remembered', gallery.tourSet.minutes === 10 && gallery.tourSet.stored === '10' && gallery.tourSet.note, JSON.stringify(gallery.tourSet));
 ok('and "All" brings every work back', gallery.allBack);
 
+// --- the dock, surprise, and the chrome that gets out of the way ---------------
+const dock = await page.evaluate(async () => {
+  const { SCENES, WORKS } = await import('../src/index.js');
+  const son = window.son;
+  const shell = son.shell;
+  const sink = son.sinks.find((s) => s.particles);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const rgb = (c) => {
+    const m = /^#([0-9a-f]{6})$/i.exec(String(c).trim());
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+  };
+  const violet = (c) => { const v = rgb(c); return Boolean(v) && v[2] > v[1] + 25 && v[0] > v[1] + 25; };
+  shell.close();
+  const out = {};
+
+  const before = `${sink.sceneName}/${sink.paletteName}`;
+  document.querySelector('#surprise').click();
+  await wait(300);
+  out.surprise = { before, after: `${sink.sceneName}/${sink.paletteName}`, shelf: SCENES[sink.sceneName].shelf };
+
+  son.works.selectEnergy('all');
+  const until = async (name) => {
+    const t0 = performance.now();
+    while (son.works.current() !== name && performance.now() - t0 < 20000) await wait(100);
+    return son.works.current();
+  };
+  const first = son.works.step(1);
+  out.next = { chosen: first, now: await until(first) };
+  const second = son.works.step(1);
+  await until(second);
+  const back = son.works.step(-1);
+  out.prev = { chosen: back, expected: first, now: await until(back) };
+  out.nowTitle = document.querySelector('#now-title').textContent;
+  out.expectedTitle = WORKS[back] ? WORKS[back].title : '';
+
+  son.look.selectPalette('papyrus');
+  shell.refresh();
+  out.light = { ground: document.documentElement.dataset.ground, accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() };
+  son.look.selectPalette('marine');
+  shell.refresh();
+  out.dark = { ground: document.documentElement.dataset.ground, accent: getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() };
+  out.violet = violet(out.light.accent) || violet(out.dark.accent);
+
+  window.dispatchEvent(new PointerEvent('pointerdown'));
+  for (const el of document.querySelectorAll('#topbar, #dock')) el.dispatchEvent(new PointerEvent('pointerleave'));
+  if (document.activeElement) document.activeElement.blur();
+  shell.idle.ms = 300;
+  shell.wake();
+  await wait(900);
+  out.idle = document.body.classList.contains('idle');
+  window.dispatchEvent(new PointerEvent('pointermove'));
+  await wait(50);
+  out.woke = !document.body.classList.contains('idle');
+  shell.idle.ms = 3000;
+  shell.wake();
+
+  const vol = document.querySelector('#volume');
+  vol.value = '35';
+  vol.dispatchEvent(new Event('input', { bubbles: true }));
+  out.volume = son.volume;
+  vol.value = '70';
+  vol.dispatchEvent(new Event('input', { bubbles: true }));
+  return out;
+});
+ok('Surprise me puts up a different picture, from the art shelves',
+   dock.surprise.after !== dock.surprise.before && ['Painting', 'Nature', 'Water', 'Night', 'Materials'].includes(dock.surprise.shelf),
+   JSON.stringify(dock.surprise));
+ok('next and previous move through the works and put them up',
+   dock.next.now === dock.next.chosen && dock.prev.now === dock.prev.expected, JSON.stringify({ next: dock.next, prev: dock.prev }));
+ok('the dock says which work is on', dock.nowTitle === dock.expectedTitle, `${dock.nowTitle} / ${dock.expectedTitle}`);
+ok('the interface takes a light or dark glass from the work', dock.light.ground === 'light' && dock.dark.ground === 'dark',
+   JSON.stringify({ light: dock.light, dark: dock.dark }));
+ok('and its accent from the palette, never a violet', Boolean(dock.light.accent) && Boolean(dock.dark.accent) && !dock.violet,
+   `${dock.light.accent} / ${dock.dark.accent}`);
+ok('the controls fade away when nothing is touched, and come back at once', dock.idle && dock.woke, JSON.stringify({ idle: dock.idle, woke: dock.woke }));
+ok('the dock volume is the volume', Math.abs(dock.volume - 0.35) < 1e-9, String(dock.volume));
+
 // --- every picture keeps living between events --------------------------------
 // A scene that moves only when an event arrives is a still image with a
 // soundtrack whenever the feed is quiet or a work runs slowly -- which is how
@@ -2619,6 +2806,9 @@ ok('and "All" brings every work back', gallery.allBack);
 // own once the events stop.
 const stillness = await page.evaluate(async () => {
   const son = window.son;
+  // Nothing live may keep a frozen scene looking alive: choosing a work starts
+  // the feed, so whatever is connected is disconnected first.
+  for (const src of [...son.sources]) son.disconnect(src);
   const sink = son.sinks.find((s) => s.particles);
   son.look.selectFinish('none');
   son.look.selectMat('none');
@@ -2690,6 +2880,19 @@ ok('phone: the page does not scroll sideways', overflow.doc <= overflow.win + 1,
 const tapTarget = await mp.locator('#start').boundingBox();
 ok('phone: the start button is a comfortable tap target',
    tapTarget && tapTarget.height >= 44, tapTarget ? `${Math.round(tapTarget.height)}px tall` : 'missing');
+
+const phoneSheet = await mp.evaluate(async () => {
+  document.querySelector('#tabs [data-tab="sound"]').click();
+  await new Promise((r) => setTimeout(r, 800));
+  const r = document.querySelector('#inspector').getBoundingClientRect();
+  const out = { left: Math.round(r.left), right: Math.round(r.right), top: Math.round(r.top), bottom: Math.round(r.bottom), w: innerWidth, h: innerHeight };
+  window.son.shell.close();
+  await new Promise((r2) => setTimeout(r2, 700));
+  return out;
+});
+ok('phone: the settings rise as a sheet from the bottom, full width',
+   phoneSheet.left <= 1 && phoneSheet.right >= phoneSheet.w - 1 && phoneSheet.bottom >= phoneSheet.h - 1 && phoneSheet.top > phoneSheet.h * 0.15,
+   JSON.stringify(phoneSheet));
 
 await mp.tap('#start');
 // Wait for the audio state to settle rather than for a fixed number of

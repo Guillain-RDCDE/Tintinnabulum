@@ -1,5 +1,7 @@
 import {
   Sonifier,
+  Mapper,
+  normalize,
   CanvasSink,
   Recorder,
   SCALES,
@@ -31,6 +33,7 @@ import { setupLook } from './look.js';
 import { createProjector } from './broadcast.js';
 import { setupConnect } from './connect.js';
 import { setupWorks } from './works.js';
+import { setupShell } from './shell.js';
 
 const storedPalette = store.pick('palette', PALETTES, DEFAULT_PALETTE_NAME);
 
@@ -41,7 +44,9 @@ const son = new Sonifier({
   volume: 0.7,
 });
 
-const canvas = new CanvasSink('#canvas', { showHud: true, palette: storedPalette });
+// The rate is stated in the top bar, so the canvas does not draw its own
+// counter under the dock by default.
+const canvas = new CanvasSink('#canvas', { showHud: false, palette: storedPalette });
 son.use(canvas);
 
 const recorder = new Recorder(son.engine);
@@ -69,7 +74,11 @@ function describe(status) {
 }
 
 const unlockEl = $('#unlock');
-const refreshUnlock = () => unlockEl.classList.toggle('show', son.locked);
+// Shown only once sound has been asked for. On arrival every browser holds the
+// audio back until a gesture, and a notice across the picture before anybody
+// has pressed anything reads as something already gone wrong.
+let soundWanted = false;
+const refreshUnlock = () => unlockEl.classList.toggle('show', son.locked && soundWanted);
 
 // Downloading the sample banks takes seconds on a phone, and the feed is
 // already drawing by then. Start on synthesis, which needs no network, and
@@ -92,6 +101,7 @@ async function upgradeToSamples() {
 
 let audioReady = false;
 async function ensureAudio() {
+  soundWanted = true;
   // First, synchronously, while the gesture is still ours: the right to start
   // audio does not survive an await on iOS, so loading a kit before asking
   // would spend the tap without using it.
@@ -151,9 +161,13 @@ let langs = (store.get('langs') || 'en').split(',').filter(Boolean);
 if (!langs.length) langs = ['en'];
 
 const startBtn = $('#start');
+// A player's button: an icon and a word, the feed's name while it waits.
+const PLAY_ICON = '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M6 4.2v11.6a.7.7 0 0 0 1.06.6l9.3-5.8a.7.7 0 0 0 0-1.2l-9.3-5.8A.7.7 0 0 0 6 4.2z"/></svg>';
+const PAUSE_ICON = '<svg viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><rect x="5" y="4" width="3.4" height="12" rx="1"/><rect x="11.6" y="4" width="3.4" height="12" rx="1"/></svg>';
 const setRunning = (on) => {
   startBtn.dataset.on = String(on);
-  startBtn.textContent = on ? 'Stop' : `Start listening to ${FEEDS[feed].label}`;
+  startBtn.innerHTML = on ? `${PAUSE_ICON}<span class="label">Pause</span>` : `${PLAY_ICON}<span class="label">Listen<span class="feed"> to ${FEEDS[feed].label}</span></span>`;
+  startBtn.setAttribute('aria-label', on ? 'Pause' : `Listen to ${FEEDS[feed].label}`);
 };
 
 function selectFeed(name, persist = true) {
@@ -404,6 +418,7 @@ let connectSummary = 'Paste JSON, hear it';
 // Assigned once every other panel exists, because a work reaches into all of
 // them; read through a null check for the same reason as the two above.
 let worksPanel = null;
+let shell = null;
 
 const look = setupLook({
   canvas,
@@ -453,7 +468,9 @@ const onScroll = () => {
     paintWhatIsNowVisible();
   });
 };
-addEventListener('scroll', onScroll, { passive: true });
+// Captured on the document: the cards now scroll inside the inspector and the
+// gallery's rows, and an element's scroll never reaches the window.
+document.addEventListener('scroll', onScroll, { passive: true, capture: true });
 addEventListener('resize', onScroll);
 
 // =========================================================================
@@ -542,8 +559,26 @@ worksPanel = setupWorks({
   ensureAudio,
   getKit: () => currentKit,
   getSpace: () => son.space,
+  // The dock says what is on the moment a work is up, not a second later.
+  onChange: () => { if (shell) shell.refresh(); },
+  // A work chosen by hand goes up full screen and starts playing.
+  onPlay: () => {
+    if (shell) shell.close();
+    if (startBtn.dataset.on !== 'true') startBtn.click();
+  },
 });
 requestAnimationFrame(() => worksPanel.repaint());
+
+shell = setupShell({
+  canvas,
+  look,
+  works: worksPanel,
+  startBtn,
+  selectKit,
+  getKit: () => currentKit,
+  getFeedLabel: () => FEEDS[feed].label,
+  repaint: () => paintWhatIsNowVisible(),
+});
 // =========================================================================
 // Filter
 // =========================================================================
@@ -589,6 +624,7 @@ function updateSummaries() {
   $('#sum-filter').textContent =
     (cats.length === 4 ? 'Everything' : cats.join(', ') || 'Nothing') +
     (minmag > 0 ? ` · above ${minmag}` : '');
+  if (shell) shell.refresh();
 }
 
 // Everything the engine accepts also goes to the wall, if a wall is listening.
@@ -691,9 +727,37 @@ canvas.setStarfield($('#starfield').checked);
 setRunning(false);
 setAudioStatus('');
 
+// --- before anything plays, the stage is not empty ------------------------------
+// A page that opens on a black screen asks for faith. Until something real
+// arrives -- a feed started, an event of any kind -- quiet made-up events are
+// drawn straight onto the canvas: no sound, no counts, and a mapper of their
+// own so the real one's calibration is untouched. The first real event, or
+// pressing Listen, ends it for good.
+const attract = { timer: 0, n: 0, mapper: new Mapper({ mode: 'adaptive', range: 27 }) };
+function attractTick() {
+  if (son.stats.received > 0 || startBtn.dataset.on === 'true') {
+    clearInterval(attract.timer);
+    attract.timer = 0;
+    return;
+  }
+  const categories = ['user', 'anon', 'user', 'bot'];
+  const ev = normalize({
+    magnitude: Math.round(Math.exp(Math.random() * 8)),
+    id: `attract-${attract.n++}`,
+    category: categories[attract.n % categories.length],
+  });
+  if (!ev) return;
+  ev.map = attract.mapper.map(ev.magnitude);
+  canvas.handle(ev);
+}
+attract.timer = setInterval(attractTick, 650);
+attractTick();
+
 // Handy from the console: window.son.emit({magnitude: 5000, id: 'test'})
 window.son = son;
 son.works = worksPanel;
+son.shell = shell;
+son.attract = attract;
 // The look panel with it, so a setting can be driven from the console the same
 // way a click drives it.
 son.look = look;

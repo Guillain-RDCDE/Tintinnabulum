@@ -64,7 +64,7 @@ export {
   SCENE_NAMES,
   DEFAULT_SCENE,
   registerScene,
-  previewScene,
+  previewScene, animateScene,
   noise2,
   SCENE_SHELVES,
   shelfOf,

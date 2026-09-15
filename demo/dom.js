@@ -42,6 +42,9 @@ export function fitCanvas(cv, { height, fallbackWidth = 148, maxRatio = 2 }) {
  * to the enclosing <details> is exact, and it is two property reads.
  */
 function isShowing(el) {
+  // A card in a tab that is not up, or in an inspector that is closed, is
+  // laid out but not on screen.
+  if (el.closest('[hidden], [aria-hidden="true"]')) return false;
   for (let d = el.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) {
     if (!d.open) return false;
   }

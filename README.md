@@ -15,7 +15,7 @@ That is the whole idea.
 
 **[Open the sandbox →](https://guillain-rdcde.github.io/Tintinnabulum/)**
 
-Press **Start**. You are listening to Wikipedia: every circle is somebody
+Press **Listen**. You are listening to Wikipedia: every circle is somebody
 editing an article, somewhere, at that moment. Click one to open it.
 
 Eleven other feeds are in the same list. You can send your own with one `curl`.

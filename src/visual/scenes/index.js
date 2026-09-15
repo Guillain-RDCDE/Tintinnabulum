@@ -85,6 +85,150 @@ export const DEFAULT_SCENE = 'bloom';
  * would be stale the moment a palette or a parameter changed. Motion-based
  * scenes need time to develop, hence the simulated frames rather than one.
  */
+const ROLES = ['user', 'anon', 'bot', 'user', 'anon'];
+
+/**
+ * The api a scene is given on a card: the live canvas's contract, with a
+ * synthetic clock and particles of its own. Shared by the still preview and
+ * the live one, so the two cannot drift apart.
+ */
+function cardApi(scene, { w, h, palette, shape = 'circle', dt = 62, depth = true, richness = 0.45, params = {} }) {
+  const particles = [];
+  const darkGround = lightnessOf(palette.background) < 0.5;
+  return {
+    w, h, palette, particles,
+    now: 0,
+    dt,
+    shape,
+    ringLife: 2200,
+    scene: {},
+    depth,
+    richness,
+    darkGround,
+    // A card holds a few dozen events on a thumbnail, so the ceiling the live
+    // canvas runs under is irrelevant here; cap() has a floor that keeps every
+    // scene from starving at this size.
+    budget: 200,
+    param: (name) => {
+      const spec = (scene.params || {})[name];
+      if (!spec) return undefined;
+      return params[name] === undefined ? spec.default : params[name];
+    },
+    colorFor: (c) => palette[c] || palette.default,
+    // The same contract CanvasSink offers, including the per-particle cache:
+    // rebuilding a gradient for every mark on every frame is a hundred times
+    // the work for one picture.
+    fill: (c, p) => {
+      if (!depth) return p.color;
+      if (p._grad) return p._grad;
+      const g = c.createRadialGradient(
+        p.x - p.r * 0.3, p.y - p.r * 0.34, p.r * 0.08,
+        p.x, p.y, p.r * 1.1
+      );
+      g.addColorStop(0, lighten(p.color, 0.07));
+      g.addColorStop(0.6, p.color);
+      g.addColorStop(1, lighten(p.color, -0.05));
+      p._grad = g;
+      return g;
+    },
+  };
+}
+
+/** One synthetic event for a card, shaded the way the live canvas shades one. */
+function cardEvent(rnd, i, { w, h, palette, richness, darkGround }) {
+  const p = rnd() ** 1.7;
+  const role = ROLES[i % ROLES.length];
+  const base = palette[role] || palette.default;
+  const tint = [rnd(), rnd(), rnd()];
+  const color = shadeOf(base, tint, richness);
+  const room = darkGround ? 1 - lightnessOf(color) : lightnessOf(color);
+  return {
+    x: 8 + rnd() * (w - 16),
+    y: 8 + rnd() * (h - 16),
+    r: Math.max(2, Math.sqrt(p) * Math.min(w, h) * 0.34),
+    rot: rnd() * Math.PI * 2,
+    pick: rnd(),
+    tint,
+    base,
+    color,
+    rim: lighten(color, (darkGround ? 0.26 : -0.26) * Math.min(1, room * 1.6)),
+    _grad: null,
+    alpha0: 0.5,
+    ring: true,
+    label: '',
+    url: '',
+    life: 12000,
+    category: role,
+  };
+}
+
+/**
+ * Run a scene live on a card, for as long as somebody is looking at it.
+ *
+ * The still preview simulates a hundred frames and keeps the last. This keeps
+ * going: every frame is drawn and shown, a new synthetic event arrives every
+ * few hundred milliseconds, and the finish and frame are applied as the live
+ * canvas applies them. Call `frame(dt)` from an animation frame.
+ */
+export function animateScene(ctx, name, {
+  w, h, palette, shape = 'circle', richness = 0.45, depth = true, params = {},
+  finish = 'none', mat = 'none', pool = null, seed = 11, every = 380,
+} = {}) {
+  const scene = SCENES[name] || SCENES[DEFAULT_SCENE];
+  let s = seed;
+  const rnd = () => {
+    s = (s * 1103515245 + 12345) & 0x7fffffff;
+    return s / 0x7fffffff;
+  };
+  const api = cardApi(scene, { w, h, palette, shape, dt: 16, depth, richness, params });
+  const buffers = pool || {};
+  let count = 0;
+  let since = 0;
+  const arrive = () => {
+    const p = cardEvent(rnd, count++, { w, h, palette, richness, darkGround: api.darkGround });
+    p.born = api.now;
+    api.particles.push(p);
+    if (api.particles.length > 80) api.particles.splice(0, api.particles.length - 80);
+    if (scene.event) {
+      try { scene.event(p, api); } catch (e) { /* a card must not take the page down */ }
+    }
+  };
+  ctx.fillStyle = palette.background;
+  ctx.fillRect(0, 0, w, h);
+  if (scene.init) scene.init(api);
+  for (let i = 0; i < 10; i++) arrive();
+  return {
+    frame(dt) {
+      api.dt = Math.max(1, Math.min(50, dt || 16));
+      api.now += api.dt;
+      since += api.dt;
+      if (since >= every) {
+        since = 0;
+        arrive();
+      }
+      for (let i = api.particles.length - 1; i >= 0; i--) {
+        if (api.now - api.particles[i].born >= api.particles[i].life) api.particles.splice(i, 1);
+      }
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = palette.background;
+      ctx.fillRect(0, 0, w, h);
+      ctx.save();
+      try {
+        scene.frame(ctx, api);
+      } catch (e) {
+        // Drawn as far as it got; the card stays up.
+      }
+      ctx.restore();
+      ctx.globalAlpha = 1;
+      if (finish && finish !== 'none') applyFinish(ctx, finish, { palette, pool: buffers, now: api.now });
+      if (mat && mat !== 'none') drawMat(ctx, mat, { palette });
+    },
+    get now() {
+      return api.now;
+    },
+  };
+}
+
 export function previewScene(
   ctx,
   name,
@@ -139,46 +283,9 @@ export function previewScene(
     return s / 0x7fffffff;
   };
 
-  const roles = ['user', 'anon', 'bot', 'user', 'anon'];
-  const particles = [];
-  const darkGround = lightnessOf(palette.background) < 0.5;
-  const api = {
-    w, h, palette, particles,
-    now: 0,
-    dt,
-    shape,
-    ringLife: 2200,
-    scene: {},
-    depth,
-    richness,
-    darkGround,
-    // A card holds thirty-four events on a thumbnail, so the ceiling the live
-    // canvas runs under is irrelevant here; cap() has a floor that keeps every
-    // scene from starving at this size.
-    budget: 200,
-    param: (name) => {
-      const spec = (scene.params || {})[name];
-      if (!spec) return undefined;
-      return params[name] === undefined ? spec.default : params[name];
-    },
-    colorFor: (c) => palette[c] || palette.default,
-    // The same contract CanvasSink offers, including the per-particle cache:
-    // a preview runs a hundred frames, and rebuilding a gradient for every
-    // mark on every one of them is a hundred times the work for one picture.
-    fill: (c, p) => {
-      if (!depth) return p.color;
-      if (p._grad) return p._grad;
-      const g = c.createRadialGradient(
-        p.x - p.r * 0.3, p.y - p.r * 0.34, p.r * 0.08,
-        p.x, p.y, p.r * 1.1
-      );
-      g.addColorStop(0, lighten(p.color, 0.07));
-      g.addColorStop(0.6, p.color);
-      g.addColorStop(1, lighten(p.color, -0.05));
-      p._grad = g;
-      return g;
-    },
-  };
+  const api = cardApi(scene, { w, h, palette, shape, dt, depth, richness, params });
+  const darkGround = api.darkGround;
+  const particles = api.particles;
 
   ctx.fillStyle = palette.background;
   ctx.fillRect(0, 0, w, h);
@@ -186,34 +293,9 @@ export function previewScene(
 
   const born = [];
   for (let i = 0; i < 34; i++) {
-    const p = rnd() ** 1.7;
-    const base = palette[roles[i % roles.length]] || palette.default;
-    const tint = [rnd(), rnd(), rnd()];
-    const color = shadeOf(base, tint, richness);
-    const room = darkGround ? 1 - lightnessOf(color) : lightnessOf(color);
-    born.push({
-      // Births run right to the end: scenes whose marks are short-lived, like
-      // falling drops, otherwise catch a quiet final frame and look empty.
-      at: Math.floor(rnd() * (frames - 2)),
-      p: {
-        x: 8 + rnd() * (w - 16),
-        y: 8 + rnd() * (h - 16),
-        r: Math.max(2, Math.sqrt(p) * Math.min(w, h) * 0.34),
-        rot: rnd() * Math.PI * 2,
-        pick: rnd(),
-        tint,
-        base,
-        color,
-        rim: lighten(color, (darkGround ? 0.26 : -0.26) * Math.min(1, room * 1.6)),
-        _grad: null,
-        alpha0: 0.5,
-        ring: true,
-        label: '',
-        url: '',
-        life: 12000,
-        category: roles[i % roles.length],
-      },
-    });
+    // Births run right to the end: scenes whose marks are short-lived, like
+    // falling drops, otherwise catch a quiet final frame and look empty.
+    born.push({ at: Math.floor(rnd() * (frames - 2)), p: cardEvent(rnd, i, { w, h, palette, richness, darkGround }) });
   }
 
   // `performance` is not in every host this module might be loaded into, and a

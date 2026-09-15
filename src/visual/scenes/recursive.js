@@ -260,6 +260,13 @@ export const RECURSIVE_SCENES = {
       );
       if (idx < 0) return;
       const c = s.cells[idx];
+      // A floor on the size of a cell was the only limit, and a floor in pixels
+      // is no limit on a large screen: full window, a flood split it into 418.
+      // Past a ceiling a cell is coloured instead, as one too small to split is.
+      if (s.cells.length >= 360) {
+        c.fill = Math.random() < api.param('fill') ? p.color : null;
+        return;
+      }
       const minW = api.param('minimum') / Math.max(1, api.w);
       const minH = api.param('minimum') / Math.max(1, api.h);
       // A cell that cannot be split is coloured instead, so a busy region goes

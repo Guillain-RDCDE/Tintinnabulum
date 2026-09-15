@@ -1,4 +1,4 @@
-// The Gallery panel: finished pieces, hung in rooms by their light.
+// The Gallery: finished pieces, hung in rooms by their light.
 //
 // A work sets the picture, the sound and the way they are shown all at once,
 // through the same functions the individual controls use -- so everything it
@@ -7,11 +7,10 @@
 // the page rather than stored, so touching any single control afterwards takes
 // the work's label off rather than leaving it lying.
 //
-// Three things make the rooms readable rather than a wall of cards: a line
-// under each room saying what kind of light it holds, a first work hung large,
-// and a filter for calm or lively. Exhibition mode walks through whatever is
-// showing, one work every few minutes, dipping through the ground between
-// them rather than cutting.
+// Each room is a row that scrolls sideways, its first work hung larger. A card
+// comes alive under the pointer -- the scene itself runs in it -- and choosing
+// it puts the work up full screen and starts it playing. Exhibition mode walks
+// through whatever is showing, dipping through the ground between works.
 
 import {
   WORKS,
@@ -25,6 +24,7 @@ import {
   MATS,
   LIVING,
   previewScene,
+  animateScene,
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { store } from './store.js';
@@ -51,19 +51,16 @@ const TOUR_NOTES = {
  * @param {Function} io.ensureAudio  resolves once sound may play
  * @param {Function} io.getKit       the current kit's name
  * @param {Function} io.getSpace     the current room's name
+ * @param {Function} [io.onPlay]     a work was chosen by hand: put it up and play
  */
-export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, getKit, getSpace }) {
+export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, getKit, getSpace, onPlay = () => {}, onChange = () => {} }) {
   const pool = {};
 
-  function paint(cv, name) {
-    const w = WORKS[name];
-    const featured = cv.closest('.card').classList.contains('featured');
-    // A featured card is as tall as the two rows it spans, which only layout
-    // knows; drawing it at a fixed height would stretch the picture to fit.
-    const tall = featured && getComputedStyle(cv).minHeight !== '0px' ? Math.max(200, cv.clientHeight) : 96;
-    const { ctx, w: cw, h } = fitCanvas(cv, { height: tall });
+  const heightOf = (card) => (card.classList.contains('featured') ? 168 : 116);
+
+  const optionsFor = (w, cw, h) => {
     const scene = SCENES[w.scene];
-    previewScene(ctx, w.scene, {
+    return {
       w: cw,
       h,
       palette: PALETTES[w.palette].colors,
@@ -74,7 +71,13 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
       finish: w.finish,
       mat: w.mat,
       pool,
-    });
+    };
+  };
+
+  function paint(cv, name) {
+    const w = WORKS[name];
+    const { ctx, w: cw, h } = fitCanvas(cv, { height: heightOf(cv.closest('.card')) });
+    previewScene(ctx, w.scene, optionsFor(w, cw, h));
   }
 
   const picker = createPicker($('#works'), Object.entries(WORKS), {
@@ -85,8 +88,45 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     render: (btn, w) => {
       btn.append(document.createElement('canvas'), caption(w.title, `${SCENES[w.scene].label} · ${KITS[w.kit].label}`));
     },
-    onPick: (name) => apply(name),
+    onPick: (name) => choose(name),
   });
+
+  // --- a card comes alive under the pointer ---------------------------------------
+  let live = null;
+
+  function stopLive() {
+    if (!live) return;
+    cancelAnimationFrame(live.raf);
+    const { card, name } = live;
+    live = null;
+    paint(card.querySelector('canvas'), name);
+  }
+
+  function startLive(card) {
+    const name = card.dataset.work;
+    if (live && live.card === card) return;
+    stopLive();
+    const cv = card.querySelector('canvas');
+    const { ctx, w: cw, h } = fitCanvas(cv, { height: heightOf(card) });
+    const player = animateScene(ctx, WORKS[name].scene, optionsFor(WORKS[name], cw, h));
+    const state = { card, name, raf: 0, last: performance.now(), frames: 0 };
+    const tick = (now) => {
+      if (live !== state) return;
+      player.frame(now - state.last);
+      state.last = now;
+      state.frames++;
+      state.raf = requestAnimationFrame(tick);
+    };
+    live = state;
+    state.raf = requestAnimationFrame(tick);
+  }
+
+  for (const [, btn] of picker.buttons) {
+    btn.addEventListener('pointerenter', () => startLive(btn));
+    btn.addEventListener('pointerleave', () => { if (live && live.card === btn) stopLive(); });
+    btn.addEventListener('focus', () => startLive(btn));
+    btn.addEventListener('blur', () => { if (live && live.card === btn) stopLive(); });
+  }
 
   // --- the rooms, and what is showing in them ----------------------------------
   let energy = 'all';
@@ -95,6 +135,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     Object.keys(WORKS).filter((n) => energy === 'all' || WORKS[n].energy === energy);
 
   function layout() {
+    stopLive();
     picker.group((name) => WORKS[name].room, WORK_ROOMS);
     const host = $('#works');
     for (const heading of host.querySelectorAll('.sub-label')) {
@@ -117,12 +158,13 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
       grid.hidden = !any;
       grid.previousElementSibling.hidden = !any;
       grid.previousElementSibling.previousElementSibling.hidden = !any;
+      grid.scrollLeft = 0;
     }
     for (const b of document.querySelectorAll('#works-energy button')) {
       b.setAttribute('aria-pressed', String(b.dataset.energy === energy));
     }
     picker.mark(current());
-    shown.size && picker.repaint(paint);
+    if (shown.size) picker.repaint(paint);
   }
 
   function selectEnergy(value, persist = true) {
@@ -166,9 +208,22 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     selectSpace(w.space);
     store.set('work', name);
     refresh();
+    onChange();
     await ensureAudio();
     await selectKit(w.kit, { audition: false });
     refresh();
+    onChange();
+  }
+
+  /** Chosen by hand: the work goes up full screen, through a transition where the browser has one. */
+  function choose(name) {
+    stopLive();
+    const go = () => {
+      apply(name);
+      onPlay(name);
+    };
+    if (document.startViewTransition) document.startViewTransition(go);
+    else go();
   }
 
   /** Which work, if any, the page is showing now. */
@@ -189,16 +244,14 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     return null;
   }
 
-  // --- exhibition mode -----------------------------------------------------------
-  let tourTimer = 0;
-  let tourMinutes = 0;
-
-  /** The next work on the tour: the one after the current, among those showing. */
-  function tourStep() {
+  // --- moving through the works -----------------------------------------------------
+  /** The work before or after the one on show, among those showing, put up for real. */
+  function step(dir = 1) {
     const list = visible();
     if (!list.length) return null;
     const at = list.indexOf(current());
-    const next = list[(at + 1) % list.length];
+    const index = at < 0 ? (dir >= 0 ? 0 : list.length - 1) : (at + (dir >= 0 ? 1 : -1) + list.length) % list.length;
+    const next = list[index];
     const w = WORKS[next];
     // Dipped through the ground, not cut: the picture fades, the work is put
     // up at the bottom of the dip, and it fades back in.
@@ -210,6 +263,11 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     }
     return next;
   }
+
+  const tourStep = () => step(1);
+
+  let tourTimer = 0;
+  let tourMinutes = 0;
 
   function selectTour(minutes, persist = true) {
     const m = Object.prototype.hasOwnProperty.call(TOUR_NOTES, Number(minutes)) ? Number(minutes) : 0;
@@ -237,7 +295,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     if (!name) {
       const p = document.createElement('p');
       p.className = 'note';
-      p.textContent = 'Each work sets the picture, the sound and the way they are shown in one go. Anything it sets can still be changed afterwards, in Sound and in Studio.';
+      p.textContent = 'Point at a work to see it move. Choose one to put it up and hear it.';
       box.append(p);
       return name;
     }
@@ -261,13 +319,18 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
 
   return {
     apply,
+    choose,
     refresh,
     current,
     medium,
     visible,
     selectEnergy,
     selectTour,
+    step,
     tourStep,
+    get live() {
+      return live ? { name: live.name, frames: live.frames } : null;
+    },
     get tourMinutes() {
       return tourMinutes;
     },

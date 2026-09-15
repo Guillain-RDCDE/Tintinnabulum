@@ -21,9 +21,21 @@ Open the sandbox and change one thing at a time.
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
-Everything lives on one page, in seven sections you can fold away. Each says
-what it is set to. Each keeps the rest behind **Advanced**. No setting exists
-twice.
+The picture fills the window. Four tabs at the top -- **Gallery**, **Sound**,
+**Picture**, **Data** -- open an inspector over it, so a change is made while
+watching what it changes. A dock at the bottom plays and pauses, says what is
+on, sets the volume, moves to the next work and offers a surprise. After a few
+seconds untouched, all of it fades away. No setting exists twice.
+
+| Key | |
+|---|---|
+| Space | Play or pause |
+| Left, Right | The previous or next work |
+| G | The gallery |
+| 1 to 4 | The tabs |
+| S | Surprise me |
+| F | Full screen |
+| Esc | Close the inspector |
 
 ---
 
@@ -1142,7 +1154,11 @@ room wants a light work and a dark room a dark one. The suite checks that the
 labels do not lie -- every night work is on a dark ground, every dawn and
 daylight work on a light one.
 
-Each room says in a line what it holds and hangs its first work large. A
+Each room is a row that scrolls sideways, says in a line what it holds and
+hangs its first work large. A card comes alive under the pointer -- the scene
+itself runs in it, through `animateScene`, the live counterpart of
+`previewScene` -- and choosing one puts the work up full screen and starts it
+playing. A
 filter shows only the calm works or only the lively ones, and a room left empty
 by it disappears rather than staying as a heading. **Exhibition mode** walks
 through whatever is showing, one work every five minutes to every hour,
@@ -1322,6 +1338,7 @@ tools/
   make-social-preview.mjs  regenerate the card in .github/, from the engine
 demo/
   demo.js               the sandbox page
+  shell.js              the tabs, the inspector, the dock, the keys, fading away
   project.html/.js      the projection window: the picture, full screen, alone
   broadcast.js          forwarding events to that window
   connect.js            the "Your data" panel: the standard, without a server
