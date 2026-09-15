@@ -671,7 +671,7 @@ Sixteen of the kits are instruments: one event, one note. Six are not.
 audio was permitted, which put a page nobody had asked to do anything into a
 five-second cathedral: arrive with an ambience remembered from a previous
 visit, click anything at all, and the aerodrome was already running before
-*Start listening* had been pressed. An ambience is a way of hearing a feed, not
+**Listen** had been pressed. An ambience is a way of hearing a feed, not
 a screensaver, so `connect` starts the bed and `disconnect` stops it.
 
 | | |
@@ -1022,9 +1022,9 @@ synthetic events for a hundred frames, which is what stops a card from ever
 disagreeing with the canvas — a stored image would be stale the moment a
 palette or a dial changed. That is affordable for a card you are looking at and
 not for a panel full of them: painting all of them on load cost eleven seconds
-before the page would respond, and the panels start folded, so not one of those
-cards was on screen. Cards inside a folded panel are skipped and painted when
-the panel is opened.
+before the page would respond, and the inspector starts closed, so not one of
+those cards was on screen. Cards in a closed inspector, behind another tab or
+scrolled out of sight are skipped, and painted when they come into view.
 
 Three further rules make that affordable, and each of them was added after
 something measurable went wrong.

@@ -235,9 +235,9 @@ that a crisis is catered before it is announced.
 
 ### Without a server at all
 
-The sandbox has a **Your data** panel. Paste a sample, describe the mapping,
-see what the engine understood field by field, and hear it — no install, no
-server, nothing uploaded. The expression language and the profile machinery are
+The sandbox has a **Your data** panel, under the **Data** tab. Paste a sample,
+describe the mapping, see what the engine understood field by field, and hear
+it — no install, no server, nothing uploaded. The expression language and the profile machinery are
 plain modules with no I/O, so all of that runs in the page. Only the fetching
 half needs a server, and that is the half a browser cannot do anyway: CORS,
 secrets, and a throttled background tab.
