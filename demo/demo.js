@@ -34,6 +34,7 @@ import { createProjector } from './broadcast.js';
 import { setupConnect } from './connect.js';
 import { setupWorks } from './works.js';
 import { setupShell } from './shell.js';
+import { setupStudio } from './studio.js';
 
 const storedPalette = store.pick('palette', PALETTES, DEFAULT_PALETTE_NAME);
 
@@ -569,6 +570,59 @@ worksPanel = setupWorks({
 });
 requestAnimationFrame(() => worksPanel.repaint());
 
+// =========================================================================
+// Create: the bench, in a tab of its own
+// =========================================================================
+
+// While the bench has the screen, the live picture rests rather than drawing
+// unseen, and listening pauses so two pieces of music do not play at once.
+// Both come back as they were when the bench is left.
+let pausedForStudio = false;
+function studioShown(on) {
+  canvas.setSuspended(on);
+  if (on && startBtn.dataset.on === 'true') {
+    pausedForStudio = true;
+    startBtn.click();
+  } else if (!on && pausedForStudio) {
+    pausedForStudio = false;
+    if (startBtn.dataset.on !== 'true') startBtn.click();
+  }
+}
+
+const studio = setupStudio({
+  son,
+  canvas,
+  onLeave: () => { if (shell) shell.close(); },
+  // A picture made on the bench, put on the live feed: the scene with its
+  // dials -- remembered as if they had been turned by hand -- the colours, the
+  // texture, and listening started.
+  playLive: (pic) => {
+    look.selectRotate(0);
+    look.selectSceneRotate(0);
+    for (const [k, v] of Object.entries(pic.params)) {
+      canvas.setParam(k, v, pic.scene);
+      store.set(`p:${pic.scene}:${k}`, String(v));
+    }
+    look.selectScene(pic.scene);
+    if (typeof pic.palette === 'string') {
+      look.selectPalette(pic.palette);
+    } else {
+      // Colours of one's own have no name to remember, and living colour would
+      // walk them away towards a palette that has one.
+      look.selectLiving('still');
+      canvas.setPalette(pic.palette);
+      canvas.canvas.style.background = pic.palette.background;
+    }
+    look.selectFinish(pic.finish);
+    look.selectMat(pic.mat);
+    look.selectGrain(pic.grain);
+    pausedForStudio = false;
+    if (shell) shell.close();
+    if (startBtn.dataset.on !== 'true') startBtn.click();
+    if (shell) shell.refresh(true);
+  },
+});
+
 shell = setupShell({
   canvas,
   look,
@@ -578,7 +632,11 @@ shell = setupShell({
   getKit: () => currentKit,
   getFeedLabel: () => FEEDS[feed].label,
   repaint: () => paintWhatIsNowVisible(),
+  studio,
+  onStudio: studioShown,
 });
+// An address for the bench opens the bench.
+if (location.hash.startsWith('#create')) shell.show('create');
 // =========================================================================
 // Filter
 // =========================================================================
@@ -757,6 +815,7 @@ attractTick();
 window.son = son;
 son.works = worksPanel;
 son.shell = shell;
+son.studio = studio;
 son.attract = attract;
 // The look panel with it, so a setting can be driven from the console the same
 // way a click drives it.

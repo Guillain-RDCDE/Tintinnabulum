@@ -418,6 +418,15 @@ export class CanvasSink {
     return this;
   }
 
+  /**
+   * Stop drawing while something else has the screen, without stopping: marks
+   * still arrive and age, and nothing has to be set up again afterwards.
+   */
+  setSuspended(on) {
+    this.suspended = Boolean(on);
+    return this;
+  }
+
   /** Moving film grain over the picture. */
   setGrain(on) {
     this.grain = Boolean(on);
@@ -673,6 +682,14 @@ export class CanvasSink {
 
   _frame(now) {
     if (!this._running) return;
+    // Out of sight, and asked to rest: keep the loop, skip the drawing, and
+    // forget the last frame, so the picture resumes where it was rather than
+    // leaping forward by however long it was away.
+    if (this.suspended) {
+      this._lastFrame = 0;
+      this._raf = requestAnimationFrame(this._frame);
+      return;
+    }
     const ctx = this.ctx;
     // Capture the gap before advancing the clock: the scenes integrate motion
     // against it, and a zero dt freezes everything that moves.

@@ -21,11 +21,9 @@ editing an article, somewhere, at that moment. Click one to open it.
 Eleven other feeds are in the same list. You can send your own with one `curl`.
 Nothing to install; it runs in a browser, and on a phone.
 
-**[Open the Playground →](https://guillain-rdcde.github.io/Tintinnabulum/demo/play.html)**
-
-Every picture is a small tool. Press **Space** for another, change the colours,
-hear it, keep the ones you like, and take them away as a picture or a video
-with its sound.
+Or open **Create**, the fifth tab: every picture is a small tool. Press
+**Space** for another, change the colours, hear it, keep the ones you like,
+take them away as a picture or a video with its sound, or play them live.
 
 <p align="center">
   <img src=".github/fireworks-across-the-bay.png" width="100%" alt="Fireworks across the bay: small bursts over a far shore, reflected in the water">

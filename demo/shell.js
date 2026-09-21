@@ -22,8 +22,10 @@ export const TABS = {
   sound: { label: 'Sound', panels: ['sec-sound'] },
   picture: { label: 'Picture', panels: ['sec-look'] },
   data: { label: 'Data', panels: ['sec-listen', 'sec-connect', 'sec-filter', 'sec-activity'] },
+  // Not an inspector over the picture but a bench in place of it: see studio.js.
+  create: { label: 'Create', panels: [], bench: true },
 };
-const ORDER = ['gallery', 'sound', 'picture', 'data'];
+const ORDER = ['gallery', 'sound', 'picture', 'data', 'create'];
 
 /** The shelves a surprise is drawn from: pictures, not demonstrations. */
 const ART_SHELVES = new Set(['Painting', 'Nature', 'Water', 'Night', 'Materials']);
@@ -68,8 +70,10 @@ export function accentFor(colors, lightGround) {
  * @param {Function} io.getKit        the current kit's name
  * @param {Function} io.getFeedLabel  what is being listened to, in words
  * @param {Function} io.repaint       paint cards that have just come into view
+ * @param {object}   [io.studio]      what setupStudio returned: the Create tab
+ * @param {Function} [io.onStudio]    (open) => the bench has taken or given back the screen
  */
-export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, getFeedLabel, repaint }) {
+export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, getFeedLabel, repaint, studio, onStudio }) {
   const body = document.body;
   const root = document.documentElement;
   const inspector = $('#inspector');
@@ -99,9 +103,38 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
     indicator.style.width = `${btn.offsetWidth}px`;
   }
 
+  /** The bench takes the screen: no inspector, no dock, the live picture resting. */
+  function showBench() {
+    if (!studio) return;
+    if (active === 'create') return;
+    active = 'create';
+    body.classList.remove('inspecting');
+    inspector.setAttribute('aria-hidden', 'true');
+    for (const b of tabButtons) b.setAttribute('aria-selected', String(b.dataset.tab === 'create'));
+    placeIndicator();
+    if (onStudio) onStudio(true);
+    studio.show();
+    wake();
+  }
+
+  function leaveBench() {
+    if (active !== 'create') return;
+    studio.hide();
+    if (onStudio) onStudio(false);
+    // The bench painted the interface in its own colours; the live work's
+    // come back.
+    lastTint = '';
+    refresh();
+  }
+
   /** Open the inspector on a tab. */
   function show(tab) {
     if (!TABS[tab]) return;
+    if (TABS[tab].bench) return showBench();
+    if (active === 'create') {
+      leaveBench();
+      active = null;
+    }
     const changed = active !== tab;
     active = tab;
     body.classList.add('inspecting');
@@ -129,6 +162,7 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
 
   function close() {
     if (!active) return;
+    leaveBench();
     active = null;
     body.classList.remove('inspecting');
     inspector.setAttribute('aria-hidden', 'true');
@@ -226,6 +260,8 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
     const t = e.target;
     if (t && t.closest && t.closest('input, textarea, select, [contenteditable]')) return;
     const onControl = t && t.closest && t.closest('button, a, summary');
+    // The bench has keys of its own; only the tabs still answer here.
+    if (active === 'create' && !/^[1-5]$/.test(e.key)) return;
     switch (e.key) {
       case 'Escape':
         if (active) { close(); e.preventDefault(); }
@@ -252,7 +288,7 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
       case 's': case 'S':
         surprise();
         break;
-      case '1': case '2': case '3': case '4':
+      case '1': case '2': case '3': case '4': case '5':
         toggle(ORDER[Number(e.key) - 1]);
         break;
       default:
@@ -330,8 +366,9 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
     if (meta) meta.setAttribute('content', colors.background);
   }
 
-  function refresh() {
-    tint();
+  function refresh(force = false) {
+    if (force) lastTint = '';
+    if (active !== 'create') tint();
     const name = works.current();
     $('#now-title').textContent = name ? WORKS[name].title : SCENES[canvas.sceneName].label;
     $('#now-sub').textContent = [
@@ -345,7 +382,7 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
 
   // On a first visit the gallery greets you, on a screen with room for it. On a
   // phone the sheet would cover the very thing that arrived, so it waits.
-  if (!store.get('shell-seen') && innerWidth > 700) {
+  if (!store.get('shell-seen') && innerWidth > 700 && !location.hash.startsWith('#create')) {
     requestAnimationFrame(() => show('gallery'));
   }
   store.set('shell-seen', '1');

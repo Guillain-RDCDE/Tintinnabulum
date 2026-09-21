@@ -326,6 +326,193 @@
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
   }
+
+  /* ---------------------------------------------------------------------------
+     Create: the workbench. It takes the whole window under the tabs, on a dark
+     room of its own whatever the work on show, so the picture being made is
+     the only thing in colour.
+     ------------------------------------------------------------------------- */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  body.creating #dock, body.creating #inspector, body.creating #unlock { display: none !important; }
+  body.creating .meta #stat { display: none; }
+  #studio { position: fixed; inset: 0; z-index: 15; background: #0b0c0e; color: #f3f3f1;
+            padding-top: calc(70px + env(safe-area-inset-top));
+            --fg: #f3f3f1; --muted: rgba(236,236,232,.62); --faint: rgba(236,236,232,.36);
+            --field: rgba(255,255,255,.07); --field-hover: rgba(255,255,255,.12);
+            --line: rgba(255,255,255,.09); --line-strong: rgba(255,255,255,.18); --r-sm: 10px; }
+  #studio[hidden] { display: none; }
+  #studio kbd { font: 600 .68rem/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; padding: .18rem .36rem; border-radius: 6px;
+                border: 1px solid var(--line-strong); color: var(--muted); background: rgba(255,255,255,.04); }
+  #studio :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  #studio h3 { margin: 0; }
+  #studio p { margin: 0; }
+  .st-scroll { height: 100%; overflow-y: auto; overscroll-behavior: contain; padding: 18px 22px 60px; }
+  .st-hero { max-width: 1320px; margin: 0 auto; }
+  .st-hero h2 { font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -.035em; line-height: 1.05; }
+  .st-hero .lede { color: var(--muted); font-size: 1.02rem; margin-top: .55rem; max-width: 44rem; }
+  .st-finder { display: flex; gap: .6rem; margin-top: 1.3rem; flex-wrap: wrap; }
+  #st-find { flex: 1 1 260px; min-width: 0; border: 1px solid var(--line-strong); background: var(--field); border-radius: 999px; color: var(--fg);
+             padding: .72rem 1.1rem; font: inherit; font-size: 1rem; outline: none; transition: border-color .2s ease; }
+  #st-find:focus { border-color: var(--accent); }
+  .st-pill { border: 1px solid var(--line-strong); background: var(--field); color: var(--fg); border-radius: 999px; padding: .45rem .95rem; cursor: pointer;
+             font-weight: 600; font-size: .8125rem; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+             transition: background .2s ease, transform .25s var(--bounce); }
+  .st-pill:hover { background: var(--field-hover); }
+  .st-pill:active { transform: scale(.96); }
+  .st-pill.strong, .st-pill[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .st-pill[aria-pressed="true"] kbd, .st-pill.strong kbd { color: inherit !important; border-color: currentColor !important; opacity: .7; }
+  .st-pill:disabled { opacity: .45; cursor: default; }
+  .st-pill.wide { width: 100%; }
+  .st-finder .st-pill { padding: .68rem 1.2rem; font-size: .9rem; }
+  .st-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+  #st-kinds { margin-top: 1rem; }
+  .st-chip { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: .34rem .8rem; cursor: pointer;
+             color: var(--muted); font-size: .8125rem; font-weight: 600; transition: all .2s ease; }
+  .st-chip:hover { color: var(--fg); border-color: var(--line-strong); }
+  .st-chip[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); border-color: transparent; }
+  .st-chip .n { opacity: .6; margin-left: .3rem; font-variant-numeric: tabular-nums; }
+  .st-hint { color: var(--faint); font-size: .78rem; margin-top: .9rem !important; display: flex; flex-wrap: wrap; gap: .35rem .9rem; }
+  .st-tools { max-width: 1320px; margin: 24px auto 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  .st-card { display: block; text-align: left; text-decoration: none; color: inherit; border: 1px solid var(--line); background: rgba(255,255,255,.035);
+             border-radius: 14px; overflow: hidden; cursor: pointer; position: relative;
+             transition: transform .35s var(--bounce), border-color .2s ease, box-shadow .3s ease; }
+  .st-card:hover, .st-card:focus-visible { transform: translateY(-3px); border-color: var(--line-strong); box-shadow: 0 16px 40px rgba(0,0,0,.45); }
+  .st-card canvas { display: block; width: 100%; aspect-ratio: 4 / 3; background: #15171a; }
+  .st-card .meta { padding: .7rem .85rem .85rem; display: grid; gap: .2rem; }
+  .st-card .top { display: flex; align-items: baseline; gap: .5rem; }
+  .st-card .no { font: 600 .7rem/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--faint); }
+  .st-card .name { font-weight: 650; font-size: .98rem; letter-spacing: -.01em; }
+  .st-card .kind { margin-left: auto; font-size: .7rem; color: var(--faint); white-space: nowrap; }
+  .st-card .note { color: var(--muted); font-size: .8rem; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .st-card.new::after { content: "New"; position: absolute; top: 10px; left: 10px; font-size: .68rem; font-weight: 700; padding: .2rem .5rem;
+                        border-radius: 999px; background: var(--accent); color: var(--accent-ink); }
+  #st-none { color: var(--muted); margin: 2rem auto 0; max-width: 1320px; }
+
+  #st-bench { height: 100%; display: grid; grid-template-columns: 320px minmax(0, 1fr) 290px; border-top: 1px solid var(--line); }
+  #st-bench[hidden] { display: none; }
+  .st-panel { overflow-y: auto; overscroll-behavior: contain; padding: 16px 18px 40px; scrollbar-width: thin; scrollbar-color: var(--line-strong) transparent; }
+  #st-make { border-right: 1px solid var(--line); }
+  #st-output { border-left: 1px solid var(--line); }
+  .st-group { padding: 16px 0; border-top: 1px solid var(--line); display: grid; gap: .7rem; }
+  .st-nav + .st-group { border-top: 0; }
+  .st-group h3 { font-size: .72rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: .5rem; }
+  .st-group h3 .aside { margin-left: auto; text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--faint); }
+  .st-group h3.st-title { font-size: 1.15rem; text-transform: none; letter-spacing: -.015em; color: var(--fg); }
+  .st-note { color: var(--muted); font-size: .84rem; }
+  .st-row { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+  .st-nav { justify-content: space-between; padding-bottom: 12px; }
+  #st-new { width: 100%; display: flex; align-items: center; gap: .8rem; border: 0; border-radius: 14px; padding: .95rem 1.05rem; font: inherit;
+            background: var(--accent); color: var(--accent-ink); cursor: pointer; text-align: left;
+            box-shadow: 0 10px 30px rgba(0,0,0,.35); transition: transform .3s var(--bounce), filter .2s ease; }
+  #st-new:hover { filter: brightness(1.06); }
+  #st-new:active { transform: scale(.97); }
+  #st-new .ico { width: 26px; height: 26px; flex: none; transition: transform .6s var(--spring); }
+  #st-new.spin .ico { transform: rotate(-360deg); }
+  #st-new b { display: block; font-size: 1.02rem; letter-spacing: -.01em; }
+  #st-new small { display: block; opacity: .72; font-size: .78rem; }
+  #st-new kbd { margin-left: auto; color: inherit; border-color: currentColor; opacity: .65; }
+  .st-var { display: flex; align-items: center; gap: .35rem; }
+  .st-var label { flex: 1; display: flex; align-items: center; gap: .5rem; color: var(--muted); font-size: .8rem; }
+  #st-seed { width: 100%; min-width: 0; border: 1px solid var(--line); background: var(--field); color: var(--fg); border-radius: var(--r-sm); padding: .42rem .6rem;
+             font: 600 .95rem/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; letter-spacing: .06em; text-align: center; }
+  .st-sq { width: 34px; height: 34px; flex: none; display: grid; place-items: center; border: 1px solid var(--line); background: var(--field); color: var(--fg);
+           border-radius: var(--r-sm); cursor: pointer; transition: background .2s ease, transform .25s var(--bounce); }
+  .st-sq:hover { background: var(--field-hover); }
+  .st-sq:active { transform: scale(.92); }
+  .st-sq svg { width: 16px; height: 16px; }
+  .st-dial { display: grid; gap: .3rem; }
+  .st-dial .lab { display: flex; justify-content: space-between; gap: .6rem; font-size: .8rem; color: var(--muted); }
+  .st-dial output { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 600; }
+  #studio input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; margin: 0; }
+  #studio input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px;
+    background: linear-gradient(to right, var(--accent) var(--pct, 50%), rgba(255,255,255,.14) var(--pct, 50%)); }
+  #studio input[type="range"]::-moz-range-track { height: 4px; border-radius: 4px; background: rgba(255,255,255,.14); }
+  #studio input[type="range"]::-moz-range-progress { height: 4px; border-radius: 4px; background: var(--accent); }
+  #studio input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 18px; height: 18px; margin-top: -7px; border-radius: 50%;
+    background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.45); }
+  #studio input[type="range"]::-moz-range-thumb { width: 18px; height: 18px; border: 0; border-radius: 50%; background: #fff; }
+  .st-none-dials { color: var(--faint); font-size: .82rem; }
+  .st-inks { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-start; }
+  .st-ink { position: relative; display: grid; justify-items: center; gap: .25rem; }
+  .st-ink .well { position: relative; width: 40px; height: 40px; border-radius: 50%; border: 2px solid rgba(255,255,255,.22); overflow: hidden;
+                  box-shadow: inset 0 0 0 2px rgba(0,0,0,.25); transition: transform .25s var(--bounce); cursor: pointer; }
+  .st-ink .well:hover { transform: scale(1.08); }
+  .st-ink input[type="color"] { position: absolute; inset: -8px; width: calc(100% + 16px); height: calc(100% + 16px); opacity: 0; cursor: pointer; border: 0; padding: 0; }
+  .st-ink .tag { font-size: .66rem; color: var(--faint); }
+  .st-ink .x { position: absolute; top: -5px; right: -5px; width: 18px; height: 18px; border-radius: 50%; border: 0; display: grid; place-items: center;
+               background: #2a2c30; color: var(--fg); font-size: .75rem; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .2s ease; }
+  .st-ink:hover .x, .st-ink:focus-within .x { opacity: 1; }
+  .st-add-ink { width: 40px; height: 40px; border-radius: 50%; border: 1.5px dashed var(--line-strong); background: transparent; cursor: pointer; color: var(--muted); font-size: 1.2rem; }
+  #studio select { width: 100%; border: 1px solid var(--line); background: #17191c; color: var(--fg); border-radius: var(--r-sm); padding: .5rem .6rem; font: inherit; }
+  .st-field { display: grid; gap: .3rem; font-size: .8rem; color: var(--muted); }
+  .st-saved { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .st-saved:empty { display: none; }
+  .st-saved .set { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 999px; padding: 3px 7px 3px 3px; cursor: pointer; background: transparent; }
+  .st-saved .set span { width: 16px; height: 16px; border-radius: 50%; margin-right: -4px; border: 1.5px solid #17191c; }
+  .st-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 3px; border-radius: 999px; background: var(--field); }
+  .st-seg button { border: 0; background: none; border-radius: 999px; padding: .38rem .5rem; cursor: pointer; color: var(--muted); font: inherit; font-weight: 600; font-size: .78rem; }
+  .st-seg button[aria-pressed="true"] { background: rgba(255,255,255,.16); color: var(--fg); }
+
+  #st-stage-wrap { position: relative; display: grid; grid-template-rows: minmax(0, 1fr) auto auto; gap: 14px; padding: 22px 22px 16px; min-width: 0;
+                   background: radial-gradient(ellipse at 50% 40%, rgba(255,255,255,.05), transparent 70%); }
+  #st-frame-box { position: relative; min-height: 0; display: grid; place-items: center; }
+  #st-frame { position: relative; box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.06); border-radius: 4px; }
+  #st-canvas { display: block; width: 100%; height: 100%; border-radius: 4px; cursor: pointer; }
+  #st-frame .corner { position: absolute; width: 14px; height: 14px; border: 1.5px solid var(--faint); }
+  #st-frame .corner.tl { top: -10px; left: -10px; border-right: 0; border-bottom: 0; }
+  #st-frame .corner.tr { top: -10px; right: -10px; border-left: 0; border-bottom: 0; }
+  #st-frame .corner.bl { bottom: -10px; left: -10px; border-right: 0; border-top: 0; }
+  #st-frame .corner.br { bottom: -10px; right: -10px; border-left: 0; border-top: 0; }
+  #st-develop { position: absolute; left: 0; right: 0; bottom: 0; height: 3px; transform-origin: left; transform: scaleX(0); background: var(--accent); opacity: 0; transition: opacity .3s ease; }
+  #st-frame.developing #st-develop { opacity: 1; }
+  #st-flash { position: absolute; inset: 0; pointer-events: none; background: #fff; opacity: 0; border-radius: 4px; }
+  #st-flash.go { animation: st-flash .45s ease-out; }
+  @keyframes st-flash { 0% { opacity: .35 } 100% { opacity: 0 } }
+  #st-transport { justify-self: center; display: flex; flex-wrap: wrap; justify-content: center; gap: .45rem; }
+  #st-transport .st-pill { padding: .55rem 1.05rem; font-size: .875rem; }
+  #st-transport svg { width: 15px; height: 15px; }
+  .st-keys { justify-self: center; color: var(--faint); font-size: .74rem; display: flex; flex-wrap: wrap; justify-content: center; gap: .3rem .8rem; }
+  .st-keys span { display: inline-flex; align-items: center; gap: .3rem; }
+  .st-ratios { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .st-ratios button { border: 1px solid var(--line); background: transparent; border-radius: var(--r-sm); padding: .5rem 0 .35rem; cursor: pointer; font: inherit;
+                      display: grid; justify-items: center; gap: .3rem; color: var(--faint); font-size: .68rem; font-weight: 600; transition: all .2s ease; }
+  .st-ratios button i { display: block; border: 1.5px solid currentColor; border-radius: 2px; }
+  .st-ratios button:hover { color: var(--fg); border-color: var(--line-strong); }
+  .st-ratios button[aria-pressed="true"] { color: var(--fg); border-color: var(--accent); background: rgba(255,255,255,.05); }
+  .st-ratios button[aria-pressed="true"] i { background: var(--accent); border-color: var(--accent); }
+  .st-captures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .st-capture { position: relative; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; cursor: pointer; background: #111; transition: transform .3s var(--bounce); }
+  .st-capture:hover { transform: scale(1.04); }
+  .st-capture img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; }
+  .st-capture .x { position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 50%; border: 0; background: rgba(0,0,0,.6); color: #fff;
+                   font-size: .72rem; line-height: 1; cursor: pointer; opacity: 0; display: grid; place-items: center; }
+  .st-capture:hover .x, .st-capture:focus-within .x { opacity: 1; }
+  .st-capture.fresh { animation: st-pop .5s var(--bounce); }
+  @keyframes st-pop { 0% { transform: scale(.6); opacity: 0 } 100% { transform: none; opacity: 1 } }
+  #st-captures-empty, #st-export-status { color: var(--faint); font-size: .8rem; }
+  #st-export-status { color: var(--muted); min-height: 1.2em; }
+  #st-toast { position: fixed; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); z-index: 60; transform: translate(-50%, 20px); opacity: 0;
+              background: rgba(30,32,36,.92); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border: 1px solid var(--line-strong);
+              border-radius: 999px; padding: .6rem 1.1rem; font-weight: 600; font-size: .85rem; pointer-events: none;
+              transition: transform .45s var(--spring), opacity .3s ease; }
+  #st-toast.show { transform: translate(-50%, 0); opacity: 1; }
+
+  @media (max-width: 1180px) {
+    #st-bench { grid-template-columns: 330px minmax(0, 1fr); }
+    #st-output { display: none; }
+  }
+  @media (hover: none), (pointer: coarse), (max-width: 700px) { .st-hint, .st-keys { display: none; } }
+  @media (max-width: 700px) {
+    #studio { padding-top: calc(62px + env(safe-area-inset-top)); }
+    .st-scroll { padding: 14px 16px 50px; }
+    .st-tools { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+    .st-card .note { display: none; }
+    #st-bench { display: flex; flex-direction: column; overflow-y: auto; overscroll-behavior: contain; }
+    #st-stage-wrap { order: -1; position: sticky; top: 0; z-index: 5; padding: 12px 16px 10px; background: #0b0c0e; border-bottom: 1px solid var(--line); }
+    #st-frame-box { height: 44dvh; }
+    #st-make { border-right: 0; padding: 14px 16px 60px; overflow: visible; }
+    .st-ink .x { opacity: 1; }
+  }
 </style>
 </head>
 <body>
@@ -335,6 +522,151 @@
   <div id="unlock"><span>Tap to enable sound</span></div>
 </div>
 
+<section id="studio" hidden aria-label="Create">
+  <div id="st-index" class="st-scroll">
+    <div class="st-hero">
+      <h2>Create</h2>
+      <p class="lede">Every picture is a small tool. Pick one, press <kbd>Space</kbd> until you love what you see, then keep it, hear it, take it with you, or play it live.</p>
+      <div class="st-finder">
+        <label class="sr" for="st-find">Find a tool</label>
+        <input id="st-find" type="search" placeholder="Type to find a tool" autocomplete="off" spellcheck="false">
+        <button id="st-random" class="st-pill strong" type="button">Surprise me</button>
+        <button id="st-from-live" class="st-pill" type="button">From what was playing</button>
+      </div>
+      <div id="st-kinds" class="st-chips" role="group" aria-label="Kinds of tool"></div>
+      <p class="st-hint"><span><kbd>Type</kbd> to filter</span><span><kbd>Enter</kbd> opens the first</span><span><kbd>Esc</kbd> back to listening</span></p>
+    </div>
+    <div id="st-tools" class="st-tools"></div>
+    <p id="st-none" hidden>Nothing by that name. Try another word, or let it surprise you.</p>
+  </div>
+
+  <div id="st-bench" hidden>
+    <aside id="st-make" class="st-panel" aria-label="Make">
+      <div class="st-row st-nav">
+        <button class="st-pill" id="st-to-index" type="button">&larr; All tools</button>
+        <button class="st-pill strong" id="st-live" type="button">Play it live</button>
+      </div>
+      <section class="st-group">
+        <button id="st-new" type="button">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
+          <span><b>New variation</b><small>Shuffle every shape</small></span>
+          <kbd>Space</kbd>
+        </button>
+        <div class="st-var">
+          <button class="st-sq" id="st-prev" type="button" aria-label="Previous variation"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg></button>
+          <label>No. <input id="st-seed" inputmode="numeric" autocomplete="off" aria-label="Variation number"></label>
+          <button class="st-sq" id="st-next" type="button" aria-label="Next variation"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.5 4.5L13 10l-5.5 5.5"/></svg></button>
+          <button class="st-sq" id="st-copy" type="button" aria-label="Copy a link to this picture" title="Copy a link to this picture"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 11.5a3 3 0 0 0 4.2 0l2.6-2.6a3 3 0 0 0-4.2-4.2l-.9.9"/><path d="M11.5 8.5a3 3 0 0 0-4.2 0l-2.6 2.6a3 3 0 0 0 4.2 4.2l.9-.9"/></svg></button>
+        </div>
+      </section>
+
+      <section class="st-group">
+        <h3 id="st-title" class="st-title"></h3>
+        <p id="st-note" class="st-note"></p>
+        <div id="st-dials"></div>
+        <div class="st-row">
+          <button class="st-pill" id="st-shuffle" type="button">Shuffle the dials <kbd>D</kbd></button>
+          <button class="st-pill" id="st-reset" type="button">As it ships</button>
+        </div>
+      </section>
+
+      <section class="st-group">
+        <h3>Colour <span class="aside" id="st-ink-count"></span></h3>
+        <div id="st-inks" class="st-inks"></div>
+        <div class="st-row">
+          <button class="st-pill" id="st-new-colours" type="button">New colours <kbd>C</kbd></button>
+          <button class="st-pill" id="st-rotate" type="button">Rotate <kbd>R</kbd></button>
+          <button class="st-pill" id="st-save-colours" type="button">Save</button>
+        </div>
+        <div id="st-my-colours" class="st-saved" aria-label="Saved colours"></div>
+        <label class="st-field">From a palette
+          <select id="st-palette"></select>
+        </label>
+      </section>
+
+      <section class="st-group">
+        <h3>Texture</h3>
+        <div id="st-finishes" class="st-chips" role="group" aria-label="Finish"></div>
+        <div class="st-dial">
+          <div class="lab"><span>Grain</span><output id="st-grain-out"></output></div>
+          <input type="range" id="st-grain" min="0" max="0.6" step="0.02" aria-label="Grain">
+        </div>
+        <div class="st-field">Frame
+          <div class="st-seg" id="st-mat" role="group" aria-label="Frame"></div>
+        </div>
+      </section>
+
+      <div id="st-output-here"></div>
+    </aside>
+
+    <section id="st-stage-wrap" aria-label="The picture">
+      <div id="st-frame-box">
+        <div id="st-frame">
+          <canvas id="st-canvas" aria-label="The picture you are making"></canvas>
+          <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+          <div id="st-develop"></div>
+          <div id="st-flash"></div>
+        </div>
+      </div>
+      <div id="st-transport">
+        <button class="st-pill" id="st-play" type="button" aria-pressed="true"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M4.5 3h2.2v10H4.5zM9.3 3h2.2v10H9.3z"/></svg><span>Moving</span> <kbd>P</kbd></button>
+        <button class="st-pill" id="st-hear" type="button" aria-pressed="false"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6h2.5L8.5 3v10L5 10H2.5z"/><path d="M11 5.5a3.5 3.5 0 0 1 0 5"/><path d="M13 3.5a6.3 6.3 0 0 1 0 9"/></svg><span>Hear it</span> <kbd>H</kbd></button>
+        <button class="st-pill" id="st-keep" type="button"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M4 2.5h8v11l-4-3-4 3z"/></svg><span>Keep</span> <kbd>K</kbd></button>
+      </div>
+      <p class="st-keys"><span><kbd>Space</kbd> new</span><span><kbd>&larr;</kbd><kbd>&rarr;</kbd> step through</span><span><kbd>C</kbd> colours</span><span><kbd>R</kbd> rotate</span><span><kbd>E</kbd> export</span><span><kbd>Esc</kbd> all tools</span></p>
+    </section>
+
+    <aside id="st-output" class="st-panel" aria-label="Output">
+      <div id="st-output-body">
+        <section class="st-group">
+          <h3>Frame</h3>
+          <div id="st-ratios" class="st-ratios" role="group" aria-label="Frame shape"></div>
+        </section>
+        <section class="st-group">
+          <h3>Motion and sound</h3>
+          <div class="st-dial">
+            <div class="lab"><span>Events a second</span><output id="st-tempo-out"></output></div>
+            <input type="range" id="st-tempo" min="0.25" max="6" step="0.25" aria-label="Events a second">
+          </div>
+          <label class="st-field">Instrument
+            <select id="st-kit"></select>
+          </label>
+          <div class="st-dial">
+            <div class="lab"><span>Volume</span><output id="st-volume-out"></output></div>
+            <input type="range" id="st-volume" min="0" max="1" step="0.05" aria-label="Volume">
+          </div>
+        </section>
+        <section class="st-group">
+          <h3>Kept <span class="aside" id="st-capture-count"></span></h3>
+          <div id="st-captures" class="st-captures"></div>
+          <p id="st-captures-empty">Press <kbd>K</kbd> to keep the one on screen. Kept pictures stay here, on this device.</p>
+        </section>
+        <section class="st-group">
+          <h3>Export</h3>
+          <label class="st-field">Picture size
+            <select id="st-png-size">
+              <option value="1080">1080 pixels</option>
+              <option value="2048" selected>2048 pixels</option>
+              <option value="3200">3200 pixels</option>
+            </select>
+          </label>
+          <button class="st-pill strong wide" id="st-export-png" type="button">Download picture <kbd>E</kbd></button>
+          <label class="st-field">Video length
+            <select id="st-video-length">
+              <option value="6">6 seconds</option>
+              <option value="12" selected>12 seconds</option>
+              <option value="24">24 seconds</option>
+            </select>
+          </label>
+          <button class="st-pill wide" id="st-export-video" type="button">Record a video</button>
+          <p id="st-export-status" role="status"></p>
+        </section>
+      </div>
+    </aside>
+  </div>
+  <div id="st-toast" role="status" aria-live="polite"></div>
+</section>
+
 <header id="topbar">
   <h1 class="brand glass chrome"><a id="home" href="https://github.com/Guillain-RDCDE/Tintinnabulum">Tintinnabulum</a></h1>
   <nav id="tabs" class="glass chrome" role="tablist" aria-label="Settings">
@@ -343,10 +675,10 @@
     <button type="button" role="tab" data-tab="sound" aria-selected="false" aria-controls="inspector">Sound</button>
     <button type="button" role="tab" data-tab="picture" aria-selected="false" aria-controls="inspector">Picture</button>
     <button type="button" role="tab" data-tab="data" aria-selected="false" aria-controls="inspector">Data</button>
+    <button type="button" role="tab" data-tab="create" aria-selected="false" aria-controls="studio">Create</button>
   </nav>
   <div class="meta glass chrome">
     <span id="stat"></span>
-    <a class="src" id="playground-link" href="play.html">Playground</a>
     <a class="src" id="source-link" href="https://github.com/Guillain-RDCDE/Tintinnabulum">Source</a>
   </div>
 </header>

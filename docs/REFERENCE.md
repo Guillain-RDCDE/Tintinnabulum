@@ -17,25 +17,24 @@ Open the sandbox and change one thing at a time.
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
 | **Gallery** | Thirty-seven finished pieces in four rooms named for their light: dawn, daylight, dusk and night. One click sets the picture, the palette, the sound, the room, the finish, the frame, the pace and the living colour. A filter for calm or lively, and an exhibition mode that moves on every few minutes. Try **A drop in the glass**, then **Lanterns on the lake**. |
-| **Playground** | Every visualisation as a small tool. Space for a new variation, then change the inks, the texture and the frame, hear it, keep it, take it away as a picture or a video with its sound. The variation's number is the picture. |
+| **Create** | Every visualisation as a small tool. Space for a new variation, then change the inks, the texture and the frame, hear it, keep it, take it away as a picture or a video with its sound, or play it live. The variation's number is the picture. |
 | **Studio** | A hundred and eight visualisations on eight shelves, fourteen finishes and eighty palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
 The picture fills the window. Four tabs at the top -- **Gallery**, **Sound**,
 **Picture**, **Data** -- open an inspector over it, so a change is made while
-watching what it changes. A dock at the bottom plays and pauses, says what is
+watching what it changes. A fifth, **Create**, puts a workbench in its place
+(see below). A dock at the bottom plays and pauses, says what is
 on, sets the volume, moves to the next work and offers a surprise. After a few
 seconds untouched, all of it fades away. No setting exists twice.
-**Playground**, beside **Source**, opens the bench for making pictures of your
-own (see below).
 
 | Key | |
 |---|---|
 | Space | Play or pause |
 | Left, Right | The previous or next work |
 | G | The gallery |
-| 1 to 4 | The tabs |
+| 1 to 5 | The tabs |
 | S | Surprise me |
 | F | Full screen |
 | Esc | Close the inspector |
@@ -1183,16 +1182,22 @@ WORKS.glass;   // { room: 'Dawn', energy: 'calm', title: 'A drop in the glass', 
 The suite checks that every work names a scene, palette, kit, room, finish and
 frame that exist, so a rename fails loudly instead of quietly falling back.
 
-### The Playground
+### Create
 
-The sandbox listens to the world. The **Playground** is for making something:
-every visualisation, a hundred and eight of them, as a small tool on a bench,
-one picture at a time. It is its own page, `demo/play.html`, linked beside
-**Source**.
+The other four tabs set up how the world is heard and seen. **Create** is for
+making something: every visualisation, a hundred and eight of them, as a small
+tool on a bench, one picture at a time. It is a tab rather than a page of its
+own because the two meet: the bench opens on the picture that was playing, and
+**Play it live** puts what was made back on the feed -- the scene with its
+dials, the colours, the texture -- and starts listening. While the bench has
+the screen the live picture rests rather than drawing unseen, listening pauses
+so two pieces of music never play at once, and both come back as they were
+when the bench is left.
 
-The index shows every tool as a live card, numbered, on its shelf. Typing
-filters, Enter opens the first, and **Surprise me** opens one at random from
-what is showing.
+**All tools** shows every tool as a live card, numbered, on its shelf. Typing
+filters, Enter opens the first, **Surprise me** opens one at random from what
+is showing, and **From what was playing** takes the live picture onto the
+bench again.
 
 A tool opens on a **variation**: a number, from which the scene's dials and the
 whole sequence of events are drawn. The number is the picture. **Space** draws
@@ -1212,13 +1217,15 @@ Around the picture, the way a print workshop is laid out:
 | **Colour** | A ground and up to five inks, each editable. **New colours** draws a set from a number in three moods -- a pale paper, a dark night, a strong ground -- with the violet band of the wheel removed and every ink kept well clear of the ground in lightness. **Rotate** makes the next ink the ground. Any palette can be taken as a starting point, except those with a violet in them, and a set can be saved. |
 | **Texture** | The fourteen finishes, film grain and the mats. |
 | **Frame** | Eight shapes, from 9:16 to 16:9. |
-| **Motion and sound** | How many events a second, and **Hear it**: each event of the picture is one note from the chosen instrument, in a pentatonic scale, larger marks lower. |
+| **Motion and sound** | How many events a second, and **Hear it**: each event of the picture is one note from the chosen instrument, in a pentatonic scale, larger marks lower. It plays through the sandbox's own audio engine, so there is one volume and one permission to play sound. |
 | **Kept** | **K** keeps the picture on screen, with a thumbnail, on this device; a click brings it back exactly. |
 | **Export** | The picture as a PNG at 1080, 2048 or 3200 pixels, developed again at that size from its number; or a video of it moving, with its sound if it is being heard. |
 
-The whole state is in the address -- tool, number, inks, the dials that were
-moved, finish, grain, mat and frame -- so a link opens the same picture on
-another machine. The suite checks that it does, and that stepping back through
+While the bench is open the whole state is in the address -- `#create/`, then
+the tool, the number, the inks, the dials that were moved, finish, grain, mat
+and frame -- so a link opens the same picture on another machine. For a day the
+bench was a page of its own, `play.html`; that address now forwards here with
+the picture intact. The suite checks that it does, and that stepping back through
 the variations finds the same pictures again.
 
 | Key | |
@@ -1231,7 +1238,7 @@ the variations finds the same pictures again.
 | D | Shuffle the dials |
 | K | Keep |
 | E | Download the picture |
-| Esc | Back to all the tools |
+| Esc | Back to all the tools; from there, back to listening |
 
 Four scenes were added for it, from the vocabulary of posters and prints:
 **Soft gradient** (wide radial clouds of colour that drift into one another),
@@ -1420,7 +1427,8 @@ demo/
   demo.js               the sandbox page
   shell.js              the tabs, the inspector, the dock, the keys, fading away
   project.html/.js      the projection window: the picture, full screen, alone
-  play.html/.js         the Playground: every scene as a small tool
+  studio.js             the Create tab: every scene as a small tool on a bench
+  play.html             forwards the old playground address to the Create tab
   broadcast.js          forwarding events to that window
   connect.js            the "Your data" panel: the standard, without a server
   look.js               scenes, finishes, palettes, shapes, colour variety, the ceiling

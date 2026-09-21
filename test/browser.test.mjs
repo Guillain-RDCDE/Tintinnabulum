@@ -164,8 +164,8 @@ const shellInfo = await page.evaluate((sels) => {
     active: window.son.shell.active,
   };
 }, PANELS);
-ok('four tabs: Gallery, Sound, Picture, Data',
-   JSON.stringify(shellInfo.tabs) === JSON.stringify(['Gallery', 'Sound', 'Picture', 'Data']), shellInfo.tabs.join(', '));
+ok('five tabs: Gallery, Sound, Picture, Data, Create',
+   JSON.stringify(shellInfo.tabs) === JSON.stringify(['Gallery', 'Sound', 'Picture', 'Data', 'Create']), shellInfo.tabs.join(', '));
 ok('every panel lives in the inspector, under a tab', shellInfo.inInspector && shellInfo.tabbed);
 ok('the picture fills the window', shellInfo.fills);
 ok('the page itself never scrolls; the inspector does', !shellInfo.pageScrolls);
@@ -2366,7 +2366,19 @@ for (const name of sceneNames) {
   }, name);
   // Several frames: the moving scenes need time to travel before they mark.
   await page.waitForTimeout(450);
-  const ink = await inkOf();
+  let ink = await inkOf();
+  // A second chance for a scene whose picture is drawn by chance. The
+  // attractor takes its shape from its events, and one run in twenty lands on
+  // a shape that is still fine dust at this moment -- measured at 4 to 1128
+  // across twenty runs of the same check, before and after any change of ours.
+  // A scene that is genuinely broken stays blank however long it is given.
+  if (ink < 8) {
+    await page.evaluate((n) => {
+      for (let i = 0; i < 45; i++) window.son.emit({ magnitude: Math.round(Math.exp(Math.random() * 9)), id: `scene-${n}-again-${i}` });
+    }, name);
+    await page.waitForTimeout(700);
+    ink = await inkOf();
+  }
   if (ink < 8) blank.push(`${name}(${ink})`);
   if (consoleErrors.length > before) sceneErrors.push(name);
 }
@@ -2659,8 +2671,10 @@ const rowMoved = await page.evaluate(async () => {
   return { moved, prevShown, atEnd: wrap.classList.contains('at-end'), lastInView: last.right <= box.right + 2 && last.left >= box.left - 2 };
 });
 ok('every room row has its arrows', rowStart.rows === 4, `${rowStart.rows} rows`);
-ok('at the start of a row only the forward arrow shows', rowStart.prev === '0' && rowStart.next === '1', JSON.stringify(rowStart));
-ok('the forward arrow moves the row along, and the back arrow appears', rowMoved.moved > 100 && rowMoved.prevShown === '1', JSON.stringify(rowMoved));
+// Read as numbers: the arrows fade, and an opacity caught in the last
+// microseconds of its transition reads 1.9e-8 rather than 0.
+ok('at the start of a row only the forward arrow shows', Number(rowStart.prev) < 0.01 && Number(rowStart.next) > 0.99, JSON.stringify(rowStart));
+ok('the forward arrow moves the row along, and the back arrow appears', rowMoved.moved > 100 && Number(rowMoved.prevShown) > 0.99, JSON.stringify(rowMoved));
 ok('the arrows reach the last work in the row', rowMoved.atEnd && rowMoved.lastInView, JSON.stringify(rowMoved));
 
 const hoverLive = await page.evaluate(async () => {
@@ -2885,21 +2899,20 @@ const frozen = stillness.filter(([, d]) => d < 0.001);
 ok('every scene keeps moving when the events stop', frozen.length === 0,
    frozen.map(([n, d]) => `${n} ${(d * 100).toFixed(2)}%`).join(', ') || `${stillness.length} scenes all moving`);
 
-// --- the playground: small tools for pictures that sound ----------------------------
-// Every scene is a tool. A variation number is the picture, the address is the
-// whole state, and what is made can be kept, heard and taken away. Each of
-// those is checked by doing it, as somebody would.
-ok('the sandbox links to the playground',
-   await page.evaluate(() => /play\.html$/.test(document.querySelector('#playground-link')?.getAttribute('href') || '')));
-
+// --- Create: every scene as a small tool, in the fifth tab ----------------------------
+// The bench lives in the sandbox: it opens on what was playing, rests the live
+// picture while it has the screen, and puts what was made back on the feed.
+// A variation number is the picture, the address is the whole state, and what
+// is made can be kept, heard and taken away. Each is checked by doing it.
 const pgContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
 const pg = await pgContext.newPage();
 const pgErrors = [];
 pg.on('pageerror', (e) => pgErrors.push(e.message));
 pg.on('console', (m) => { if (m.type() === 'error') pgErrors.push(m.text()); });
-await pg.goto(BASE + '/demo/play.html', { waitUntil: 'domcontentloaded' });
-await pg.waitForFunction(() => window.playground, null, { timeout: 20000 });
-await pg.waitForTimeout(1500);
+await pg.addInitScript(() => localStorage.setItem('t:shell-seen', '1'));
+await pg.goto(BASE + '/demo/', { waitUntil: 'domcontentloaded' });
+await pg.waitForFunction(() => window.son && window.son.studio, null, { timeout: 20000 });
+await pg.waitForTimeout(800);
 
 /**
  * A fingerprint of the picture -- its colour averaged over a 32 by 32 grid --
@@ -2913,7 +2926,7 @@ await pg.waitForTimeout(1500);
  * first without being fooled by the second.
  */
 const picture = (p = pg) => p.evaluate(() => {
-  const cv = document.querySelector('#stage');
+  const cv = document.querySelector('#st-canvas');
   const W = cv.width;
   const H = cv.height;
   const d = cv.getContext('2d').getImageData(0, 0, W, H).data;
@@ -2937,74 +2950,102 @@ const picture = (p = pg) => p.evaluate(() => {
 const apart = (a, b) => a.cells.reduce((s, v, i) => s + Math.abs(v - b.cells[i]), 0) / a.cells.length;
 /** Wait until the picture on the bench has finished developing. */
 const developed = (p = pg) => p.waitForFunction(() => {
-  const pl = window.playground.player;
-  return pl && pl.developed && !document.querySelector('#frame').classList.contains('developing');
+  const st = window.son.studio;
+  return st.open && st.player && st.player.developed && !document.querySelector('#st-frame').classList.contains('developing');
 }, null, { timeout: 30000 });
+const bench = (p = pg) => p.evaluate(() => ({
+  open: window.son.studio.open,
+  creating: document.body.classList.contains('creating'),
+  suspended: Boolean(window.son.sinks.find((s) => s.particles).suspended),
+  running: document.querySelector('#start').dataset.on,
+  hash: location.hash,
+  tool: window.son.studio.state.tool,
+}));
 
+// Listening first, so that the bench can be seen to pause it and give it back.
+await pg.click('#start');
+await pg.waitForFunction(() => document.querySelector('#start').dataset.on === 'true', null, { timeout: 20000 });
+const liveScene = await pg.evaluate(() => window.son.sinks.find((s) => s.particles).sceneName);
+await pg.click('#tabs [data-tab="create"]');
+await developed();
+const pgIn = await bench();
+const pgDock = await pg.evaluate(() => getComputedStyle(document.querySelector('#dock')).display);
+ok('Create opens the bench on the picture that was playing', pgIn.open && pgIn.tool === liveScene && pgIn.hash.startsWith(`#create/${liveScene}/`),
+   JSON.stringify(pgIn));
+ok('while creating, the live picture rests and listening pauses', pgIn.creating && pgIn.suspended && pgIn.running === 'false' && pgDock === 'none',
+   JSON.stringify({ ...pgIn, dock: pgDock }));
+const pgFirst = await picture();
+ok('the picture on the bench is drawn', pgFirst.colours >= 3, `${pgFirst.colours} colours at ${pgFirst.w}x${pgFirst.hgt}`);
+
+await pg.keyboard.press('Escape');
+await pg.waitForTimeout(400);
 const pgIndex = await pg.evaluate(async () => {
   const { SCENE_NAMES } = await import('../src/index.js');
   return {
-    cards: document.querySelectorAll('.tool-card').length,
+    hash: location.hash,
+    cards: document.querySelectorAll('.st-card').length,
     scenes: SCENE_NAMES.length,
-    fresh: [...document.querySelectorAll('.tool-card.new')].map((c) => c.dataset.tool).sort().join(','),
-    painted: document.querySelectorAll('.tool-card[data-painted]').length,
+    fresh: [...document.querySelectorAll('.st-card.new')].map((c) => c.dataset.tool).sort().join(','),
   };
 });
-ok('playground: every scene is a tool on the index', pgIndex.cards === pgIndex.scenes, `${pgIndex.cards} cards, ${pgIndex.scenes} scenes`);
-ok('playground: the new tools are marked as new', pgIndex.fresh === 'aura,benday,rise,whorl', pgIndex.fresh);
-ok('playground: the cards in view are painted', pgIndex.painted >= 8, `${pgIndex.painted} painted`);
+await pg.waitForTimeout(800);
+const pgPainted = await pg.evaluate(() => document.querySelectorAll('.st-card[data-painted]').length);
+ok('Escape on the bench goes to all the tools', pgIndex.hash === '#create', pgIndex.hash);
+ok('every scene is a tool', pgIndex.cards === pgIndex.scenes, `${pgIndex.cards} tools, ${pgIndex.scenes} scenes`);
+ok('the new tools are marked as new', pgIndex.fresh === 'aura,benday,rise,whorl', pgIndex.fresh);
+ok('the tools in view are painted', pgPainted >= 8, `${pgPainted} painted`);
 
 await pg.keyboard.type('whorl');
-const pgFiltered = await pg.evaluate(() => [...document.querySelectorAll('.tool-card')].filter((c) => !c.hidden).map((c) => c.dataset.tool));
-ok('playground: typing filters the tools', pgFiltered.length === 1 && pgFiltered[0] === 'whorl', pgFiltered.join(','));
+const pgFiltered = await pg.evaluate(() => [...document.querySelectorAll('.st-card')].filter((c) => !c.hidden).map((c) => c.dataset.tool));
+ok('typing filters the tools', pgFiltered.length === 1 && pgFiltered[0] === 'whorl', pgFiltered.join(','));
 await pg.keyboard.press('Enter');
 await developed();
-ok('playground: Enter opens the first tool', await pg.evaluate(() => location.hash.startsWith('#/whorl/') && !document.querySelector('#tool-view').hidden));
-const whorlFirst = await picture();
-ok('playground: the picture is drawn', whorlFirst.colours >= 3, `${whorlFirst.colours} colours at ${whorlFirst.w}x${whorlFirst.hgt}`);
+ok('Enter opens the first tool', await pg.evaluate(() => location.hash.startsWith('#create/whorl/') && !document.querySelector('#st-bench').hidden));
 
-// Still, so that pictures can be compared pixel for pixel.
+// Still, so that pictures can be compared.
 await pg.keyboard.press('p');
-await pg.evaluate(() => window.playground.rebuild());
+await pg.evaluate(() => window.son.studio.rebuild());
 await developed();
-const pgSeedA = await pg.evaluate(() => window.playground.state.seed);
+const pgSeedA = await pg.evaluate(() => window.son.studio.state.seed);
 const picA = await picture();
 await pg.keyboard.press(' ');
 await developed();
-const pgSeedB = await pg.evaluate(() => ({ seed: window.playground.state.seed, hash: location.hash }));
+const pgSeedB = await pg.evaluate(() => ({ seed: window.son.studio.state.seed, hash: location.hash }));
 const picB = await picture();
-ok('playground: Space draws a new variation', pgSeedB.seed !== pgSeedA && pgSeedB.hash.includes(`/${pgSeedB.seed}?`) && apart(picA, picB) > 3,
+ok('Space draws a new variation', pgSeedB.seed !== pgSeedA && pgSeedB.hash.includes(`/${pgSeedB.seed}?`) && apart(picA, picB) > 3,
    `${pgSeedA} -> ${pgSeedB.seed}, ${apart(picA, picB).toFixed(2)} apart`);
 await pg.keyboard.press('ArrowLeft');
 await developed();
 const picBack = await picture();
-ok('playground: stepping back finds the same picture',
-   (await pg.evaluate(() => window.playground.state.seed)) === pgSeedA && apart(picBack, picA) < 1, `${apart(picBack, picA).toFixed(3)} apart`);
+ok('stepping back finds the same picture',
+   (await pg.evaluate(() => window.son.studio.state.seed)) === pgSeedA && apart(picBack, picA) < 1, `${apart(picBack, picA).toFixed(3)} apart`);
 
 const pgDials = await pg.evaluate(async () => {
   const { SCENES } = await import('../src/index.js');
-  const inputs = [...document.querySelectorAll('#dials input[type="range"]')];
-  const twist = document.querySelector('#dial-twist');
+  const inputs = [...document.querySelectorAll('#st-dials input[type="range"]')];
+  const twist = document.querySelector('#st-dial-twist');
   twist.value = String(Number(twist.max));
   twist.dispatchEvent(new Event('input', { bubbles: true }));
   twist.dispatchEvent(new Event('change', { bubbles: true }));
-  return { count: inputs.length, expected: Object.keys(SCENES.whorl.params).length, value: window.playground.state.params.twist, max: Number(twist.max) };
+  return { count: inputs.length, expected: Object.keys(SCENES.whorl.params).length, value: window.son.studio.state.params.twist, max: Number(twist.max) };
 });
 await developed();
 const picTwist = await picture();
-ok('playground: every dial of the tool is on the bench', pgDials.count === pgDials.expected, `${pgDials.count} of ${pgDials.expected}`);
-ok('playground: a dial changes the picture and is written into the address',
-   pgDials.value === pgDials.max && apart(picTwist, picA) > 2 && (await pg.evaluate(() => /[?&]d=[^&]*twist:/.test(decodeURIComponent(location.hash)))));
+ok('every dial of the tool is on the bench', pgDials.count === pgDials.expected, `${pgDials.count} of ${pgDials.expected}`);
+ok('a dial changes the picture and is written into the address',
+   pgDials.value === pgDials.max && apart(picTwist, picA) > 2 &&
+   (await pg.evaluate(() => /[?&]d=[^&]*twist:/.test(decodeURIComponent(location.hash)))));
 
 const pgInks = await pg.evaluate(async () => {
   const { isViolet, paletteIsViolet, inksOfPalette } = await import('../src/index.js');
-  const before = window.playground.state.inks.slice();
-  document.querySelector('#new-colours').click();
-  const fresh = window.playground.state.inks.slice();
-  document.querySelector('#rotate-colours').click();
-  const turned = window.playground.state.inks.slice();
-  const offered = [...document.querySelectorAll('#palette option')].map((o) => o.value).filter(Boolean);
-  const select = document.querySelector('#palette');
+  const st = window.son.studio.state;
+  const before = st.inks.slice();
+  document.querySelector('#st-new-colours').click();
+  const fresh = st.inks.slice();
+  document.querySelector('#st-rotate').click();
+  const turned = st.inks.slice();
+  const offered = [...document.querySelectorAll('#st-palette option')].map((o) => o.value).filter(Boolean);
+  const select = document.querySelector('#st-palette');
   select.value = 'marine';
   select.dispatchEvent(new Event('change'));
   return {
@@ -3013,139 +3054,182 @@ const pgInks = await pg.evaluate(async () => {
     rotated: turned.join() === [...fresh.slice(1), fresh[0]].join(),
     offered: offered.length,
     violetOffered: offered.filter(paletteIsViolet).length,
-    marine: window.playground.state.inks.join() === inksOfPalette('marine').map((c) => c.toLowerCase()).join(),
-    address: location.hash.includes('i=' + window.playground.state.inks.map((c) => c.slice(1)).join('-')),
+    marine: st.inks.join() === inksOfPalette('marine').map((c) => c.toLowerCase()).join(),
+    address: location.hash.includes('i=' + st.inks.map((c) => c.slice(1)).join('-')),
   };
 });
-ok('playground: new colours are new, and never violet', pgInks.changed && pgInks.violet === 0, JSON.stringify(pgInks));
-ok('playground: rotate makes the next ink the ground', pgInks.rotated);
-ok('playground: the palettes offered include none with violet in them', pgInks.offered > 20 && pgInks.violetOffered === 0, `${pgInks.offered} offered`);
-ok('playground: a palette sets the inks, and the address carries them', pgInks.marine && pgInks.address);
+ok('new colours are new, and never violet', pgInks.changed && pgInks.violet === 0, JSON.stringify(pgInks));
+ok('rotate makes the next ink the ground', pgInks.rotated);
+ok('the palettes offered include none with violet in them', pgInks.offered > 20 && pgInks.violetOffered === 0, `${pgInks.offered} offered`);
+ok('a palette sets the inks, and the address carries them', pgInks.marine && pgInks.address);
 
 // Dither prints with the palette's own inks and nothing else.
-await pg.evaluate(() => document.querySelector('#finishes [data-finish="dither"]').click());
+await pg.evaluate(() => document.querySelector('#st-finishes [data-finish="dither"]').click());
 await developed();
 const pgDither = await pg.evaluate(async () => {
   const { paletteFromInks } = await import('../src/index.js');
   const { parseColor } = await import('../src/visual/color.js');
-  const pal = paletteFromInks(window.playground.state.inks);
+  const pal = paletteFromInks(window.son.studio.state.inks);
   const allowed = new Set(['background', 'bot', 'anon', 'user', 'default', 'alert'].map((k) => {
     const { r, g, b } = parseColor(pal[k]);
     return (r << 16) | (g << 8) | b;
   }));
-  const cv = document.querySelector('#stage');
+  const cv = document.querySelector('#st-canvas');
   const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
   const seen = new Set();
   for (let i = 0; i < d.length; i += 4) seen.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
-  return { finish: window.playground.state.finish, colours: seen.size, stray: [...seen].filter((c) => !allowed.has(c)).length };
+  return { finish: window.son.studio.state.finish, colours: seen.size, stray: [...seen].filter((c) => !allowed.has(c)).length };
 });
-ok('playground: the dither finish prints in the inks alone', pgDither.finish === 'dither' && pgDither.colours >= 2 && pgDither.stray === 0,
+ok('the dither finish prints in the inks alone', pgDither.finish === 'dither' && pgDither.colours >= 2 && pgDither.stray === 0,
    JSON.stringify(pgDither));
-await pg.evaluate(() => document.querySelector('#finishes [data-finish="none"]').click());
+await pg.evaluate(() => document.querySelector('#st-finishes [data-finish="none"]').click());
 
-await pg.evaluate(() => document.querySelector('#ratios [data-ratio="16:9"]').click());
+await pg.evaluate(() => document.querySelector('#st-ratios [data-ratio="16:9"]').click());
 await developed();
 const pgWide = await picture();
-ok('playground: the frame takes the shape chosen', Math.abs(pgWide.w / pgWide.hgt - 16 / 9) < 0.02, `${pgWide.w}x${pgWide.hgt}`);
+ok('the frame takes the shape chosen', Math.abs(pgWide.w / pgWide.hgt - 16 / 9) < 0.02, `${pgWide.w}x${pgWide.hgt}`);
 
 // The address is the picture: opened elsewhere, it draws the same one.
-const pgHere = await pg.evaluate(() => ({ url: location.href, state: JSON.stringify({ ...window.playground.state, hear: false, animate: false, kit: '', volume: 0 }) }));
+const pgState = (p = pg) => p.evaluate(() => {
+  const s = window.son.studio.state;
+  return JSON.stringify({ tool: s.tool, seed: s.seed, params: s.params, inks: s.inks, finish: s.finish, grain: s.grain, mat: s.mat, ratio: s.ratio });
+});
+const pgHere = { url: await pg.evaluate(() => location.href), state: await pgState() };
 const pgHereFp = await picture();
 const pg2 = await pgContext.newPage();
 await pg2.addInitScript(() => localStorage.setItem('t:play-animate', '0'));
-await pg2.setViewportSize({ width: 1440, height: 900 });
 await pg2.goto(pgHere.url, { waitUntil: 'domcontentloaded' });
-await pg2.waitForFunction(() => window.playground, null, { timeout: 20000 });
+await pg2.waitForFunction(() => window.son && window.son.studio, null, { timeout: 20000 });
 await developed(pg2);
 const pgThereFp = await picture(pg2);
-const pgThere = await pg2.evaluate(() => JSON.stringify({ ...window.playground.state, hear: false, animate: false, kit: '', volume: 0 }));
-ok('playground: a link opens the same picture somewhere else', pgThere === pgHere.state && apart(pgThereFp, pgHereFp) < 1,
+const pgThere = await pgState(pg2);
+ok('a link opens the same picture somewhere else', pgThere === pgHere.state && apart(pgThereFp, pgHereFp) < 1,
    pgThere === pgHere.state ? `${apart(pgThereFp, pgHereFp).toFixed(3)} apart` : `${pgThere} vs ${pgHere.state}`);
 await pg2.close();
 
 await pg.keyboard.press('k');
 const pgKept = await pg.evaluate(() => ({
-  n: window.playground.captures.length,
-  shown: document.querySelectorAll('#captures .capture img').length,
-  seed: window.playground.captures[0].state.seed,
+  n: window.son.studio.captures.length,
+  shown: document.querySelectorAll('#st-captures .st-capture img').length,
+  seed: window.son.studio.captures[0].state.seed,
 }));
 await pg.keyboard.press(' ');
 await developed();
 await pg.reload({ waitUntil: 'domcontentloaded' });
-await pg.waitForFunction(() => window.playground, null, { timeout: 20000 });
+await pg.waitForFunction(() => window.son && window.son.studio, null, { timeout: 20000 });
 await developed();
-await pg.evaluate(() => document.querySelector('#captures .capture').click());
+await pg.evaluate(() => document.querySelector('#st-captures .st-capture').click());
 await developed();
-const pgRestored = await pg.evaluate(() => ({ n: window.playground.captures.length, seed: window.playground.state.seed }));
-ok('playground: Keep puts the picture on the shelf', pgKept.n >= 1 && pgKept.shown === pgKept.n);
-ok('playground: what is kept survives a reload and opens again', pgRestored.n === pgKept.n && pgRestored.seed === pgKept.seed,
+const pgRestored = await pg.evaluate(() => ({ n: window.son.studio.captures.length, seed: window.son.studio.state.seed }));
+ok('Keep puts the picture on the shelf', pgKept.n >= 1 && pgKept.shown === pgKept.n);
+ok('what is kept survives a reload and opens again', pgRestored.n === pgKept.n && pgRestored.seed === pgKept.seed,
    `${pgRestored.seed} vs ${pgKept.seed}`);
 
-await pg.selectOption('#png-size', '1080');
-const [pngDownload] = await Promise.all([pg.waitForEvent('download', { timeout: 60000 }), pg.click('#export-png')]);
-const pngPath = await pngDownload.path();
+await pg.selectOption('#st-png-size', '1080');
+const [pngDownload] = await Promise.all([pg.waitForEvent('download', { timeout: 60000 }), pg.click('#st-export-png')]);
 const { readFile } = await import('node:fs/promises');
-const pngBytes = await readFile(pngPath);
-ok('playground: the picture downloads as a PNG at the size asked for',
+const pngBytes = await readFile(await pngDownload.path());
+ok('the picture downloads as a PNG at the size asked for',
    /^tintinnabulum-whorl-\d+\.png$/.test(pngDownload.suggestedFilename()) && pngBytes.slice(1, 4).toString() === 'PNG' &&
    pngBytes.readUInt32BE(16) === 1080 && pngBytes.length > 5000,
    `${pngDownload.suggestedFilename()}, ${pngBytes.readUInt32BE(16)}x${pngBytes.readUInt32BE(20)}, ${pngBytes.length} bytes`);
 
-await pg.click('#hear');
+await pg.click('#st-hear');
 await pg.waitForTimeout(3000);
-const pgHeard = await pg.evaluate(() => ({
-  on: window.playground.state.hear,
-  moving: window.playground.state.animate,
-  state: window.playground.son && window.playground.son.engine.ctx.state,
-  played: window.playground.son ? window.playground.son.audio.stats.played : 0,
-}));
-ok('playground: Hear it plays the events as notes', pgHeard.on && pgHeard.moving && pgHeard.state === 'running' && pgHeard.played > 0,
-   JSON.stringify(pgHeard));
+const pgHeard = await pg.evaluate(() => {
+  const s = window.son.studio.son;
+  return {
+    on: window.son.studio.state.hear,
+    moving: window.son.studio.state.animate,
+    shared: Boolean(s && s.engine === window.son.engine),
+    state: s && s.engine.ctx.state,
+    played: s ? s.audio.stats.played : 0,
+  };
+});
+ok('Hear it plays the events as notes, through the one audio engine',
+   pgHeard.on && pgHeard.moving && pgHeard.shared && pgHeard.state === 'running' && pgHeard.played > 0, JSON.stringify(pgHeard));
 
-await pg.selectOption('#video-length', '6');
-const [videoDownload] = await Promise.all([pg.waitForEvent('download', { timeout: 60000 }), pg.click('#export-video')]);
+await pg.selectOption('#st-video-length', '6');
+const [videoDownload] = await Promise.all([pg.waitForEvent('download', { timeout: 60000 }), pg.click('#st-export-video')]);
 const videoBytes = await readFile(await videoDownload.path());
-const videoNote = await pg.evaluate(() => document.querySelector('#export-status').textContent);
-ok('playground: a video of the moving picture downloads, with its sound',
+const videoNote = await pg.evaluate(() => document.querySelector('#st-export-status').textContent);
+ok('a video of the moving picture downloads, with its sound',
    /\.(webm|mp4)$/.test(videoDownload.suggestedFilename()) && videoBytes.length > 20000 && /with sound/.test(videoNote),
    `${videoDownload.suggestedFilename()}, ${videoBytes.length} bytes, "${videoNote}"`);
-await pg.click('#hear');
+await pg.click('#st-hear');
 
 await pg.keyboard.press('Escape');
 await pg.waitForTimeout(400);
-ok('playground: Escape goes back to all the tools', await pg.evaluate(() => !document.querySelector('#index-view').hidden && document.querySelector('#tool-view').hidden));
 await pg.evaluate(() => {
-  document.querySelector('#find').value = '';
-  document.querySelector('#kinds [data-kind="Night"]').click();
+  document.querySelector('#st-find').value = '';
+  document.querySelector('#st-kinds [data-kind="Night"]').click();
 });
 const pgNight = await pg.evaluate(async () => {
   const { SCENES } = await import('../src/index.js');
-  const shown = [...document.querySelectorAll('.tool-card')].filter((c) => !c.hidden).map((c) => c.dataset.tool);
+  const shown = [...document.querySelectorAll('.st-card')].filter((c) => !c.hidden).map((c) => c.dataset.tool);
   return { shown: shown.length, night: shown.filter((n) => SCENES[n].shelf === 'Night').length, all: Object.values(SCENES).filter((s) => s.shelf === 'Night').length };
 });
-ok('playground: a kind shows that shelf and nothing else', pgNight.shown === pgNight.all && pgNight.night === pgNight.all, JSON.stringify(pgNight));
-await pg.click('#random-tool');
+ok('a kind shows that shelf and nothing else', pgNight.shown === pgNight.all && pgNight.night === pgNight.all, JSON.stringify(pgNight));
+await pg.click('#st-random');
 await developed();
-ok('playground: Surprise me opens a tool of that kind',
-   await pg.evaluate(async () => {
-     const { SCENES } = await import('../src/index.js');
-     return SCENES[window.playground.state.tool].shelf === 'Night';
-   }));
-ok('playground: no page errors', pgErrors.length === 0, pgErrors.slice(0, 3).join(' | '));
+const pgSurprise = await pg.evaluate(async () => {
+  const { SCENES } = await import('../src/index.js');
+  return window.son.studio.state.tool;
+});
+ok('Surprise me opens a tool of that kind', await pg.evaluate(async (t) => (await import('../src/index.js')).SCENES[t].shelf === 'Night', pgSurprise), pgSurprise);
+
+// And back to the feed with it.
+await pg.click('#st-live');
+await pg.waitForTimeout(800);
+const pgLive = await bench();
+const pgLiveScene = await pg.evaluate(() => window.son.sinks.find((s) => s.particles).sceneName);
+ok('Play it live puts the picture on the feed and starts listening',
+   !pgLive.open && !pgLive.creating && !pgLive.suspended && pgLive.running === 'true' && pgLiveScene === pgSurprise && pgLive.hash === '',
+   JSON.stringify({ ...pgLive, scene: pgLiveScene }));
+
+// The fifth key opens the bench; leaving it gives listening back.
+await pg.keyboard.press('5');
+await developed();
+const pgKey = await bench();
+await pg.keyboard.press('Escape');
+await pg.waitForTimeout(300);
+await pg.evaluate(() => { document.querySelector('#st-find').value = ''; document.querySelector('#st-kinds [data-kind="All"]').click(); });
+await pg.keyboard.press('Escape');
+await pg.waitForTimeout(600);
+const pgOut = await bench();
+ok('the key 5 opens Create', pgKey.open && pgKey.running === 'false', JSON.stringify(pgKey));
+ok('leaving Create gives the live picture and listening back', !pgOut.open && !pgOut.suspended && pgOut.running === 'true' && pgOut.hash === '',
+   JSON.stringify(pgOut));
+
+// A link made while the bench was a page of its own still opens the picture.
+const pgOld = await pgContext.newPage();
+await pgOld.goto(BASE + '/demo/play.html#/rise/321?i=f3f7ff-5f7dc5-a68700&r=1x1', { waitUntil: 'domcontentloaded' });
+await pgOld.waitForFunction(() => window.son && window.son.studio && window.son.studio.player, null, { timeout: 20000 });
+const pgOldState = await pgOld.evaluate(() => ({ url: location.href, tool: window.son.studio.state.tool, seed: window.son.studio.state.seed, ratio: window.son.studio.state.ratio }));
+ok('an old playground link opens the same picture in Create',
+   /\/demo\/#create\/rise\/321\?/.test(pgOldState.url) && pgOldState.tool === 'rise' && pgOldState.seed === 321 && pgOldState.ratio === '1:1',
+   JSON.stringify(pgOldState));
+await pgOld.close();
+ok('Create: no page errors', pgErrors.length === 0, pgErrors.slice(0, 3).join(' | '));
 await pgContext.close();
 
 const pgPhone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
 const pgp = await pgPhone.newPage();
-await pgp.goto(BASE + '/demo/play.html#/aura/31', { waitUntil: 'domcontentloaded' });
-await pgp.waitForFunction(() => window.playground, null, { timeout: 20000 });
+await pgp.goto(BASE + '/demo/#create/aura/31', { waitUntil: 'domcontentloaded' });
+await pgp.waitForFunction(() => window.son && window.son.studio, null, { timeout: 20000 });
 await developed(pgp);
 const pgPhoneLayout = await pgp.evaluate(() => {
-  const r = document.querySelector('#stage').getBoundingClientRect();
-  const b = document.querySelector('#new-variation').getBoundingClientRect();
-  return { doc: document.documentElement.scrollWidth, win: innerWidth, top: r.top, bottom: r.bottom, h: innerHeight, button: b.height };
+  const r = document.querySelector('#st-canvas').getBoundingClientRect();
+  const b = document.querySelector('#st-new').getBoundingClientRect();
+  const tabs = [...document.querySelectorAll('#tabs button')].map((x) => x.getBoundingClientRect());
+  return {
+    doc: document.documentElement.scrollWidth, win: innerWidth, top: Math.round(r.top), bottom: Math.round(r.bottom), h: innerHeight,
+    button: Math.round(b.height), tabsFit: tabs.every((t) => t.left >= 0 && t.right <= innerWidth),
+  };
 });
-ok('playground on a phone: the picture comes first and nothing scrolls sideways',
-   pgPhoneLayout.doc <= pgPhoneLayout.win + 1 && pgPhoneLayout.top < 120 && pgPhoneLayout.bottom < pgPhoneLayout.h * 0.7 && pgPhoneLayout.button >= 44,
+ok('Create on a phone: the picture comes first, the tabs fit, nothing scrolls sideways',
+   pgPhoneLayout.doc <= pgPhoneLayout.win + 1 && pgPhoneLayout.tabsFit && pgPhoneLayout.top < 140 &&
+   pgPhoneLayout.bottom < pgPhoneLayout.h * 0.72 && pgPhoneLayout.button >= 44,
    JSON.stringify(pgPhoneLayout));
 await pgPhone.close();
 
