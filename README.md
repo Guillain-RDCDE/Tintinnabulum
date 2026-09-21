@@ -30,21 +30,6 @@ take them away as a picture or a video with its sound, or play them live.
 </p>
 <p align="center"><sub><i>Whorl</i>, variation 777, on the Create bench. Each whirlpool is one event.</sub></p>
 
-<p align="center">
-  <img src=".github/fireworks-across-the-bay.png" width="100%" alt="Fireworks across the bay: small bursts over a far shore, reflected in the water">
-</p>
-<p align="center"><sub><i>Fireworks across the bay</i>, one of the works in the Gallery. Each shell is one event.</sub></p>
-
-<p align="center">
-  <img src=".github/the-lily-pond.png" width="100%" alt="The lily pond: a pond painted in broken strokes, with the sky in it and flowers opening on the water">
-</p>
-<p align="center"><sub><i>The lily pond</i>. Each flower is one event.</sub></p>
-
-<p align="center">
-  <img src=".github/lanterns-on-the-lake.png" width="100%" alt="Lanterns on the lake: paper lanterns rising from a dark shore, their light lying in the water">
-</p>
-<p align="center"><sub><i>Lanterns on the lake</i>. Each lantern is one event.</sub></p>
-
 > *tintinnabulum* — Latin, a small bell.
 
 ## More
