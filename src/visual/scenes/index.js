@@ -23,7 +23,8 @@
 // ordered grid into a study of controlled disorder.
 
 import { shadeOf, lighten, lightnessOf } from '../color.js';
-import { applyFinish, drawMat } from '../finish.js';
+import { applyFinish, drawMat, drawGrain } from '../finish.js';
+import { rngOf } from '../inks.js';
 import { MARK_SCENES } from './marks.js';
 import { FIELD_SCENES } from './fields.js';
 import { STRUCTURE_SCENES } from './structures.js';
@@ -41,6 +42,7 @@ import { NATURE_SCENES } from './nature.js';
 import { WATER_SCENES } from './water.js';
 import { AIR_SCENES } from './air.js';
 import { TERMINAL_SCENES } from './terminal.js';
+import { GRAPHIC_SCENES } from './graphic.js';
 import { applyCatalogue, SCENE_SHELVES, shelfOf as shelfIn } from './catalogue.js';
 
 export { noise2 } from './noise.js';
@@ -63,6 +65,7 @@ export const SCENES = {
   ...WATER_SCENES,
   ...AIR_SCENES,
   ...TERMINAL_SCENES,
+  ...GRAPHIC_SCENES,
 };
 
 // Presentation is applied once, here, across every family at once. See
@@ -226,6 +229,141 @@ export function animateScene(ctx, name, {
     get now() {
       return api.now;
     },
+  };
+}
+
+/**
+ * Run a scene as a picture somebody is making: seeded, developed at speed, and
+ * then carried on live.
+ *
+ * The same seed gives the same picture. The events are drawn from it, and so
+ * is every call a scene makes to Math.random while it is being run: many
+ * scenes scatter with Math.random, and without this a variation number would
+ * be a label rather than a recipe. The substitution lasts only for the scene's
+ * own calls and the page's generator is back before anything else runs.
+ *
+ * `develop(n)` runs n frames of simulated time at once, silently, so a picture
+ * can appear in a few animation frames rather than over seven seconds, and in
+ * chunks, so a heavy scene does not freeze the page while it develops.
+ * `frame(dt)` then carries on live, a new event every `every` milliseconds,
+ * each reported to `onArrive` -- which is where a sound is played.
+ */
+export function playScene(ctx, name, {
+  w, h, palette, shape = 'circle', richness = 0.45, depth = true, params = {},
+  finish = 'none', mat = 'none', grain = 0, pool = null, seed = 1, every = 420, onArrive = null,
+} = {}) {
+  const scene = SCENES[name] || SCENES[DEFAULT_SCENE];
+  const events = rngOf(seed);
+  const chance = rngOf((Math.imul(Number(seed) >>> 0, 2654435761) >>> 0) || 7);
+  const buffers = pool || {};
+  const api = cardApi(scene, { w, h, palette, shape, dt: 16, depth, richness, params });
+  api.buffers = buffers;
+  const seeded = (fn) => {
+    const was = Math.random;
+    Math.random = chance;
+    try {
+      return fn();
+    } catch (e) {
+      // A picture must not take the page down; it is drawn as far as it got.
+      return undefined;
+    } finally {
+      Math.random = was;
+    }
+  };
+  let count = 0;
+  let since = 0;
+  let quiet = true;
+  let interval = Math.max(40, every);
+  const arrive = () => {
+    const p = cardEvent(events, count++, { w, h, palette, richness, darkGround: api.darkGround });
+    p.born = api.now;
+    api.particles.push(p);
+    if (api.particles.length > 80) api.particles.splice(0, api.particles.length - 80);
+    if (scene.event) seeded(() => scene.event(p, api));
+    if (!quiet && onArrive) {
+      try {
+        onArrive(p, count - 1);
+      } catch (e) {
+        /* a sound that fails must not stop the picture */
+      }
+    }
+    return p;
+  };
+  const advance = (dt) => {
+    api.dt = dt;
+    api.now += dt;
+    since += dt;
+    while (since >= interval) {
+      since -= interval;
+      arrive();
+    }
+    for (let i = api.particles.length - 1; i >= 0; i--) {
+      if (api.now - api.particles[i].born >= api.particles[i].life) api.particles.splice(i, 1);
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = palette.background;
+    ctx.fillRect(0, 0, w, h);
+    ctx.save();
+    seeded(() => scene.frame(ctx, api));
+    ctx.restore();
+    ctx.globalAlpha = 1;
+  };
+  const dress = () => {
+    if (finish && finish !== 'none') applyFinish(ctx, finish, { palette, pool: buffers, now: api.now });
+    if (grain > 0) drawGrain(ctx, { pool: buffers, now: api.now, strength: grain });
+    if (mat && mat !== 'none') drawMat(ctx, mat, { palette });
+  };
+  ctx.fillStyle = palette.background;
+  ctx.fillRect(0, 0, w, h);
+  seeded(() => scene.init && scene.init(api));
+  for (let i = 0; i < 6; i++) arrive();
+  const pre = scene.preview || {};
+  const warmDt = pre.dt || 62;
+  const warmFrames = pre.frames || 110;
+  let warmed = 0;
+  return {
+    develop(n = warmFrames) {
+      const live = interval;
+      // Thirty or so events over the simulated seconds, whatever the tempo:
+      // enough for every scene to have something to show.
+      interval = Math.max(60, (warmFrames * warmDt) / 30);
+      quiet = true;
+      const until = Math.min(warmFrames, warmed + Math.max(1, n));
+      for (; warmed < until; warmed++) advance(warmDt);
+      interval = live;
+      dress();
+      return warmed >= warmFrames;
+    },
+    get developed() {
+      return warmed >= warmFrames;
+    },
+    /** How far developed, 0 to 1. */
+    get progress() {
+      return warmed / warmFrames;
+    },
+    frame(dt) {
+      quiet = false;
+      advance(Math.max(1, Math.min(50, dt || 16)));
+      dress();
+    },
+    arrive() {
+      quiet = false;
+      return arrive();
+    },
+    get every() {
+      return interval;
+    },
+    set every(v) {
+      interval = Math.max(40, Number(v) || interval);
+    },
+    get now() {
+      return api.now;
+    },
+    get count() {
+      return count;
+    },
+    api,
   };
 }
 

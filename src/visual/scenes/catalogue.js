@@ -45,6 +45,9 @@ export const CATALOGUE = {
   lilies: S('Painting', 'A pond of broken brush strokes, with pads and flowers and the sky in it.'),
   mondrian: S('Painting', 'A canvas divided into rooms of colour, one line at a time.'),
   opwaves: S('Painting', 'Bands that swell and turn, so a flat wall seems to breathe.'),
+  whorl: S('Painting', 'Parallel stripes pulled into whirlpools around each event, a flat wall that seems to turn.'),
+  aura: S('Painting', 'Wide soft clouds of colour drifting into one another, like light through frosted glass.'),
+  rise: S('Painting', 'Rings and rays in two colours trading places where they cross, and each event running out through them.'),
 
   // --- nature ------------------------------------------------------------
   murmuration: S('Nature', 'Starlings at dusk, one cloud folding into a ribbon and back again.'),
@@ -117,6 +120,7 @@ export const CATALOGUE = {
   penrose: S('Pattern', 'A floor of two tiles that never repeats, however far you walk across it.'),
   girih: S('Pattern', 'Stars laced into one another, as in the tiled walls of old Isfahan.'),
   carpet: S('Pattern', 'A square cut away inside itself, again and again, like lace made of rooms.'),
+  benday: S('Pattern', 'The dot screen of an old comic, printed from a heat map: the dots swell where things are busy.'),
 
   // --- drawing machines --------------------------------------------------
   spiral: S('Drawing machines', 'Seeds set out one by one, in the pattern of a sunflower head.'),

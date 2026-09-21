@@ -48,6 +48,7 @@ export { mosaicPool, swatchColour, poolSize } from './visual/mosaic.js';
 export { drawSpaceArt, spaceArtOf } from './visual/space-art.js';
 export { FINISHES, FINISH_ORDER, MATS, MAT_ORDER, applyFinish, drawMat, drawGrain } from './visual/finish.js';
 export { WORKS, WORK_ROOMS, WORK_ROOM_NOTES, WORK_ENERGIES, worksIn } from './works.js';
+export { inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, isViolet, rngOf } from './visual/inks.js';
 export { LIVING, LIVING_ORDER, driftNeighbours, driftColours, daylightColours, moodColours, lightOfHour, busyness } from './visual/living.js';
 
 export { CanvasSink, DEFAULT_PALETTE } from './visual/canvas-sink.js';
@@ -64,7 +65,7 @@ export {
   SCENE_NAMES,
   DEFAULT_SCENE,
   registerScene,
-  previewScene, animateScene,
+  previewScene, animateScene, playScene,
   noise2,
   SCENE_SHELVES,
   shelfOf,

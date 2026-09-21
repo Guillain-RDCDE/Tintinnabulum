@@ -2885,6 +2885,270 @@ const frozen = stillness.filter(([, d]) => d < 0.001);
 ok('every scene keeps moving when the events stop', frozen.length === 0,
    frozen.map(([n, d]) => `${n} ${(d * 100).toFixed(2)}%`).join(', ') || `${stillness.length} scenes all moving`);
 
+// --- the playground: small tools for pictures that sound ----------------------------
+// Every scene is a tool. A variation number is the picture, the address is the
+// whole state, and what is made can be kept, heard and taken away. Each of
+// those is checked by doing it, as somebody would.
+ok('the sandbox links to the playground',
+   await page.evaluate(() => /play\.html$/.test(document.querySelector('#playground-link')?.getAttribute('href') || '')));
+
+const pgContext = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
+const pg = await pgContext.newPage();
+const pgErrors = [];
+pg.on('pageerror', (e) => pgErrors.push(e.message));
+pg.on('console', (m) => { if (m.type() === 'error') pgErrors.push(m.text()); });
+await pg.goto(BASE + '/demo/play.html', { waitUntil: 'domcontentloaded' });
+await pg.waitForFunction(() => window.playground, null, { timeout: 20000 });
+await pg.waitForTimeout(1500);
+
+/**
+ * A fingerprint of the picture -- its colour averaged over a 32 by 32 grid --
+ * and how many colours it holds.
+ *
+ * Averaged, not hashed. Chrome moves a canvas that is read back often from the
+ * graphics card to the processor, and the two smooth the edge of a shape very
+ * slightly differently: an exact hash of the same picture came out different
+ * once the suite had read it a few times. What a variation number promises is
+ * the same picture, not the same antialiasing, and a grid of averages sees the
+ * first without being fooled by the second.
+ */
+const picture = (p = pg) => p.evaluate(() => {
+  const cv = document.querySelector('#stage');
+  const W = cv.width;
+  const H = cv.height;
+  const d = cv.getContext('2d').getImageData(0, 0, W, H).data;
+  const grid = new Float64Array(32 * 32 * 3);
+  const n = new Float64Array(32 * 32);
+  const seen = new Set();
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const i = (y * W + x) * 4;
+      const g = Math.floor((y * 32) / H) * 32 + Math.floor((x * 32) / W);
+      grid[g * 3] += d[i]; grid[g * 3 + 1] += d[i + 1]; grid[g * 3 + 2] += d[i + 2];
+      n[g]++;
+      if (seen.size < 5000) seen.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+    }
+  }
+  const cells = [];
+  for (let g = 0; g < 32 * 32; g++) for (let c = 0; c < 3; c++) cells.push(n[g] ? grid[g * 3 + c] / n[g] : 0);
+  return { cells, colours: seen.size, w: W, hgt: H };
+});
+/** Mean difference per channel between two fingerprints, 0 to 255. */
+const apart = (a, b) => a.cells.reduce((s, v, i) => s + Math.abs(v - b.cells[i]), 0) / a.cells.length;
+/** Wait until the picture on the bench has finished developing. */
+const developed = (p = pg) => p.waitForFunction(() => {
+  const pl = window.playground.player;
+  return pl && pl.developed && !document.querySelector('#frame').classList.contains('developing');
+}, null, { timeout: 30000 });
+
+const pgIndex = await pg.evaluate(async () => {
+  const { SCENE_NAMES } = await import('../src/index.js');
+  return {
+    cards: document.querySelectorAll('.tool-card').length,
+    scenes: SCENE_NAMES.length,
+    fresh: [...document.querySelectorAll('.tool-card.new')].map((c) => c.dataset.tool).sort().join(','),
+    painted: document.querySelectorAll('.tool-card[data-painted]').length,
+  };
+});
+ok('playground: every scene is a tool on the index', pgIndex.cards === pgIndex.scenes, `${pgIndex.cards} cards, ${pgIndex.scenes} scenes`);
+ok('playground: the new tools are marked as new', pgIndex.fresh === 'aura,benday,rise,whorl', pgIndex.fresh);
+ok('playground: the cards in view are painted', pgIndex.painted >= 8, `${pgIndex.painted} painted`);
+
+await pg.keyboard.type('whorl');
+const pgFiltered = await pg.evaluate(() => [...document.querySelectorAll('.tool-card')].filter((c) => !c.hidden).map((c) => c.dataset.tool));
+ok('playground: typing filters the tools', pgFiltered.length === 1 && pgFiltered[0] === 'whorl', pgFiltered.join(','));
+await pg.keyboard.press('Enter');
+await developed();
+ok('playground: Enter opens the first tool', await pg.evaluate(() => location.hash.startsWith('#/whorl/') && !document.querySelector('#tool-view').hidden));
+const whorlFirst = await picture();
+ok('playground: the picture is drawn', whorlFirst.colours >= 3, `${whorlFirst.colours} colours at ${whorlFirst.w}x${whorlFirst.hgt}`);
+
+// Still, so that pictures can be compared pixel for pixel.
+await pg.keyboard.press('p');
+await pg.evaluate(() => window.playground.rebuild());
+await developed();
+const pgSeedA = await pg.evaluate(() => window.playground.state.seed);
+const picA = await picture();
+await pg.keyboard.press(' ');
+await developed();
+const pgSeedB = await pg.evaluate(() => ({ seed: window.playground.state.seed, hash: location.hash }));
+const picB = await picture();
+ok('playground: Space draws a new variation', pgSeedB.seed !== pgSeedA && pgSeedB.hash.includes(`/${pgSeedB.seed}?`) && apart(picA, picB) > 3,
+   `${pgSeedA} -> ${pgSeedB.seed}, ${apart(picA, picB).toFixed(2)} apart`);
+await pg.keyboard.press('ArrowLeft');
+await developed();
+const picBack = await picture();
+ok('playground: stepping back finds the same picture',
+   (await pg.evaluate(() => window.playground.state.seed)) === pgSeedA && apart(picBack, picA) < 1, `${apart(picBack, picA).toFixed(3)} apart`);
+
+const pgDials = await pg.evaluate(async () => {
+  const { SCENES } = await import('../src/index.js');
+  const inputs = [...document.querySelectorAll('#dials input[type="range"]')];
+  const twist = document.querySelector('#dial-twist');
+  twist.value = String(Number(twist.max));
+  twist.dispatchEvent(new Event('input', { bubbles: true }));
+  twist.dispatchEvent(new Event('change', { bubbles: true }));
+  return { count: inputs.length, expected: Object.keys(SCENES.whorl.params).length, value: window.playground.state.params.twist, max: Number(twist.max) };
+});
+await developed();
+const picTwist = await picture();
+ok('playground: every dial of the tool is on the bench', pgDials.count === pgDials.expected, `${pgDials.count} of ${pgDials.expected}`);
+ok('playground: a dial changes the picture and is written into the address',
+   pgDials.value === pgDials.max && apart(picTwist, picA) > 2 && (await pg.evaluate(() => /[?&]d=[^&]*twist:/.test(decodeURIComponent(location.hash)))));
+
+const pgInks = await pg.evaluate(async () => {
+  const { isViolet, paletteIsViolet, inksOfPalette } = await import('../src/index.js');
+  const before = window.playground.state.inks.slice();
+  document.querySelector('#new-colours').click();
+  const fresh = window.playground.state.inks.slice();
+  document.querySelector('#rotate-colours').click();
+  const turned = window.playground.state.inks.slice();
+  const offered = [...document.querySelectorAll('#palette option')].map((o) => o.value).filter(Boolean);
+  const select = document.querySelector('#palette');
+  select.value = 'marine';
+  select.dispatchEvent(new Event('change'));
+  return {
+    changed: fresh.join() !== before.join(),
+    violet: fresh.filter(isViolet).length,
+    rotated: turned.join() === [...fresh.slice(1), fresh[0]].join(),
+    offered: offered.length,
+    violetOffered: offered.filter(paletteIsViolet).length,
+    marine: window.playground.state.inks.join() === inksOfPalette('marine').map((c) => c.toLowerCase()).join(),
+    address: location.hash.includes('i=' + window.playground.state.inks.map((c) => c.slice(1)).join('-')),
+  };
+});
+ok('playground: new colours are new, and never violet', pgInks.changed && pgInks.violet === 0, JSON.stringify(pgInks));
+ok('playground: rotate makes the next ink the ground', pgInks.rotated);
+ok('playground: the palettes offered include none with violet in them', pgInks.offered > 20 && pgInks.violetOffered === 0, `${pgInks.offered} offered`);
+ok('playground: a palette sets the inks, and the address carries them', pgInks.marine && pgInks.address);
+
+// Dither prints with the palette's own inks and nothing else.
+await pg.evaluate(() => document.querySelector('#finishes [data-finish="dither"]').click());
+await developed();
+const pgDither = await pg.evaluate(async () => {
+  const { paletteFromInks } = await import('../src/index.js');
+  const { parseColor } = await import('../src/visual/color.js');
+  const pal = paletteFromInks(window.playground.state.inks);
+  const allowed = new Set(['background', 'bot', 'anon', 'user', 'default', 'alert'].map((k) => {
+    const { r, g, b } = parseColor(pal[k]);
+    return (r << 16) | (g << 8) | b;
+  }));
+  const cv = document.querySelector('#stage');
+  const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+  const seen = new Set();
+  for (let i = 0; i < d.length; i += 4) seen.add((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+  return { finish: window.playground.state.finish, colours: seen.size, stray: [...seen].filter((c) => !allowed.has(c)).length };
+});
+ok('playground: the dither finish prints in the inks alone', pgDither.finish === 'dither' && pgDither.colours >= 2 && pgDither.stray === 0,
+   JSON.stringify(pgDither));
+await pg.evaluate(() => document.querySelector('#finishes [data-finish="none"]').click());
+
+await pg.evaluate(() => document.querySelector('#ratios [data-ratio="16:9"]').click());
+await developed();
+const pgWide = await picture();
+ok('playground: the frame takes the shape chosen', Math.abs(pgWide.w / pgWide.hgt - 16 / 9) < 0.02, `${pgWide.w}x${pgWide.hgt}`);
+
+// The address is the picture: opened elsewhere, it draws the same one.
+const pgHere = await pg.evaluate(() => ({ url: location.href, state: JSON.stringify({ ...window.playground.state, hear: false, animate: false, kit: '', volume: 0 }) }));
+const pgHereFp = await picture();
+const pg2 = await pgContext.newPage();
+await pg2.addInitScript(() => localStorage.setItem('t:play-animate', '0'));
+await pg2.setViewportSize({ width: 1440, height: 900 });
+await pg2.goto(pgHere.url, { waitUntil: 'domcontentloaded' });
+await pg2.waitForFunction(() => window.playground, null, { timeout: 20000 });
+await developed(pg2);
+const pgThereFp = await picture(pg2);
+const pgThere = await pg2.evaluate(() => JSON.stringify({ ...window.playground.state, hear: false, animate: false, kit: '', volume: 0 }));
+ok('playground: a link opens the same picture somewhere else', pgThere === pgHere.state && apart(pgThereFp, pgHereFp) < 1,
+   pgThere === pgHere.state ? `${apart(pgThereFp, pgHereFp).toFixed(3)} apart` : `${pgThere} vs ${pgHere.state}`);
+await pg2.close();
+
+await pg.keyboard.press('k');
+const pgKept = await pg.evaluate(() => ({
+  n: window.playground.captures.length,
+  shown: document.querySelectorAll('#captures .capture img').length,
+  seed: window.playground.captures[0].state.seed,
+}));
+await pg.keyboard.press(' ');
+await developed();
+await pg.reload({ waitUntil: 'domcontentloaded' });
+await pg.waitForFunction(() => window.playground, null, { timeout: 20000 });
+await developed();
+await pg.evaluate(() => document.querySelector('#captures .capture').click());
+await developed();
+const pgRestored = await pg.evaluate(() => ({ n: window.playground.captures.length, seed: window.playground.state.seed }));
+ok('playground: Keep puts the picture on the shelf', pgKept.n >= 1 && pgKept.shown === pgKept.n);
+ok('playground: what is kept survives a reload and opens again', pgRestored.n === pgKept.n && pgRestored.seed === pgKept.seed,
+   `${pgRestored.seed} vs ${pgKept.seed}`);
+
+await pg.selectOption('#png-size', '1080');
+const [pngDownload] = await Promise.all([pg.waitForEvent('download', { timeout: 60000 }), pg.click('#export-png')]);
+const pngPath = await pngDownload.path();
+const { readFile } = await import('node:fs/promises');
+const pngBytes = await readFile(pngPath);
+ok('playground: the picture downloads as a PNG at the size asked for',
+   /^tintinnabulum-whorl-\d+\.png$/.test(pngDownload.suggestedFilename()) && pngBytes.slice(1, 4).toString() === 'PNG' &&
+   pngBytes.readUInt32BE(16) === 1080 && pngBytes.length > 5000,
+   `${pngDownload.suggestedFilename()}, ${pngBytes.readUInt32BE(16)}x${pngBytes.readUInt32BE(20)}, ${pngBytes.length} bytes`);
+
+await pg.click('#hear');
+await pg.waitForTimeout(3000);
+const pgHeard = await pg.evaluate(() => ({
+  on: window.playground.state.hear,
+  moving: window.playground.state.animate,
+  state: window.playground.son && window.playground.son.engine.ctx.state,
+  played: window.playground.son ? window.playground.son.audio.stats.played : 0,
+}));
+ok('playground: Hear it plays the events as notes', pgHeard.on && pgHeard.moving && pgHeard.state === 'running' && pgHeard.played > 0,
+   JSON.stringify(pgHeard));
+
+await pg.selectOption('#video-length', '6');
+const [videoDownload] = await Promise.all([pg.waitForEvent('download', { timeout: 60000 }), pg.click('#export-video')]);
+const videoBytes = await readFile(await videoDownload.path());
+const videoNote = await pg.evaluate(() => document.querySelector('#export-status').textContent);
+ok('playground: a video of the moving picture downloads, with its sound',
+   /\.(webm|mp4)$/.test(videoDownload.suggestedFilename()) && videoBytes.length > 20000 && /with sound/.test(videoNote),
+   `${videoDownload.suggestedFilename()}, ${videoBytes.length} bytes, "${videoNote}"`);
+await pg.click('#hear');
+
+await pg.keyboard.press('Escape');
+await pg.waitForTimeout(400);
+ok('playground: Escape goes back to all the tools', await pg.evaluate(() => !document.querySelector('#index-view').hidden && document.querySelector('#tool-view').hidden));
+await pg.evaluate(() => {
+  document.querySelector('#find').value = '';
+  document.querySelector('#kinds [data-kind="Night"]').click();
+});
+const pgNight = await pg.evaluate(async () => {
+  const { SCENES } = await import('../src/index.js');
+  const shown = [...document.querySelectorAll('.tool-card')].filter((c) => !c.hidden).map((c) => c.dataset.tool);
+  return { shown: shown.length, night: shown.filter((n) => SCENES[n].shelf === 'Night').length, all: Object.values(SCENES).filter((s) => s.shelf === 'Night').length };
+});
+ok('playground: a kind shows that shelf and nothing else', pgNight.shown === pgNight.all && pgNight.night === pgNight.all, JSON.stringify(pgNight));
+await pg.click('#random-tool');
+await developed();
+ok('playground: Surprise me opens a tool of that kind',
+   await pg.evaluate(async () => {
+     const { SCENES } = await import('../src/index.js');
+     return SCENES[window.playground.state.tool].shelf === 'Night';
+   }));
+ok('playground: no page errors', pgErrors.length === 0, pgErrors.slice(0, 3).join(' | '));
+await pgContext.close();
+
+const pgPhone = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true });
+const pgp = await pgPhone.newPage();
+await pgp.goto(BASE + '/demo/play.html#/aura/31', { waitUntil: 'domcontentloaded' });
+await pgp.waitForFunction(() => window.playground, null, { timeout: 20000 });
+await developed(pgp);
+const pgPhoneLayout = await pgp.evaluate(() => {
+  const r = document.querySelector('#stage').getBoundingClientRect();
+  const b = document.querySelector('#new-variation').getBoundingClientRect();
+  return { doc: document.documentElement.scrollWidth, win: innerWidth, top: r.top, bottom: r.bottom, h: innerHeight, button: b.height };
+});
+ok('playground on a phone: the picture comes first and nothing scrolls sideways',
+   pgPhoneLayout.doc <= pgPhoneLayout.win + 1 && pgPhoneLayout.top < 120 && pgPhoneLayout.bottom < pgPhoneLayout.h * 0.7 && pgPhoneLayout.button >= 44,
+   JSON.stringify(pgPhoneLayout));
+await pgPhone.close();
+
 // --- phone-sized, touch-driven ------------------------------------------
 // The report that started this was "I see the circles and hear nothing on my
 // phone", so the phone path is exercised rather than assumed.

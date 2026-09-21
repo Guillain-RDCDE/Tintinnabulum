@@ -17,7 +17,8 @@ Open the sandbox and change one thing at a time.
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
 | **Gallery** | Thirty-seven finished pieces in four rooms named for their light: dawn, daylight, dusk and night. One click sets the picture, the palette, the sound, the room, the finish, the frame, the pace and the living colour. A filter for calm or lively, and an exhibition mode that moves on every few minutes. Try **A drop in the glass**, then **Lanterns on the lake**. |
-| **Studio** | A hundred and four visualisations on eight shelves, thirteen finishes and eighty palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
+| **Playground** | Every visualisation as a small tool. Space for a new variation, then change the inks, the texture and the frame, hear it, keep it, take it away as a picture or a video with its sound. The variation's number is the picture. |
+| **Studio** | A hundred and eight visualisations on eight shelves, fourteen finishes and eighty palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -26,6 +27,8 @@ The picture fills the window. Four tabs at the top -- **Gallery**, **Sound**,
 watching what it changes. A dock at the bottom plays and pauses, says what is
 on, sets the volume, moves to the next work and offers a surprise. After a few
 seconds untouched, all of it fades away. No setting exists twice.
+**Playground**, beside **Source**, opens the bench for making pictures of your
+own (see below).
 
 | Key | |
 |---|---|
@@ -746,7 +749,7 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. A hundred and four ship.
+A scene decides what a moment of data looks like. A hundred and eight ship.
 They sit on eight shelves named for what is on them -- *Painting*, *Nature*,
 *Water*, *Night*, *Materials*, *Pattern*, *Drawing machines* and *Forms and
 numbers* -- each scene with one line saying what it feels like, and the
@@ -1097,6 +1100,7 @@ scene:
 | **Chalk** | On a slate board, with the dust still on it. |
 | **Gold leaf** | Marks in gold on black lacquer. |
 | **Pointillism** | The picture rebuilt from dots of pure colour in two offset grids, the second pushed in saturation, for the eye to mix. Shrunk to a pixel a dot, blown up without smoothing and cut to the dots: no readback. |
+| **Dither** | The picture in the palette's own inks and nothing else, as an early screen would show it: read back at a few pixels a cell, and each cell given the nearer of its two nearest inks, or the other where a 4 by 4 Bayer matrix says so. Mixing only the two nearest inks keeps the hue of every mark. |
 
 Every finish takes its inks from the palette and leaves the drawing state as it
 found it; the suite checks both, on a dark palette and a light one.
@@ -1178,6 +1182,78 @@ WORKS.glass;   // { room: 'Dawn', energy: 'calm', title: 'A drop in the glass', 
 
 The suite checks that every work names a scene, palette, kit, room, finish and
 frame that exist, so a rename fails loudly instead of quietly falling back.
+
+### The Playground
+
+The sandbox listens to the world. The **Playground** is for making something:
+every visualisation, a hundred and eight of them, as a small tool on a bench,
+one picture at a time. It is its own page, `demo/play.html`, linked beside
+**Source**.
+
+The index shows every tool as a live card, numbered, on its shelf. Typing
+filters, Enter opens the first, and **Surprise me** opens one at random from
+what is showing.
+
+A tool opens on a **variation**: a number, from which the scene's dials and the
+whole sequence of events are drawn. The number is the picture. **Space** draws
+another, the arrow keys step back and forward through the ones already seen,
+and the picture develops in a few frames -- the scene is run at speed through
+seven seconds of simulated time, in chunks so a heavy one never freezes the
+page -- and then carries on moving. Many scenes scatter with `Math.random`, so
+while a variation is being drawn the scene's own calls to it are answered from
+the variation's number; without that, a number would be a label rather than a
+recipe.
+
+Around the picture, the way a print workshop is laid out:
+
+| | |
+|---|---|
+| **The dials** | The tool's own, varied with each number. A dial moves from where the scene ships towards one end or the other and never more than three quarters of the way, so a variation never switches one off. **Shuffle the dials** goes further; **As it ships** puts them back. |
+| **Colour** | A ground and up to five inks, each editable. **New colours** draws a set from a number in three moods -- a pale paper, a dark night, a strong ground -- with the violet band of the wheel removed and every ink kept well clear of the ground in lightness. **Rotate** makes the next ink the ground. Any palette can be taken as a starting point, except those with a violet in them, and a set can be saved. |
+| **Texture** | The fourteen finishes, film grain and the mats. |
+| **Frame** | Eight shapes, from 9:16 to 16:9. |
+| **Motion and sound** | How many events a second, and **Hear it**: each event of the picture is one note from the chosen instrument, in a pentatonic scale, larger marks lower. |
+| **Kept** | **K** keeps the picture on screen, with a thumbnail, on this device; a click brings it back exactly. |
+| **Export** | The picture as a PNG at 1080, 2048 or 3200 pixels, developed again at that size from its number; or a video of it moving, with its sound if it is being heard. |
+
+The whole state is in the address -- tool, number, inks, the dials that were
+moved, finish, grain, mat and frame -- so a link opens the same picture on
+another machine. The suite checks that it does, and that stepping back through
+the variations finds the same pictures again.
+
+| Key | |
+|---|---|
+| Space | A new variation (a click on the picture does the same) |
+| Left, Right | Step back and forward through the variations seen |
+| P | Moving or still |
+| H | Hear it |
+| C, R | New colours, rotate them |
+| D | Shuffle the dials |
+| K | Keep |
+| E | Download the picture |
+| Esc | Back to all the tools |
+
+Four scenes were added for it, from the vocabulary of posters and prints:
+**Soft gradient** (wide radial clouds of colour that drift into one another),
+**Whorl** (op-art stripes turned about each event by a twist that falls away
+with distance), **Ben-Day dots** (the dot screen of cheap colour printing,
+sized by a heat map of the recent events and written straight into pixels,
+because five thousand dots traced as arcs cost thirty to seventy milliseconds a
+frame without a graphics card) and **Rising rings** (counterchanged rings and
+rays with a wave of colour running out through them for each event). And one
+finish: **Dither**.
+
+```js
+import { playScene, inkSet, paletteFromInks, variedParams, SCENES } from './src/index.js';
+const player = playScene(ctx, 'whorl', {
+  w: 800, h: 1000, seed: 4242,
+  palette: paletteFromInks(inkSet(7, 4)),
+  params: variedParams(SCENES.whorl, 4242),
+  onArrive: (p) => { /* one event, to be heard */ },
+});
+while (!player.develop(20)) {}   // fast-forward, in chunks
+player.frame(16);                // then live
+```
 
 ### The projection window
 
@@ -1312,13 +1388,15 @@ src/visual/
   mosaic.js             the colour pool the kit and room cards take from
   kit-art.js            the colour on each kit card
   living.js             living colour: drift, time of day, mood of the feed
+  inks.js               inks drawn from a number, never violet; palettes built
+                        from inks; a scene's dials varied from a number
   finish.js             finishes, frames and film grain, on the finished frame
   space-art.js          the colour on each room card
   scenes/               marks, fields, structures, physical, generative,
                         fantasia (attractors, packings), automata (things
                         that are run), tilings (tilings and fractals),
                         geometry, recursive, systems, painters, nature,
-                        materials, water, air, budget, paint; catalogue.js puts them
+                        materials, water, air, graphic, budget, paint; catalogue.js puts them
                         on shelves and says what each looks like
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation
@@ -1342,6 +1420,7 @@ demo/
   demo.js               the sandbox page
   shell.js              the tabs, the inspector, the dock, the keys, fading away
   project.html/.js      the projection window: the picture, full screen, alone
+  play.html/.js         the Playground: every scene as a small tool
   broadcast.js          forwarding events to that window
   connect.js            the "Your data" panel: the standard, without a server
   look.js               scenes, finishes, palettes, shapes, colour variety, the ceiling

@@ -18,11 +18,11 @@
 // most-used colours, the glass is lit by the palette, the gold is the gold of
 // the palette's warmest mark where it has one.
 
-import { lightnessOf, mixColors, lighten } from './color.js';
+import { lightnessOf, mixColors, lighten, parseColor } from './color.js';
 
 export const FINISH_ORDER = [
   'none', 'paper', 'watercolour', 'ink', 'riso', 'lino',
-  'neon', 'glass', 'stitch', 'cyanotype', 'chalk', 'gold', 'pointillist',
+  'neon', 'glass', 'stitch', 'cyanotype', 'chalk', 'gold', 'pointillist', 'dither',
 ];
 
 export const FINISHES = {
@@ -39,6 +39,7 @@ export const FINISHES = {
   chalk: { label: 'Chalk', note: 'Drawn in chalk on a slate board, with the dust still on it.' },
   gold: { label: 'Gold leaf', note: 'Marks laid in gold on black lacquer, catching a slow light.' },
   pointillist: { label: 'Pointillism', note: 'The picture rebuilt from dots of colour set side by side, left for the eye to mix.' },
+  dither: { label: 'Dither', note: 'The picture reduced to the palette\'s own inks and a fine pattern of dots, as an early computer screen would have shown it.' },
 };
 
 export const MAT_ORDER = ['none', 'thin', 'gallery'];
@@ -485,7 +486,81 @@ const APPLY = {
     ctx.globalAlpha = 0.35;
     ctx.drawImage(grain(pool, W, H, { seed: 83, size: 2, contrast: 0.8 }), 0, 0);
   },
+
+  dither(ctx, o) {
+    const { W, H, pool, palette } = o;
+    const src = snapshot(ctx, pool, W, H);
+    // Read back at a few pixels a cell, never the whole frame: a full-window
+    // readback is the one thing a finish cannot afford every frame.
+    const cell = Math.max(2, Math.round(Math.min(W, H) / 250));
+    const cols = Math.ceil(W / cell);
+    const rows = Math.ceil(H / cell);
+    const small = buffer(pool, 'finish:dithersmall', cols, rows);
+    const sg = small.getContext('2d', { willReadFrequently: true });
+    sg.globalCompositeOperation = 'copy';
+    sg.imageSmoothingEnabled = true;
+    sg.drawImage(src, 0, 0, W, H, 0, 0, cols, rows);
+    sg.globalCompositeOperation = 'source-over';
+    const img = sg.getImageData(0, 0, cols, rows);
+    const d = img.data;
+    const inks = ditherInks(pool, palette);
+    const n = inks.length;
+    // Each cell takes the nearer of its two nearest inks, or the further one
+    // where the threshold matrix says so: ordered dithering, which keeps the
+    // hue of a mark because it only ever mixes the two inks nearest to it.
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const i = (y * cols + x) * 4;
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+        let a = 0;
+        let da = Infinity;
+        let c = 0;
+        let dc = Infinity;
+        for (let k = 0; k < n; k++) {
+          const q = inks[k];
+          const dist = (r - q[0]) ** 2 + (g - q[1]) ** 2 + (b - q[2]) ** 2;
+          if (dist < da) {
+            c = a; dc = da; a = k; da = dist;
+          } else if (dist < dc) {
+            c = k; dc = dist;
+          }
+        }
+        const pickFar = n > 1 && Math.sqrt(da) / (Math.sqrt(da) + Math.sqrt(dc) + 1e-6) > BAYER[((y & 3) << 2) | (x & 3)];
+        const q = inks[pickFar ? c : a];
+        d[i] = q[0];
+        d[i + 1] = q[1];
+        d[i + 2] = q[2];
+        d[i + 3] = 255;
+      }
+    }
+    sg.putImageData(img, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(small, 0, 0, cols, rows, 0, 0, cols * cell, rows * cell);
+  },
 };
+
+// A 4 by 4 Bayer matrix: the thresholds of ordered dithering, as fractions.
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+
+/** The palette's inks as numbers, worked out once per palette. */
+function ditherInks(pool, palette) {
+  if (pool['dither:for'] === palette && pool['dither:inks']) return pool['dither:inks'];
+  const seen = new Set();
+  const out = [];
+  for (const k of ['background', 'bot', 'anon', 'user', 'default', 'alert']) {
+    if (!palette[k]) continue;
+    const { r, g, b } = parseColor(palette[k]);
+    const key = `${r},${g},${b}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push([r, g, b]);
+  }
+  pool['dither:for'] = palette;
+  pool['dither:inks'] = out;
+  return out;
+}
 
 // --- textures ---------------------------------------------------------------
 

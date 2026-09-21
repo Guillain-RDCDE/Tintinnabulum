@@ -800,5 +800,67 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('the next accent sounds once the gap has passed', accents === 2, `accents=${accents}`);
 }
 
+// --- the playground: inks and variations ------------------------------------------
+// Pure functions, so checked here in bulk rather than a few at a time in a page.
+{
+  const m = await import('../src/index.js');
+  const { lightnessOf } = await import('../src/visual/color.js');
+
+  let violet = 0;
+  let faint = 0;
+  let tooMany = 0;
+  for (let s = 1; s <= 2000; s++) {
+    const n = 2 + (s % 5);
+    const inks = m.inkSet(s * 7919, n);
+    if (inks.length !== n) tooMany++;
+    const g = lightnessOf(inks[0]);
+    for (const c of inks) if (m.isViolet(c)) violet++;
+    for (const c of inks.slice(1)) if (Math.abs(lightnessOf(c) - g) < 0.25) faint++;
+  }
+  ok('drawn inks are never violet, whatever the number', violet === 0, `violet=${violet}`);
+  ok('every drawn ink can be seen on its ground', faint === 0, `faint=${faint}`);
+  ok('a set of inks has as many inks as asked for', tooMany === 0);
+  ok('the same number draws the same inks', m.inkSet(42, 4).join() === m.inkSet(42, 4).join() && m.inkSet(42, 4).join() !== m.inkSet(43, 4).join());
+  ok('rotating makes the next ink the ground', m.rotateInks(['#1', '#2', '#3']).join() === '#2,#3,#1');
+
+  const pal = m.paletteFromInks(m.inksOfPalette('marine'));
+  const marine = m.PALETTES.marine.colors;
+  ok('a named palette comes back out of its inks unchanged',
+     ['background', 'default', 'user', 'anon', 'bot', 'alert'].every((k) => pal[k] === marine[k]), JSON.stringify(pal));
+  const two = m.paletteFromInks(['#101418', '#f4795b']);
+  ok('two inks are enough for every role', m.PALETTE_KEYS.every((k) => typeof two[k] === 'string' && two[k].length > 0));
+
+  let outside = 0;
+  let unstepped = 0;
+  let switchedOff = 0;
+  let unstable = 0;
+  for (const [name, scene] of Object.entries(m.SCENES)) {
+    for (let s = 1; s <= 40; s++) {
+      const v = m.variedParams(scene, s);
+      if (JSON.stringify(v) !== JSON.stringify(m.variedParams(scene, s))) unstable++;
+      for (const [k, spec] of Object.entries(scene.params || {})) {
+        const x = v[k];
+        if (!(x >= spec.min && x <= spec.max)) outside++;
+        const steps = (x - spec.min) / (spec.step || 1e-9);
+        if (spec.step && Math.abs(steps - Math.round(steps)) > 1e-6) unstepped++;
+        // A dial that ships above its minimum must never be varied down onto it.
+        if (spec.default > spec.min && x === spec.min && spec.step < (spec.default - spec.min) * 0.2) switchedOff++;
+      }
+    }
+    if (!name) unstable++;
+  }
+  ok('every varied dial stays within its range', outside === 0, `outside=${outside}`);
+  ok('every varied dial lands on its own step', unstepped === 0, `unstepped=${unstepped}`);
+  ok('a variation never switches a dial off', switchedOff === 0, `switchedOff=${switchedOff}`);
+  ok('the same number varies the dials the same way', unstable === 0);
+
+  for (const name of ['aura', 'whorl', 'benday', 'rise']) {
+    const s = m.SCENES[name];
+    ok(`the new scene "${name}" is catalogued and has something to say`,
+       s && s.shelf !== 'Other' && s.note.length > 30 && s.how.length > 60 && typeof s.frame === 'function', s ? s.shelf : 'missing');
+  }
+  ok('dither is a finish with a note of its own', m.FINISH_ORDER.includes('dither') && m.FINISHES.dither.note.length > 30);
+}
+
 console.log(fails ? `\n${fails} FAILURE(S): ${failedNames.join(' | ')}` : '\nall core checks passed');
 process.exit(fails ? 1 : 0);
