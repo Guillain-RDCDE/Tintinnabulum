@@ -26,6 +26,11 @@ Or open **Create**, the fifth tab: every picture is a small tool. Press
 take them away as a picture or a video with its sound, or play them live.
 
 <p align="center">
+  <img src=".github/create-whorl.png" width="100%" alt="The Create tab: Whorl, variation 777, striped bands twisted into a whirlpool, with its dials, inks, frame and export around it">
+</p>
+<p align="center"><sub><i>Whorl</i>, variation 777, on the Create bench. Each whirlpool is one event.</sub></p>
+
+<p align="center">
   <img src=".github/fireworks-across-the-bay.png" width="100%" alt="Fireworks across the bay: small bursts over a far shore, reflected in the water">
 </p>
 <p align="center"><sub><i>Fireworks across the bay</i>, one of the works in the Gallery. Each shell is one event.</sub></p>
