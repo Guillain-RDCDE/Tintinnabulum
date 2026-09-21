@@ -129,6 +129,10 @@ export class AudioSink {
    * two of them.
    */
   setBed(name) {
+    // A sink that has been switched off plays nothing, a bed included:
+    // otherwise connecting a feed while the sink is silenced started the sea
+    // under whatever else was playing.
+    if (!this.enabled) name = null;
     if (this.bed && this.bed.name === name) return this;
     if (this.bed) {
       this.bed.stop();

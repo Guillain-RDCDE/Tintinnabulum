@@ -2972,8 +2972,38 @@ const pgIn = await bench();
 const pgDock = await pg.evaluate(() => getComputedStyle(document.querySelector('#dock')).display);
 ok('Create opens the bench on the picture that was playing', pgIn.open && pgIn.tool === liveScene && pgIn.hash.startsWith(`#create/${liveScene}/`),
    JSON.stringify(pgIn));
-ok('while creating, the live picture rests and listening pauses', pgIn.creating && pgIn.suspended && pgIn.running === 'false' && pgDock === 'none',
-   JSON.stringify({ ...pgIn, dock: pgDock }));
+const pgQuiet = await pg.evaluate(() => ({ source: window.son.studio.state.source, notes: window.son.audio.enabled }));
+ok('while creating, the live picture rests and the feed keeps coming, silent in the sandbox',
+   pgIn.creating && pgIn.suspended && pgIn.running === 'true' && pgDock === 'none' && pgQuiet.source === 'live' && pgQuiet.notes === false,
+   JSON.stringify({ ...pgIn, dock: pgDock, ...pgQuiet }));
+ok("the bench's own controls are drawn for a dark room",
+   await pg.evaluate(() => getComputedStyle(document.querySelector('#studio')).colorScheme === 'dark'));
+
+// Following the feed: every real event lands on the picture, where its
+// identity puts it, and the sandbox plays none of them.
+const pgFeed = await pg.evaluate(async () => {
+  const st = window.son.studio;
+  const before = st.player.count;
+  const sandbox = window.son.audio.stats.played;
+  for (let i = 0; i < 12; i++) window.son.emit({ magnitude: 100 * (i + 1), id: `feed-${i}` });
+  await new Promise((r) => setTimeout(r, 300));
+  return { external: st.player.external, arrived: st.player.count - before, sandbox: window.son.audio.stats.played - sandbox };
+});
+ok('following the feed, every real event lands on the picture and the sandbox stays silent',
+   pgFeed.external && pgFeed.arrived >= 12 && pgFeed.sandbox === 0, JSON.stringify(pgFeed));
+
+// Its own rhythm: the feed pauses and the sandbox has its notes back.
+await pg.click('#st-source [data-source="own"]');
+await pg.waitForTimeout(300);
+const pgOwn = await pg.evaluate(() => ({
+  source: window.son.studio.state.source,
+  external: window.son.studio.player.external,
+  running: document.querySelector('#start').dataset.on,
+  notes: window.son.audio.enabled,
+  tempo: !document.querySelector('#st-tempo').disabled,
+}));
+ok('keeping its own rhythm, the bench pauses the feed and the tempo is its own',
+   pgOwn.source === 'own' && !pgOwn.external && pgOwn.running === 'false' && pgOwn.notes === true && pgOwn.tempo, JSON.stringify(pgOwn));
 const pgFirst = await picture();
 ok('the picture on the bench is drawn', pgFirst.colours >= 3, `${pgFirst.colours} colours at ${pgFirst.w}x${pgFirst.hgt}`);
 
@@ -3148,6 +3178,26 @@ const pgHeard = await pg.evaluate(() => {
 });
 ok('Hear it plays the events as notes, through the one audio engine',
    pgHeard.on && pgHeard.moving && pgHeard.shared && pgHeard.state === 'running' && pgHeard.played > 0, JSON.stringify(pgHeard));
+
+// And following the feed, what is heard is the feed itself, at the moment
+// each event happened, on the bench's instrument and nowhere else.
+await pg.click('#st-source [data-source="live"]');
+await pg.waitForTimeout(500);
+const pgHeardLive = await pg.evaluate(async () => {
+  const bench = window.son.studio.son.audio.stats;
+  const before = bench.played;
+  const sandbox = window.son.audio.stats.played;
+  for (let i = 0; i < 10; i++) {
+    window.son.emit({ magnitude: 60 * (i + 1), id: `heard-${i}` });
+    await new Promise((r) => setTimeout(r, 90));
+  }
+  await new Promise((r) => setTimeout(r, 400));
+  return { bench: bench.played - before, sandbox: window.son.audio.stats.played - sandbox, running: document.querySelector('#start').dataset.on };
+});
+ok('following the feed, Hear it plays each real event on the bench, and only there',
+   pgHeardLive.bench > 0 && pgHeardLive.sandbox === 0 && pgHeardLive.running === 'true', JSON.stringify(pgHeardLive));
+await pg.click('#st-source [data-source="own"]');
+await pg.waitForTimeout(300);
 
 await pg.selectOption('#st-video-length', '6');
 const [videoDownload] = await Promise.all([pg.waitForEvent('download', { timeout: 60000 }), pg.click('#st-export-video')]);

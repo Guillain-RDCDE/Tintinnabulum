@@ -55,8 +55,10 @@ const PREFIX = '#create';
  * @param {object}   io.canvas     the live CanvasSink
  * @param {Function} io.onLeave    the bench asks to be closed (Escape from the index)
  * @param {Function} io.playLive   (picture) => put a picture on the live feed
+ * @param {Function} [io.feedLabel] what the sandbox is listening to, in words
+ * @param {Function} [io.onSource]  ('live'|'own') => the bench changed where its events come from
  */
-export function setupStudio({ son: live, canvas, onLeave, playLive }) {
+export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = () => 'the feed', onSource = () => {} }) {
   const studio = document.getElementById('studio');
   const indexView = el('index');
   const bench = el('bench');
@@ -104,6 +106,9 @@ export function setupStudio({ son: live, canvas, onLeave, playLive }) {
     animate: store.flag('play-animate', true),
     hear: false,
     kit: SOUND_KITS[0],
+    // Where the events come from: the feed the sandbox listens to, as they
+    // happen, or a steady rhythm of the picture's own.
+    source: store.get('play-source') === 'own' ? 'own' : 'live',
   };
   let open = false;
   let history = [];
@@ -459,6 +464,12 @@ export function setupStudio({ son: live, canvas, onLeave, playLive }) {
     tempo.value = state.tempo;
     el('tempo-out').textContent = state.tempo.toFixed(2).replace(/\.?0+$/, '');
     paintRange(tempo);
+    for (const b of el('source').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.source === state.source));
+    el('tempo-dial').classList.toggle('off', state.source === 'live');
+    tempo.disabled = state.source === 'live';
+    el('source-note').textContent = state.source === 'live'
+      ? `${feedLabel()}, as it happens: every real event lands on the picture and, heard, is one note. The picture starts from its number, then follows the feed.`
+      : 'A steady rhythm of the picture\'s own, drawn from its number. Nothing outside it moves it.';
     el('kit').value = state.kit;
     const vol = el('volume');
     vol.value = live.volume;
@@ -654,6 +665,9 @@ export function setupStudio({ son: live, canvas, onLeave, playLive }) {
       scheduleRebuild();
     });
     el('grain').addEventListener('change', writeAddress);
+    for (const b of el('source').querySelectorAll('button')) {
+      b.addEventListener('click', () => setSource(b.dataset.source));
+    }
     el('tempo').addEventListener('input', (e) => {
       state.tempo = Number(e.target.value);
       store.set('play-tempo', state.tempo);
@@ -738,8 +752,31 @@ export function setupStudio({ son: live, canvas, onLeave, playLive }) {
       every: 1000 / state.tempo,
       onArrive: hearEvent,
     });
+    view.player.external = state.source === 'live';
     develop(token);
   }
+
+  /** Where the events come from: the live feed, or the picture's own rhythm. */
+  function setSource(source) {
+    const next = source === 'own' ? 'own' : 'live';
+    if (next === state.source) return;
+    state.source = next;
+    store.set('play-source', next);
+    if (view.player) view.player.external = next === 'live';
+    refreshAll();
+    if (open) onSource(next);
+  }
+
+  // The feed's own events, while the bench follows it: each lands on the
+  // picture where its identity puts it, and is heard on the bench's own
+  // instrument -- at the moment it happened, which is the whole point.
+  live.on((ev) => {
+    if (!open || state.source !== 'live' || !view.player || bench.hidden || ev.dimmed) return;
+    view.player.arriveFrom(ev);
+    if (state.hear && sound && !sound.locked) {
+      sound.emit({ magnitude: ev.magnitude, id: ev.id, category: ev.category, polarity: ev.polarity, label: ev.label });
+    }
+  });
 
   function develop(token) {
     frameEl.classList.add('developing');
@@ -1327,5 +1364,6 @@ export function setupStudio({ son: live, canvas, onLeave, playLive }) {
     newVariation,
     keep,
     fromLive,
+    setSource,
   };
 }

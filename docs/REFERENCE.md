@@ -1190,9 +1190,19 @@ tool on a bench, one picture at a time. It is a tab rather than a page of its
 own because the two meet: the bench opens on the picture that was playing, and
 **Play it live** puts what was made back on the feed -- the scene with its
 dials, the colours, the texture -- and starts listening. While the bench has
-the screen the live picture rests rather than drawing unseen, listening pauses
-so two pieces of music never play at once, and both come back as they were
-when the bench is left.
+the screen the live picture rests rather than drawing unseen, and everything
+comes back as it was when the bench is left.
+
+**Events from** says what moves the picture. **The live feed**, the default, is
+whatever the sandbox listens to, Wikipedia unless something else was chosen:
+the picture develops from its number and then follows the feed, each real
+event landing where its identity puts it, sized by how much it matters, and
+-- heard -- sounding on the bench's instrument at the moment it happened. The
+feed is started if it was not running, and the sandbox's own notes fall silent
+meanwhile, so each event is heard once. **Its own rhythm** is a steady pulse
+drawn from the number, at the tempo set, with the feed paused so two pieces
+of music never play at once. The first version had only the second, and a
+picture that was meant to be listening to Wikipedia ticked like a metronome.
 
 **All tools** shows every tool as a live card, numbered, on its shelf. Typing
 filters, Enter opens the first, **Surprise me** opens one at random from what
@@ -1217,7 +1227,7 @@ Around the picture, the way a print workshop is laid out:
 | **Colour** | A ground and up to five inks, each editable. **New colours** draws a set from a number in three moods -- a pale paper, a dark night, a strong ground -- with the violet band of the wheel removed and every ink kept well clear of the ground in lightness. **Rotate** makes the next ink the ground. Any palette can be taken as a starting point, except those with a violet in them, and a set can be saved. |
 | **Texture** | The fourteen finishes, film grain and the mats. |
 | **Frame** | Eight shapes, from 9:16 to 16:9. |
-| **Motion and sound** | How many events a second, and **Hear it**: each event of the picture is one note from the chosen instrument, in a pentatonic scale, larger marks lower. It plays through the sandbox's own audio engine, so there is one volume and one permission to play sound. |
+| **Motion and sound** | Where the events come from, how many a second on the picture's own rhythm, and **Hear it**: each event of the picture is one note from the chosen instrument, in a pentatonic scale, larger marks lower. It plays through the sandbox's own audio engine, so there is one volume and one permission to play sound. |
 | **Kept** | **K** keeps the picture on screen, with a thumbnail, on this device; a click brings it back exactly. |
 | **Export** | The picture as a PNG at 1080, 2048 or 3200 pixels, developed again at that size from its number; or a video of it moving, with its sound if it is being heard. |
 

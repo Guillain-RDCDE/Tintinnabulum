@@ -25,6 +25,7 @@
 import { shadeOf, lighten, lightnessOf } from '../color.js';
 import { applyFinish, drawMat, drawGrain } from '../finish.js';
 import { rngOf } from '../inks.js';
+import { unitPosition } from '../../core/event.js';
 import { MARK_SCENES } from './marks.js';
 import { FIELD_SCENES } from './fields.js';
 import { STRUCTURE_SCENES } from './structures.js';
@@ -273,14 +274,33 @@ export function playScene(ctx, name, {
   let count = 0;
   let since = 0;
   let quiet = true;
+  let external = false;
   let interval = Math.max(40, every);
-  const arrive = () => {
+  const arrive = (ev = null) => {
     const p = cardEvent(events, count++, { w, h, palette, richness, darkGround: api.darkGround });
+    if (ev) {
+      // A real event: its size from how much it matters, its place from its
+      // identity -- the same article lands in the same place -- and its colour
+      // from its kind, where the palette has one.
+      const s = ev.map && Number.isFinite(ev.map.salience) ? ev.map.salience : 0.5;
+      p.r = Math.max(2, Math.sqrt(Math.max(0.02, Math.min(1, s))) * Math.min(w, h) * 0.34);
+      if (ev.id != null) {
+        const { u, v } = unitPosition(String(ev.id));
+        p.x = 8 + u * (w - 16);
+        p.y = 8 + v * (h - 16);
+      }
+      if (ev.category && palette[ev.category]) {
+        p.category = ev.category;
+        p.base = palette[ev.category];
+        p.color = shadeOf(p.base, p.tint, richness);
+      }
+      p.label = ev.label || '';
+    }
     p.born = api.now;
     api.particles.push(p);
     if (api.particles.length > 80) api.particles.splice(0, api.particles.length - 80);
     if (scene.event) seeded(() => scene.event(p, api));
-    if (!quiet && onArrive) {
+    if (!quiet && onArrive && !ev) {
       try {
         onArrive(p, count - 1);
       } catch (e) {
@@ -293,6 +313,10 @@ export function playScene(ctx, name, {
     api.dt = dt;
     api.now += dt;
     since += dt;
+    // Following a feed, the picture's own events stop: the feed's take their
+    // place. Development runs on its own events regardless, so a number still
+    // gives the same starting picture.
+    if (external && quiet === false) since = 0;
     while (since >= interval) {
       since -= interval;
       arrive();
@@ -350,6 +374,18 @@ export function playScene(ctx, name, {
     arrive() {
       quiet = false;
       return arrive();
+    },
+    /** A real event, from a feed: see `external`. Not reported to onArrive. */
+    arriveFrom(ev) {
+      quiet = false;
+      return arrive(ev || {});
+    },
+    /** True while the picture follows a feed rather than keeping its own time. */
+    get external() {
+      return external;
+    },
+    set external(on) {
+      external = Boolean(on);
     },
     get every() {
       return interval;

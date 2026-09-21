@@ -575,24 +575,54 @@ requestAnimationFrame(() => worksPanel.repaint());
 // =========================================================================
 
 // While the bench has the screen, the live picture rests rather than drawing
-// unseen, and listening pauses so two pieces of music do not play at once.
-// Both come back as they were when the bench is left.
-let pausedForStudio = false;
+// unseen. What happens to listening depends on where the bench takes its
+// events from. Following the feed, the feed must run -- it is started if it
+// was not -- and the sandbox's own notes fall silent, so every event is heard
+// once, on the bench's instrument. Keeping its own rhythm, listening pauses,
+// so two pieces of music never play at once. Everything comes back as it was
+// when the bench is left.
+const forStudio = { paused: false, started: false };
+const listening = () => startBtn.dataset.on === 'true';
+
+function sandboxNotes(on) {
+  son.audio.enabled = on;
+  if (on) son._syncBed();
+  else son.audio.setBed(null);
+}
+
+function studioSource() {
+  if (studio.state.source === 'live') {
+    sandboxNotes(false);
+    if (forStudio.paused) forStudio.paused = false;
+    else if (!listening()) forStudio.started = true;
+    if (!listening()) startBtn.click();
+  } else {
+    sandboxNotes(true);
+    if (forStudio.started) forStudio.started = false;
+    else if (listening()) forStudio.paused = true;
+    if (listening()) startBtn.click();
+  }
+}
+
 function studioShown(on) {
   canvas.setSuspended(on);
-  if (on && startBtn.dataset.on === 'true') {
-    pausedForStudio = true;
-    startBtn.click();
-  } else if (!on && pausedForStudio) {
-    pausedForStudio = false;
-    if (startBtn.dataset.on !== 'true') startBtn.click();
+  if (on) {
+    studioSource();
+    return;
   }
+  sandboxNotes(true);
+  if (forStudio.paused && !listening()) startBtn.click();
+  if (forStudio.started && listening()) startBtn.click();
+  forStudio.paused = false;
+  forStudio.started = false;
 }
 
 const studio = setupStudio({
   son,
   canvas,
   onLeave: () => { if (shell) shell.close(); },
+  feedLabel: () => FEEDS[feed].label,
+  onSource: () => studioSource(),
   // A picture made on the bench, put on the live feed: the scene with its
   // dials -- remembered as if they had been turned by hand -- the colours, the
   // texture, and listening started.
@@ -616,7 +646,10 @@ const studio = setupStudio({
     look.selectFinish(pic.finish);
     look.selectMat(pic.mat);
     look.selectGrain(pic.grain);
-    pausedForStudio = false;
+    // Listening carries on, or starts: whatever the bench did to it is kept
+    // rather than undone on the way out.
+    forStudio.paused = false;
+    forStudio.started = false;
     if (shell) shell.close();
     if (startBtn.dataset.on !== 'true') startBtn.click();
     if (shell) shell.refresh(true);
