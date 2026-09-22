@@ -72,8 +72,9 @@ export function accentFor(colors, lightGround) {
  * @param {Function} io.repaint       paint cards that have just come into view
  * @param {object}   [io.studio]      what setupStudio returned: the Create tab
  * @param {Function} [io.onStudio]    (open) => the bench has taken or given back the screen
+ * @param {Function} [io.onRemix]     take what is playing to Create
  */
-export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, getFeedLabel, repaint, studio, onStudio }) {
+export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, getFeedLabel, repaint, studio, onStudio, onRemix = () => {} }) {
   const body = document.body;
   const root = document.documentElement;
   const inspector = $('#inspector');
@@ -288,6 +289,9 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
       case 's': case 'S':
         surprise();
         break;
+      case 'r': case 'R':
+        onRemix();
+        break;
       case '1': case '2': case '3': case '4': case '5':
         toggle(ORDER[Number(e.key) - 1]);
         break;
@@ -355,6 +359,7 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
     return { scene, palette, finish, kit };
   }
   $('#surprise').addEventListener('click', surprise);
+  $('#remix').addEventListener('click', () => onRemix());
 
   // --- colour and words from the work on show ------------------------------------------
   let lastTint = '';
@@ -376,9 +381,11 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
     if (force) lastTint = '';
     if (active !== 'create') tint();
     const name = works.current();
-    $('#now-title').textContent = name ? WORKS[name].title : SCENES[canvas.sceneName].label;
+    // A work by its title; one of yours by the title you gave it.
+    const titled = works.title;
+    $('#now-title').textContent = titled || SCENES[canvas.sceneName].label;
     $('#now-sub').textContent = [
-      name ? WORKS[name].room : PALETTES[canvas.paletteName].label,
+      name ? WORKS[name].room : titled ? 'Yours' : PALETTES[canvas.paletteName] ? PALETTES[canvas.paletteName].label : '',
       KITS[getKit()] ? KITS[getKit()].label : '',
       getFeedLabel(),
     ].filter(Boolean).join(' · ');

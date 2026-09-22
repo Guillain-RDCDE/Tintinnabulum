@@ -3356,14 +3356,23 @@ const pgSurprise = await pg.evaluate(async () => {
 });
 ok('Surprise me opens a tool of that kind', await pg.evaluate(async (t) => (await import('../src/index.js')).SCENES[t].shelf === 'Night', pgSurprise), pgSurprise);
 
-// And back to the feed with it.
+// And back to the feed with it: hung, it is kept with yours too.
+const pgBeforeHang = await pg.evaluate(() => window.son.studio.captures.length);
 await pg.click('#st-live');
 await pg.waitForTimeout(800);
 const pgLive = await bench();
 const pgLiveScene = await pg.evaluate(() => window.son.sinks.find((s) => s.particles).sceneName);
-ok('Play it live puts the picture on the feed and starts listening',
+ok('Hang it puts the picture on the feed and starts listening',
    !pgLive.open && !pgLive.creating && !pgLive.suspended && pgLive.running === 'true' && pgLiveScene === pgSurprise && pgLive.hash === '',
    JSON.stringify({ ...pgLive, scene: pgLiveScene }));
+const pgHung = await pg.evaluate(() => ({
+  kept: window.son.studio.captures.length,
+  title: window.son.studio.captures[0].title,
+  now: document.querySelector('#now-title').textContent,
+  card: document.querySelectorAll('#yours-cards .card').length,
+}));
+ok('Hang it keeps the picture with yours, and the dock names it',
+   pgHung.kept === pgBeforeHang + 1 && pgHung.title && pgHung.now === pgHung.title && pgHung.card === pgHung.kept, JSON.stringify(pgHung));
 
 // The fifth key opens the bench; leaving it gives listening back.
 await pg.keyboard.press('5');
@@ -3378,6 +3387,145 @@ const pgOut = await bench();
 ok('the key 5 opens Create', pgKey.open && pgKey.running === 'false', JSON.stringify(pgKey));
 ok('leaving Create gives the live picture and listening back', !pgOut.open && !pgOut.suspended && pgOut.running === 'true' && pgOut.hash === '',
    JSON.stringify(pgOut));
+
+// --- the Gallery and Create are one place ------------------------------------------------
+// Every work has a Remix that opens it on the bench exactly as it hangs, and
+// the bench says where it came from and goes back there. What is hung comes
+// back to the Gallery, in a room of yours, played and remixed like any work.
+const openGallery = () => pg.evaluate(() => {
+  const b = document.querySelector('#tabs [data-tab="gallery"]');
+  if (b.getAttribute('aria-selected') !== 'true') b.click();
+});
+await openGallery();
+await pg.waitForTimeout(500);
+const pgRemixed = await pg.evaluate(async () => {
+  const { WORKS, inksOfPalette } = await import('../src/index.js');
+  const w = WORKS.mould;
+  const card = document.querySelector('#works [data-work="mould"]');
+  card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  card.querySelector('.remix').click();
+  const frame = document.querySelector('#st-frame');
+  const st = window.son.studio.state;
+  return {
+    open: window.son.studio.open,
+    moving: frame.getAnimations().length > 0,
+    tool: st.tool, want: w.scene, ground: st.ground, wantGround: w.ground, finish: st.finish, wantFinish: w.finish,
+    mat: st.mat, wantMat: w.mat,
+    inks: st.inks.join() === inksOfPalette(w.palette).map((c) => c.toLowerCase()).join(),
+    seed: st.seed,
+    chip: document.querySelector('#st-from').textContent,
+    title: w.title,
+    placeholder: document.querySelector('#st-piece-title').placeholder,
+    colour: document.querySelector('#st-ink-count').textContent,
+    palette: document.querySelector('#st-palette').value,
+    wantPalette: w.palette,
+  };
+});
+await developed();
+ok('Remix on a work opens it on the bench, exactly as it hangs',
+   pgRemixed.open && pgRemixed.tool === pgRemixed.want && pgRemixed.ground === pgRemixed.wantGround &&
+   pgRemixed.finish === pgRemixed.wantFinish && pgRemixed.mat === pgRemixed.wantMat && pgRemixed.inks,
+   JSON.stringify(pgRemixed));
+ok('the bench grows out of the card it was opened from', pgRemixed.moving);
+ok('the bench says where the picture came from, and offers a title from it',
+   pgRemixed.chip.includes(pgRemixed.title) && pgRemixed.placeholder === `${pgRemixed.title}, remixed`, JSON.stringify(pgRemixed));
+ok("the colours keep their palette's name", pgRemixed.palette === pgRemixed.wantPalette && /· \d+ inks$/.test(pgRemixed.colour), pgRemixed.colour);
+const pgAgain = await pg.evaluate(() => {
+  window.son.studio.remix({ kind: 'work', name: 'mould' });
+  return window.son.studio.state.seed;
+});
+ok('a work remixed twice is the same variation', pgAgain === pgRemixed.seed, `${pgAgain} vs ${pgRemixed.seed}`);
+
+await pg.click('#st-from');
+await pg.waitForTimeout(500);
+const pgBack = await pg.evaluate(() => ({
+  open: window.son.studio.open,
+  tab: document.querySelector('#inspector').dataset.tab,
+  inspecting: document.body.classList.contains('inspecting'),
+  focused: document.activeElement && document.activeElement.dataset.work,
+}));
+ok('the way back leads to the card in the Gallery', !pgBack.open && pgBack.tab === 'gallery' && pgBack.inspecting && pgBack.focused === 'mould',
+   JSON.stringify(pgBack));
+
+// From the wall, by the dock.
+await pg.keyboard.press('Escape');
+await pg.waitForTimeout(300);
+const pgWall = await pg.evaluate(() => ({ scene: window.son.sinks.find((s) => s.particles).sceneName, title: document.querySelector('#now-title').textContent }));
+await pg.evaluate(() => document.querySelector('#remix').click());
+await developed();
+const pgDockRemix = await pg.evaluate(() => ({
+  tool: window.son.studio.state.tool, from: window.son.studio.from, chip: document.querySelector('#st-from').textContent,
+}));
+ok('Remix in the dock takes what is playing to the bench',
+   pgDockRemix.tool === pgWall.scene && pgDockRemix.from && pgDockRemix.chip.includes(pgWall.title), JSON.stringify({ pgWall, pgDockRemix }));
+
+// Hung with a title of its own: it plays under that title and hangs in Yours.
+await pg.fill('#st-piece-title', 'Veins, for the hall');
+await pg.click('#st-live');
+await pg.waitForFunction(() => document.querySelector('#now-title').textContent === 'Veins, for the hall', null, { timeout: 15000 });
+await openGallery();
+await pg.waitForTimeout(600);
+const pgYours = await pg.evaluate(() => {
+  const card = document.querySelector('#yours-cards .card');
+  return {
+    first: card && card.querySelector('b').textContent,
+    pressed: card && card.getAttribute('aria-pressed'),
+    painted: card && card.dataset.painted,
+    cartel: document.querySelector('#work-cartel b') && document.querySelector('#work-cartel b').textContent,
+    sub: document.querySelector('#now-sub').textContent,
+    empty: document.querySelector('#yours-empty').hidden,
+    remixes: document.querySelectorAll('#works .card .remix').length,
+  };
+});
+ok('what is hung hangs in Yours, marked as playing, with its label',
+   pgYours.first === 'Veins, for the hall' && pgYours.pressed === 'true' && pgYours.painted === '1' &&
+   pgYours.cartel === 'Veins, for the hall' && /^Yours/.test(pgYours.sub) && pgYours.empty, JSON.stringify(pgYours));
+ok('every work in the Gallery has its Remix', pgYours.remixes === (await pg.evaluate(async () => Object.keys((await import('../src/index.js')).WORKS).length)));
+
+// Yours, remixed: back on the bench exactly as kept.
+const pgMine = await pg.evaluate(() => {
+  const piece = window.son.studio.captures[0];
+  document.querySelector('#yours-cards .card .remix').click();
+  const st = window.son.studio.state;
+  return { same: st.tool === piece.state.tool && st.seed === piece.state.seed && st.inks.join() === piece.state.inks.join(),
+    from: window.son.studio.from && window.son.studio.from.kind };
+});
+ok('one of yours, remixed, opens on the bench exactly as it was kept', pgMine.same && pgMine.from === 'yours', JSON.stringify(pgMine));
+await pg.keyboard.press('5');
+await pg.waitForTimeout(400);
+
+// Something else on the wall, then one of yours played from its card.
+await pg.evaluate(() => window.son.works.apply('mould'));
+await pg.waitForFunction(() => window.son.works.current() === 'mould', null, { timeout: 15000 });
+await openGallery();
+await pg.waitForTimeout(400);
+await pg.evaluate(() => document.querySelector('#yours-cards .card').click());
+await pg.waitForFunction(() => document.querySelector('#now-title').textContent === 'Veins, for the hall', null, { timeout: 15000 });
+ok('a card in Yours puts the piece up and plays it, like a work',
+   await pg.evaluate(() => window.son.sinks.find((s) => s.particles).sceneName === window.son.studio.captures[0].state.tool &&
+     document.querySelector('#start').dataset.on === 'true'));
+
+// Kept across a reload, and let go from the Gallery.
+await pg.reload({ waitUntil: 'domcontentloaded' });
+await pg.waitForFunction(() => window.son && window.son.works, null, { timeout: 20000 });
+await openGallery();
+await pg.waitForTimeout(600);
+const pgReloaded = await pg.evaluate(() => ({
+  cards: document.querySelectorAll('#yours-cards .card').length,
+  kept: window.son.studio.captures.length,
+  first: document.querySelector('#yours-cards .card b').textContent,
+}));
+ok('Yours survives a reload', pgReloaded.cards === pgReloaded.kept && pgReloaded.first === 'Veins, for the hall', JSON.stringify(pgReloaded));
+await pg.evaluate(() => document.querySelector('#yours-cards .card .forget').click());
+const pgForgot = await pg.evaluate(() => ({
+  cards: document.querySelectorAll('#yours-cards .card').length,
+  kept: window.son.studio.captures.length,
+  stored: JSON.parse(localStorage.getItem('t:play-captures')).length,
+  first: document.querySelector('#yours-cards .card b') && document.querySelector('#yours-cards .card b').textContent,
+}));
+ok('a piece let go from the Gallery is gone everywhere',
+   pgForgot.cards === pgReloaded.cards - 1 && pgForgot.kept === pgForgot.cards && pgForgot.stored === pgForgot.cards && pgForgot.first !== 'Veins, for the hall',
+   JSON.stringify(pgForgot));
 
 // A link made while the bench was a page of its own still opens the picture.
 const pgOld = await pgContext.newPage();
@@ -3396,6 +3544,8 @@ const pgp = await pgPhone.newPage();
 await pgp.goto(BASE + '/demo/#create/aura/31', { waitUntil: 'domcontentloaded' });
 await pgp.waitForFunction(() => window.son && window.son.studio, null, { timeout: 20000 });
 await developed(pgp);
+// Past the frame growing into place.
+await pgp.waitForFunction(() => document.querySelector('#st-frame').getAnimations().length === 0, null, { timeout: 5000 });
 const pgPhoneLayout = await pgp.evaluate(() => {
   const r = document.querySelector('#st-canvas').getBoundingClientRect();
   const b = document.querySelector('#st-new').getBoundingClientRect();

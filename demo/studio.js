@@ -58,8 +58,14 @@ const PREFIX = '#create';
  * @param {Function} io.playLive   (picture) => put a picture on the live feed
  * @param {Function} [io.feedLabel] what the sandbox is listening to, in words
  * @param {Function} [io.onSource]  ('live'|'own') => the bench changed where its events come from
+ * @param {Function} [io.onYours]   your pieces changed: the Gallery's room of them follows
+ * @param {Function} [io.onBack]    (from) => go back to where the picture on the bench came from
+ * @param {Function} [io.liveTitle] what is on the wall now, in words
  */
-export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = () => 'the feed', onSource = () => {} }) {
+export function setupStudio({
+  son: live, canvas, onLeave, playLive, feedLabel = () => 'the feed', onSource = () => {},
+  onYours = () => {}, onBack = () => {}, liveTitle = () => '',
+}) {
   const studio = document.getElementById('studio');
   const indexView = el('index');
   const bench = el('bench');
@@ -125,7 +131,15 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       return [];
     }
   };
-  let captures = readJson('play-captures');
+  const titleOf = (st) => `${(SCENES[st.tool] || {}).label || st.tool}, No. ${st.seed}`;
+  let captures = readJson('play-captures')
+    .filter((c) => c && c.state && SCENES[c.state.tool])
+    .map((c, i) => ({ ...c, id: c.id || `p${c.at || 0}-${i}`, title: c.title || titleOf(c.state) }));
+  // Where the picture on the bench came from: a work, one of yours, or what was
+  // playing. Shown on the bench, and one click takes it back there.
+  let from = null;
+  let pending = null;
+  let leftWith = '';
   let savedInks = readJson('play-inks');
 
   // --- the address --------------------------------------------------------------------
@@ -349,6 +363,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
 
   function showIndex() {
     stopStage();
+    from = null;
     bench.hidden = true;
     indexView.hidden = false;
     replaceAddress(PREFIX);
@@ -362,6 +377,9 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
   function openTool(r) {
     stopLiveCard();
     const fresh = state.tool !== r.tool;
+    // Where it came from: said by whoever opened it, or nowhere for a new tool.
+    if (r.from !== undefined) from = r.from;
+    else if (fresh) from = null;
     const scene = SCENES[r.tool];
     const look = toolLook(r.tool);
     state.tool = r.tool;
@@ -376,9 +394,13 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       state.ground = r.ground || (r.full ? 'none' : look.ground);
     }
     if (r.ratio) state.ratio = r.ratio;
+    // A picture that brings its instrument (a work, one of yours) keeps it.
+    const kit = r.kit && SOUND_KITS.includes(r.kit) ? r.kit : fresh ? store.get(`play-kit:${r.tool}`) || look.kit : null;
+    if (kit) {
+      state.kit = kit;
+      if (sound) sound.setKit(kit);
+    }
     if (fresh) {
-      state.kit = store.get(`play-kit:${r.tool}`) || look.kit;
-      if (sound) sound.setKit(state.kit);
       history = [state.seed];
       place = 0;
     } else if (history[place] !== state.seed) {
@@ -386,6 +408,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       history.push(state.seed);
       place = history.length - 1;
     }
+    el('piece-title').value = '';
     indexView.hidden = true;
     bench.hidden = false;
     buildDials();
@@ -483,7 +506,16 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     el('volume-out').textContent = `${Math.round(live.volume * 100)}%`;
     paintRange(vol);
     refreshTransport();
+    refreshFrom();
     renderCaptures();
+  }
+
+  function refreshFrom() {
+    const chip = el('from');
+    chip.hidden = !from;
+    chip.textContent = from ? `↩ ${from.title}` : '';
+    chip.title = from ? `Back to ${from.title}` : '';
+    el('piece-title').placeholder = defaultTitle();
   }
 
   function refreshTransport() {
@@ -552,7 +584,10 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       });
       host.append(add);
     }
-    el('ink-count').textContent = `${state.inks.length} inks`;
+    // Colours that are a palette's keep the palette's name, as they do on the wall.
+    const named = Object.keys(PALETTES).find((n) => inksOfPalette(n).map(hex).join() === state.inks.join());
+    el('ink-count').textContent = named ? `${PALETTES[named].label} · ${state.inks.length} inks` : `${state.inks.length} inks`;
+    el('palette').value = named || '';
     const mine = el('my-colours');
     mine.textContent = '';
     savedInks.forEach((set, i) => {
@@ -971,14 +1006,34 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     finish: state.finish, grain: state.grain, mat: state.mat, ground: state.ground, ratio: state.ratio,
   });
 
-  function keep() {
-    if (!state.tool || bench.hidden) return;
-    captures.unshift({ state: snapshot(), thumb: thumbOf(stage), at: Date.now() });
+  /** The title the piece will have on the wall: the one typed, or a sensible one. */
+  function defaultTitle() {
+    if (from && from.kind !== 'live' && from.title) return `${from.title}, remixed`;
+    return titleOf(state);
+  }
+  const pieceTitle = () => el('piece-title').value.trim() || defaultTitle();
+
+  /** Keep the picture on the bench as one of yours. Returns the piece. */
+  function keep({ quiet = false } = {}) {
+    if (!state.tool || bench.hidden) return null;
+    const at = Date.now();
+    const piece = { id: `p${at}`, title: pieceTitle(), kit: state.kit, state: snapshot(), thumb: thumbOf(stage), at };
+    captures.unshift(piece);
     captures = captures.slice(0, 24);
     saveCaptures();
     renderCaptures(true);
     flash();
-    toast('Kept');
+    if (!quiet) toast('Kept with yours, in the Gallery too');
+    return piece;
+  }
+
+  /** Forget one of yours, from here or from the Gallery. */
+  function forget(id) {
+    const i = captures.findIndex((c) => c.id === id);
+    if (i < 0) return;
+    captures.splice(i, 1);
+    saveCaptures();
+    renderCaptures();
   }
 
   function saveCaptures() {
@@ -986,6 +1041,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     for (;;) {
       try {
         localStorage.setItem('t:play-captures', JSON.stringify(captures));
+        onYours();
         return;
       } catch {
         if (!captures.length) return;
@@ -1002,7 +1058,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       b.className = 'st-capture' + (fresh && i === 0 ? ' fresh' : '');
       b.tabIndex = 0;
       b.setAttribute('role', 'button');
-      const label = `${(SCENES[c.state.tool] || {}).label || c.state.tool}, No. ${c.state.seed}`;
+      const label = c.title || titleOf(c.state);
       b.setAttribute('aria-label', `Open ${label}`);
       b.title = label;
       const img = document.createElement('img');
@@ -1015,11 +1071,9 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       x.setAttribute('aria-label', `Forget ${label}`);
       x.addEventListener('click', (e) => {
         e.stopPropagation();
-        captures.splice(i, 1);
-        saveCaptures();
-        renderCaptures();
+        forget(c.id);
       });
-      const reopen = () => restore(c.state);
+      const reopen = () => openTool({ ...pictureOf(c), from: { kind: 'yours', id: c.id, title: c.title } });
       b.addEventListener('click', reopen);
       b.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') reopen();
@@ -1031,12 +1085,13 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     el('capture-count').textContent = captures.length ? String(captures.length) : '';
   }
 
-  function restore(s) {
-    if (!SCENES[s.tool]) return;
-    openTool({
-      tool: s.tool, seed: s.seed, inks: s.inks.slice(), dials: { ...s.params },
+  /** One of yours, as a picture for the bench: exactly as it was kept, instrument too. */
+  function pictureOf(piece) {
+    const s = piece.state;
+    return {
+      tool: s.tool, seed: s.seed, inks: s.inks.slice(), dials: { ...s.params }, kit: piece.kit,
       finish: s.finish, grain: s.grain, mat: s.mat, ground: s.ground || 'none', ratio: s.ratio, full: true,
-    });
+    };
   }
 
   // --- taking it away ----------------------------------------------------------------------------
@@ -1202,21 +1257,60 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
 
   /** The live picture onto the bench, dials, inks and texture as they were. */
   function takeFromLive() {
-    openTool(fromLive());
+    openTool({ ...fromLive(), from: { kind: 'live', title: liveTitle() || 'what was playing' } });
   }
 
-  function putLive() {
+  /** Hang it: kept with yours, and put up on the live feed. */
+  function hang() {
+    const piece = keep({ quiet: true });
+    if (piece) putLive(piece);
+  }
+
+  /** A picture as the live feed takes it: its scene and dials, its colours, its texture. */
+  function livePicture(st, piece = null) {
+    const named = Object.keys(PALETTES).find((n) => inksOfPalette(n).map(hex).join() === st.inks.join());
+    return {
+      piece: piece ? piece.id : null,
+      title: piece ? piece.title : '',
+      kit: piece && piece.kit ? piece.kit : state.kit,
+      scene: st.tool,
+      params: { ...st.params },
+      palette: named || paletteFromInks(st.inks),
+      finish: st.finish,
+      mat: st.mat,
+      grain: st.grain > 0,
+      ground: st.ground || 'none',
+    };
+  }
+
+  function putLive(piece = null) {
     if (!state.tool) return;
-    const named = Object.keys(PALETTES).find((n) => inksOfPalette(n).map(hex).join() === state.inks.join());
-    playLive({
-      scene: state.tool,
-      params: { ...state.params },
-      palette: named || paletteFromInks(state.inks),
-      finish: state.finish,
-      mat: state.mat,
-      grain: state.grain > 0,
-      ground: state.ground,
-    });
+    playLive(livePicture(snapshot(), piece));
+  }
+
+  /** One of yours, played the way a work is: up on the wall, heard on its instrument. */
+  function playPiece(id) {
+    const c = captures.find((x) => x.id === id);
+    if (c && SCENES[c.state.tool]) playLive(livePicture(c.state, c));
+  }
+
+  /** A work, as a picture for the bench: exactly as it hangs, with a variation number of its own. */
+  function workPicture(name) {
+    const w = WORKS[name];
+    const scene = SCENES[w.scene];
+    return {
+      tool: w.scene,
+      seed: 1 + (hashOf(name) % 99999),
+      inks: inksOfPalette(w.palette).map(hex).filter((c) => !isViolet(c)),
+      dials: Object.fromEntries(Object.entries(scene.params || {}).map(([k, d]) => [k, d.default])),
+      kit: w.kit,
+      finish: FINISHES[w.finish] ? w.finish : 'none',
+      grain: w.grain ? 0.18 : 0,
+      mat: MATS[w.mat] ? w.mat : 'none',
+      ground: GROUNDS[w.ground] ? w.ground : 'none',
+      full: true,
+      from: { kind: 'work', name, title: w.title },
+    };
   }
 
   // --- small things ----------------------------------------------------------------------------------
@@ -1271,7 +1365,10 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     el('to-index').addEventListener('click', () => {
       location.hash = PREFIX;
     });
-    el('live').addEventListener('click', putLive);
+    el('live').addEventListener('click', hang);
+    el('from').addEventListener('click', () => {
+      if (from) onBack(from);
+    });
     el('from-live').addEventListener('click', takeFromLive);
     stage.addEventListener('click', newVariation);
     stage.title = 'Click for a new variation';
@@ -1370,20 +1467,114 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
    * Open the bench. From an address, whatever it asks for; otherwise where it
    * was left, and the very first time on the picture that was playing.
    */
+  /** What is on the wall, as a key: the bench is resumed only if it has not changed. */
+  const liveKey = () => [canvas.sceneName, canvas.paletteName, canvas.finish, canvas.ground, canvas.mat].join('|');
+
+  /**
+   * Open the bench, always on a picture: one handed over by Remix; the one it
+   * was left on, if the wall has not changed since; otherwise what is playing.
+   * The address wins over all of them, so a link opens what it names.
+   */
   function show() {
     open = true;
     studio.hidden = false;
     document.body.classList.add('creating');
     document.documentElement.dataset.ground = 'dark';
     const r = parse(location.hash);
-    if (r && r.index) showIndex();
+    let picture = canvas.canvas;
+    let origin = null;
+    if (pending) {
+      const pic = pending;
+      pending = null;
+      picture = pic.picture || picture;
+      origin = pic.origin;
+      openTool({ ...pic, full: true });
+    } else if (r && r.index) showIndex();
     else if (r) openTool(r);
-    else if (state.tool) openTool({ tool: state.tool, seed: state.seed, inks: state.inks, dials: state.params, finish: state.finish, grain: state.grain, mat: state.mat, ground: state.ground, ratio: state.ratio, full: true });
-    else openTool(fromLive());
+    else if (state.tool && leftWith === liveKey()) {
+      openTool({ tool: state.tool, seed: state.seed, inks: state.inks, dials: state.params, finish: state.finish, grain: state.grain, mat: state.mat, ground: state.ground, ratio: state.ratio, full: true });
+    } else {
+      openTool({ ...fromLive(), from: { kind: 'live', title: liveTitle() || 'what was playing' } });
+    }
+    if (bench.hidden) return;
+    // The picture it came out of, in the frame at once, so the move from one
+    // to the other is a picture moving rather than a blank being filled.
+    placeholder(picture);
+    openOut(origin);
+  }
+
+  /**
+   * Put a picture on the bench: a work ({kind: 'work', name}), one of yours
+   * ({kind: 'yours', id}), or what is playing (anything else). `picture` is the
+   * canvas it is seen in now, so the bench opens out of it; `origin` its box.
+   */
+  function remix(what = {}) {
+    let pic = null;
+    if (what.kind === 'work' && WORKS[what.name] && SCENES[WORKS[what.name].scene]) pic = workPicture(what.name);
+    else if (what.kind === 'yours') {
+      const c = captures.find((x) => x.id === what.id);
+      if (c) pic = { ...pictureOf(c), from: { kind: 'yours', id: c.id, title: c.title } };
+    }
+    if (!pic) pic = { ...fromLive(), from: { kind: 'live', title: liveTitle() || 'what was playing' } };
+    pic.picture = what.picture || null;
+    pic.origin = what.origin || null;
+    if (open) openTool(pic);
+    else pending = pic;
+  }
+
+  // --- opening out of a picture, and back into it -----------------------------------------------
+  //
+  // The bench does not cut in: its frame grows out of the picture it was
+  // opened from -- the card in the Gallery, or the wall -- and shrinks back
+  // into the wall on the way out. Measured, not guessed, and skipped for
+  // anybody who has asked for less motion.
+  const still = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const EASE = 'cubic-bezier(.2, .8, .2, 1)';
+
+  function grow(el, from, to, ms) {
+    if (!from || !to || !to.width || !to.height || !el.animate) return;
+    const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+    const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+    const k = Math.min(from.width / to.width, from.height / to.height);
+    el.animate(
+      [{ transform: `translate(${dx}px, ${dy}px) scale(${k})`, opacity: 0.35 }, { transform: 'none', opacity: 1 }],
+      { duration: ms, easing: EASE }
+    );
+  }
+
+  function openOut(origin) {
+    if (still()) return;
+    const whole = { left: 0, top: 0, width: innerWidth, height: innerHeight };
+    grow(frameEl, origin || whole, frameEl.getBoundingClientRect(), 520);
+    for (const side of [el('make'), el('output')]) {
+      if (side.animate) side.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, delay: 120, easing: 'ease-out', fill: 'backwards' });
+    }
+  }
+
+  function closeInto() {
+    if (still() || bench.hidden) return;
+    const box = frameEl.getBoundingClientRect();
+    const wall = canvas.canvas;
+    requestAnimationFrame(() => grow(wall, box, wall.getBoundingClientRect(), 460));
+  }
+
+  /** Something to look at in the frame until the first frames develop: the picture it came out of. */
+  function placeholder(src) {
+    if (!src || !src.width || !src.height) return;
+    try {
+      const k = Math.max(stage.width / src.width, stage.height / src.height);
+      sctx.save();
+      sctx.setTransform(1, 0, 0, 1, 0, 0);
+      sctx.drawImage(src, (stage.width - src.width * k) / 2, (stage.height - src.height * k) / 2, src.width * k, src.height * k);
+      sctx.restore();
+    } catch (e) {
+      /* a canvas with nothing in it yet */
+    }
   }
 
   function hide() {
     if (!open) return;
+    closeInto();
     open = false;
     stopStage();
     stopLiveCard();
@@ -1391,6 +1582,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     refreshTransport();
     studio.hidden = true;
     document.body.classList.remove('creating');
+    leftWith = liveKey();
     if (location.hash.startsWith(PREFIX)) replaceAddress('');
   }
 
@@ -1412,9 +1604,21 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     get captures() {
       return captures;
     },
+    get from() {
+      return from;
+    },
+    get pieces() {
+      return captures;
+    },
+    pictureOf,
+    workPicture,
+    playPiece,
     rebuild,
     newVariation,
     keep,
+    hang,
+    forget,
+    remix,
     fromLive,
     setSource,
   };

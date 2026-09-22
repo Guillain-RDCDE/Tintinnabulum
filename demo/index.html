@@ -170,13 +170,13 @@
   #spaces .card .cap { padding: .4rem .55rem .45rem; }
 
   /* ---------- the gallery: a row per room, scrolled sideways ---------- */
-  #works .sub-label { font-size: 1.05rem; text-transform: none; letter-spacing: -.015em; color: var(--fg); margin: 1.5rem 0 .1rem; }
+  #works .sub-label, #yours .sub-label { font-size: 1.05rem; text-transform: none; letter-spacing: -.015em; color: var(--fg); margin: 1.5rem 0 .1rem; }
   #works .sub-label:first-child { margin-top: .2rem; }
   .room-note { color: var(--muted); font-size: .8125rem; margin: 0 0 .6rem; }
-  #works .cards { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 22px;
+  #works .cards, #yours .cards { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding: 0 22px;
                   margin: 0 -22px; padding: 4px 22px 16px; scrollbar-width: none; }
-  #works .cards::-webkit-scrollbar { display: none; }
-  #works .cards[hidden], #works .rowwrap[hidden] { display: none; }
+  #works .cards::-webkit-scrollbar, #yours .cards::-webkit-scrollbar { display: none; }
+  #works .cards[hidden], #works .rowwrap[hidden], #yours .rowwrap[hidden] { display: none; }
   .rowwrap { position: relative; }
   /* The fade at each edge that says the row goes on, gone at the end it has reached. */
   .rowwrap::before, .rowwrap::after { content: ""; position: absolute; top: 0; bottom: 16px; width: 34px; z-index: 2;
@@ -196,11 +196,32 @@
   .rowwrap.at-start .row-nav.prev, .rowwrap.at-end .row-nav.next { opacity: 0; pointer-events: none; }
   /* Under a finger the row is simply swiped, and arrows would only be in the way. */
   @media (hover: none) { .row-nav { display: none; } }
-  #works .card { flex: 0 0 176px; scroll-snap-align: start; }
+  #works .card, #yours .card { flex: 0 0 176px; scroll-snap-align: start; }
   #works .card.featured { flex-basis: 300px; }
-  #works .card canvas { height: 116px; }
+  #works .card canvas, #yours .card canvas { height: 116px; }
   #works .card.featured canvas { height: 168px; }
-  #works .card b { font-size: .875rem; }
+  #works .card b, #yours .card b { font-size: .875rem; }
+  #yours .card { padding: 0; overflow: hidden; min-height: 0; }
+  #yours .card canvas { background: #111; }
+  #yours { margin: 1.1rem 0 .2rem; }
+  #yours .sub-label { margin-top: 0; }
+  #yours-empty { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .8rem; margin: 0 0 .4rem; }
+  #yours-empty[hidden] { display: none; }
+  /* On every picture in the gallery: take it to Create. And on yours: let it go. */
+  .card .remix, .card .forget { position: absolute; z-index: 2; margin: 0; display: inline-flex; align-items: center; gap: .3rem;
+    color: #fff; background: rgba(12,13,15,.62); border: 1px solid rgba(255,255,255,.22); border-radius: 999px;
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); cursor: pointer; opacity: 0; transform: translateY(-3px);
+    transition: opacity .2s ease, transform .25s var(--bounce), background .2s ease, color .2s ease; }
+  .card .remix { top: 8px; right: 8px; padding: .26rem .62rem; font-size: .72rem; font-weight: 650; }
+  .card .remix svg { width: 12px; height: 12px; }
+  .card .forget { top: 8px; left: 8px; width: 22px; height: 22px; justify-content: center; font-size: .8rem; line-height: 1; }
+  .card:hover .remix, .card:focus-visible .remix, .card:hover .forget, .card:focus-visible .forget { opacity: 1; transform: none; }
+  .card .remix:hover { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+  .card .forget:hover { background: var(--warn); border-color: transparent; }
+  @media (hover: none) { .card .remix { opacity: 1; transform: none; } }
+  .cartel-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .7rem; }
+  .card.arrived { animation: arrived 1.2s ease-out; }
+  @keyframes arrived { 0%, 40% { box-shadow: 0 0 0 3px var(--accent); } 100% { box-shadow: 0 0 0 0 transparent; } }
   .works-bar { display: flex; flex-wrap: wrap; gap: .7rem 1rem; align-items: flex-end; }
   .works-bar .field { margin: 0; flex: 1; min-width: 11rem; }
   .seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--field); border: 1px solid var(--line); }
@@ -299,6 +320,12 @@
               cursor: pointer; font-weight: 650; font-size: .8125rem; white-space: nowrap; transition: transform .3s var(--bounce), background .2s ease; }
   #surprise:hover { background: var(--seg); }
   #surprise:active { transform: scale(.95); }
+  #remix { display: inline-flex; align-items: center; gap: .4rem; height: 38px; padding: 0 .95rem; border-radius: 999px; border: 1px solid var(--line-strong);
+           background: var(--field); cursor: pointer; font-weight: 650; font-size: .8125rem; white-space: nowrap; color: var(--fg);
+           transition: transform .3s var(--bounce), background .2s ease; }
+  #remix svg { width: 14px; height: 14px; }
+  #remix:hover { background: var(--seg); }
+  #remix:active { transform: scale(.95); }
   .sep { width: 1px; height: 26px; background: var(--line-strong); margin: 0 4px; }
 
   /* ---------- phones: a sheet from below, a dock across the bottom ---------- */
@@ -314,13 +341,13 @@
             border-radius: 9px; background: var(--line-strong); }
     .inspector-head { padding-top: 18px; }
     #inspector-body { padding: 0 16px calc(96px + env(safe-area-inset-bottom)); }
-    #works .cards { margin: 0 -16px; padding: 4px 16px 14px; }
-    #works .card { flex-basis: 150px; }
+    #works .cards, #yours .cards { margin: 0 -16px; padding: 4px 16px 14px; }
+    #works .card, #yours .card { flex-basis: 150px; }
     #works .card.featured { flex-basis: 240px; }
     #dock { left: 8px; right: 8px; transform: none; width: auto; bottom: calc(8px + env(safe-area-inset-bottom)); z-index: 40; }
     body.inspecting #dock { transform: none; }
     .now { flex: 1; max-width: none; }
-    .vol, .sep, #fullscreen, #surprise { display: none; }
+    .vol, .sep, #fullscreen, #surprise, #remix { display: none; }
     #start { padding: 0 1rem 0 .85rem; }
     #start .feed { display: none; }
   }
@@ -450,6 +477,14 @@
                background: #2a2c30; color: var(--fg); font-size: .75rem; line-height: 1; cursor: pointer; opacity: 0; transition: opacity .2s ease; }
   .st-ink:hover .x, .st-ink:focus-within .x { opacity: 1; }
   .st-add-ink { width: 40px; height: 40px; border-radius: 50%; border: 1.5px dashed var(--line-strong); background: transparent; cursor: pointer; color: var(--muted); font-size: 1.2rem; }
+  .st-from { display: inline-flex; align-items: center; gap: .45rem; max-width: 100%; border: 0; background: none; padding: .2rem 0 .6rem;
+             color: var(--muted); font: inherit; font-size: .82rem; font-weight: 600; cursor: pointer; text-align: left; }
+  .st-from[hidden] { display: none; }
+  .st-from span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .st-from:hover { color: var(--fg); }
+  #st-piece-title { width: 100%; border: 1px solid var(--line); background: var(--field); color: var(--fg); border-radius: var(--r-sm);
+                    padding: .5rem .65rem; font: inherit; font-size: .9rem; font-weight: 600; margin-bottom: 12px; }
+  #st-piece-title::placeholder { color: var(--faint); font-weight: 500; }
   #studio select { width: 100%; border: 1px solid var(--line); background: #17191c; color: var(--fg); border-radius: var(--r-sm); padding: .5rem .6rem; font: inherit; }
   .st-field { display: grid; gap: .3rem; font-size: .8rem; color: var(--muted); }
   .st-saved { display: flex; flex-wrap: wrap; gap: .4rem; }
@@ -533,7 +568,7 @@
   <div id="st-index" class="st-scroll">
     <div class="st-hero">
       <h2>Create</h2>
-      <p class="lede">Every picture is a small tool. Pick one, press <kbd>Space</kbd> until you love what you see, then keep it, hear it, take it with you, or play it live.</p>
+      <p class="lede">Every picture is a small tool. Pick one, press <kbd>Space</kbd> until you love what you see, then keep it, hear it, take it with you, or hang it on the wall.</p>
       <div class="st-finder">
         <label class="sr" for="st-find">Find a tool</label>
         <input id="st-find" type="search" placeholder="Type to find a tool" autocomplete="off" spellcheck="false">
@@ -549,10 +584,13 @@
 
   <div id="st-bench" hidden>
     <aside id="st-make" class="st-panel" aria-label="Make">
+      <button class="st-from" id="st-from" type="button" hidden></button>
       <div class="st-row st-nav">
-        <button class="st-pill" id="st-to-index" type="button">&larr; All tools</button>
-        <button class="st-pill strong" id="st-live" type="button">Play it live</button>
+        <button class="st-pill" id="st-to-index" type="button" title="Every tool, to start from a blank">Start from scratch</button>
+        <button class="st-pill strong" id="st-live" type="button" title="Keep it with yours and put it up on the wall, playing">Hang it</button>
       </div>
+      <label class="sr" for="st-piece-title">Its title on the wall</label>
+      <input id="st-piece-title" type="text" maxlength="80" autocomplete="off" spellcheck="false">
       <section class="st-group">
         <button id="st-new" type="button">
           <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>
@@ -654,9 +692,9 @@
           </div>
         </section>
         <section class="st-group">
-          <h3>Kept <span class="aside" id="st-capture-count"></span></h3>
+          <h3>Yours <span class="aside" id="st-capture-count"></span></h3>
           <div id="st-captures" class="st-captures"></div>
-          <p id="st-captures-empty">Press <kbd>K</kbd> to keep the one on screen. Kept pictures stay here, on this device.</p>
+          <p id="st-captures-empty">Press <kbd>K</kbd> to keep the one on screen. What you keep hangs in the Gallery too, under Yours, on this device.</p>
         </section>
         <section class="st-group">
           <h3>Export</h3>
@@ -721,6 +759,12 @@
         </div>
       </div>
       <div id="work-cartel"></div>
+      <section id="yours" aria-label="Yours">
+        <p class="sub-label">Yours</p>
+        <p class="room-note" id="yours-note">What you keep in Create hangs here, on this device. Play one as you would a work, or take it back to the bench.</p>
+        <p class="note" id="yours-empty">Nothing of yours yet: remix any work, or start from a blank. <button type="button" class="act" id="yours-create">Open Create</button></p>
+        <div class="cards" id="yours-cards"></div>
+      </section>
       <div class="cards" id="works"></div>
 
       <p class="sub-label">Exhibition mode</p>
@@ -996,6 +1040,7 @@
     <svg viewBox="0 0 20 20" fill="currentColor"><path d="M3 7.5h3l4-3.5v12l-4-3.5H3z"/><path d="M13 7a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
     <input type="range" id="volume" min="0" max="100" value="70" aria-label="Volume">
   </label>
+  <button type="button" id="remix" title="Take what is playing to Create (R)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 11.5l7-7 2 2-7 7h-2z"/><path d="M8.5 5.5l2 2"/></svg>Remix</button>
   <button type="button" id="surprise" title="A new combination, chosen for you (S)">Surprise me</button>
   <button type="button" class="icon" id="fullscreen" aria-label="Full screen" title="Full screen (F)">
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>

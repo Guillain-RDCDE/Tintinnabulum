@@ -11,6 +11,10 @@
 // comes alive under the pointer -- the scene itself runs in it -- and choosing
 // it puts the work up full screen and starts it playing. Exhibition mode walks
 // through whatever is showing, dipping through the ground between works.
+//
+// The Gallery and Create are one place. Every card has a Remix that opens the
+// work on the bench, exactly as it hangs; what you keep there comes back here,
+// in a room of its own above the others, played and remixed like any work.
 
 import {
   WORKS,
@@ -26,6 +30,7 @@ import {
   LIVING,
   previewScene,
   animateScene,
+  paletteFromInks,
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { store } from './store.js';
@@ -53,8 +58,16 @@ const TOUR_NOTES = {
  * @param {Function} io.getKit       the current kit's name
  * @param {Function} io.getSpace     the current room's name
  * @param {Function} [io.onPlay]     a work was chosen by hand: put it up and play
+ * @param {Function} [io.onRemix]    ({kind, name|id, picture, origin}) => open it in Create
+ * @param {Function} [io.pieces]     the pictures you kept in Create, newest first
+ * @param {Function} [io.pieceOn]    the one of yours on the wall now, if any: {id, title}
+ * @param {Function} [io.onPlayPiece]   (id) => put one of yours up and play it
+ * @param {Function} [io.onForgetPiece] (id) => let one of yours go
  */
-export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, getKit, getSpace, onPlay = () => {}, onChange = () => {} }) {
+export function setupWorks({
+  canvas, look, selectKit, selectSpace, ensureAudio, getKit, getSpace, onPlay = () => {}, onChange = () => {},
+  onRemix = () => {}, pieces = () => [], pieceOn = () => null, onPlayPiece = () => {}, onForgetPiece = () => {},
+}) {
   const pool = {};
 
   const heightOf = (card) => (card.classList.contains('featured') ? 168 : 116);
@@ -82,13 +95,48 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     previewScene(ctx, w.scene, optionsFor(w, cw, h));
   }
 
+  const REMIX_ICON = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 11.5l7-7 2 2-7 7h-2z"/><path d="M8.5 5.5l2 2"/></svg>';
+
+  /**
+   * A small action on a card: a span, since a card is already a button. The
+   * pointer uses it directly; the keyboard has the same thing on the card's
+   * own key (R) and in the cartel.
+   */
+  function cardAction(card, className, html, label, act) {
+    const a = document.createElement('span');
+    a.className = className;
+    a.innerHTML = html;
+    a.title = label;
+    a.setAttribute('aria-hidden', 'true');
+    a.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      act();
+    });
+    card.append(a);
+    return a;
+  }
+
+  /** Where a card's picture is, so the bench can open out of it. */
+  const pictureOf = (card) => {
+    const cv = card.querySelector('canvas');
+    return { picture: cv, origin: cv.getBoundingClientRect() };
+  };
+
+  function remixWork(name, card = picker.buttons.get(name)) {
+    stopLive();
+    onRemix({ kind: 'work', name, ...(card && card.offsetParent ? pictureOf(card) : {}) });
+  }
+
   const picker = createPicker($('#works'), Object.entries(WORKS), {
     key: 'work',
     className: 'card',
     gridClassName: 'cards',
     title: (w) => w.cartel,
-    render: (btn, w) => {
+    render: (btn, w, name) => {
       btn.append(document.createElement('canvas'), caption(w.title, `${SCENES[w.scene].label} · ${KITS[w.kit].label}`));
+      btn.setAttribute('aria-keyshortcuts', 'R');
+      cardAction(btn, 'remix', `${REMIX_ICON}Remix`, `Remix ${w.title} in Create`, () => remixWork(name, btn));
     },
     onPick: (name) => choose(name),
   });
@@ -101,16 +149,20 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     cancelAnimationFrame(live.raf);
     const { card, name } = live;
     live = null;
-    paint(card.querySelector('canvas'), name);
+    if (card.dataset.piece) paintPiece(card);
+    else paint(card.querySelector('canvas'), name);
   }
 
   function startLive(card) {
-    const name = card.dataset.work;
+    const piece = card.dataset.piece ? pieces().find((p) => p.id === card.dataset.piece) : null;
+    const name = piece ? piece.id : card.dataset.work;
     if (live && live.card === card) return;
     stopLive();
     const cv = card.querySelector('canvas');
     const { ctx, w: cw, h } = fitCanvas(cv, { height: heightOf(card) });
-    const player = animateScene(ctx, WORKS[name].scene, optionsFor(WORKS[name], cw, h));
+    const player = piece
+      ? animateScene(ctx, piece.state.tool, pieceOptions(piece, cw, h))
+      : animateScene(ctx, WORKS[name].scene, optionsFor(WORKS[name], cw, h));
     const state = { card, name, raf: 0, last: performance.now(), frames: 0 };
     const tick = (now) => {
       if (live !== state) return;
@@ -123,11 +175,128 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     state.raf = requestAnimationFrame(tick);
   }
 
-  for (const [, btn] of picker.buttons) {
+  function comesAlive(btn) {
     btn.addEventListener('pointerenter', () => startLive(btn));
     btn.addEventListener('pointerleave', () => { if (live && live.card === btn) stopLive(); });
     btn.addEventListener('focus', () => startLive(btn));
     btn.addEventListener('blur', () => { if (live && live.card === btn) stopLive(); });
+  }
+  for (const [name, btn] of picker.buttons) {
+    comesAlive(btn);
+    btn.addEventListener('keydown', (e) => {
+      if ((e.key === 'r' || e.key === 'R') && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        remixWork(name, btn);
+      }
+    });
+  }
+
+  // --- yours: what was kept in Create, hung like the works --------------------------------
+  //
+  // A kept picture carries its own thumbnail, the bench's frame at the moment
+  // it was kept, so its card is that picture exactly and costs nothing to show.
+  // Under the pointer it comes alive like a work's, from its own dials and inks.
+  const yoursHost = $('#yours-cards');
+  let yoursWrap = null;
+
+  function pieceOptions(piece, cw, h) {
+    const st = piece.state;
+    return {
+      w: cw, h,
+      palette: paletteFromInks(st.inks),
+      shape: canvas.shape,
+      richness: canvas.richness,
+      depth: canvas.depth,
+      params: { ...st.params },
+      finish: st.finish,
+      mat: st.mat,
+      ground: st.ground || 'none',
+      seed: st.seed,
+      pool,
+    };
+  }
+
+  function paintPiece(card) {
+    const piece = pieces().find((p) => p.id === card.dataset.piece);
+    const cv = card.querySelector('canvas');
+    if (!piece || !cv) return;
+    const { ctx, w: cw, h } = fitCanvas(cv, { height: heightOf(card) });
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, 0, cw, h);
+    const img = new Image();
+    img.onload = () => {
+      if (live && live.card === card) return;
+      const k = Math.max(cw / img.width, h / img.height);
+      ctx.drawImage(img, (cw - img.width * k) / 2, (h - img.height * k) / 2, img.width * k, img.height * k);
+      card.dataset.painted = '1';
+    };
+    img.src = piece.thumb;
+  }
+
+  function remixPiece(id, card) {
+    stopLive();
+    onRemix({ kind: 'yours', id, ...(card && card.offsetParent ? pictureOf(card) : {}) });
+  }
+
+  function renderYours() {
+    if (live && live.card.dataset.piece) {
+      cancelAnimationFrame(live.raf);
+      live = null;
+    }
+    const list = pieces();
+    const on = pieceOn();
+    yoursHost.textContent = '';
+    for (const piece of list) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'card';
+      btn.dataset.piece = piece.id;
+      btn.title = `${piece.title}: play it`;
+      btn.setAttribute('aria-pressed', String(Boolean(on && on.id === piece.id)));
+      btn.setAttribute('aria-keyshortcuts', 'R Delete');
+      const kit = KITS[piece.kit] ? KITS[piece.kit].label : '';
+      btn.append(document.createElement('canvas'), caption(piece.title, [(SCENES[piece.state.tool] || {}).label, kit].filter(Boolean).join(' · ')));
+      cardAction(btn, 'remix', `${REMIX_ICON}Remix`, `Remix ${piece.title} in Create`, () => remixPiece(piece.id, btn));
+      cardAction(btn, 'forget', '×', `Let ${piece.title} go`, () => onForgetPiece(piece.id));
+      btn.addEventListener('click', () => playPiece(piece.id));
+      btn.addEventListener('keydown', (e) => {
+        if (e.metaKey || e.ctrlKey || e.altKey) return;
+        if (e.key === 'r' || e.key === 'R') {
+          e.preventDefault();
+          remixPiece(piece.id, btn);
+        } else if (e.key === 'Delete') {
+          e.preventDefault();
+          onForgetPiece(piece.id);
+        }
+      });
+      comesAlive(btn);
+      yoursHost.append(btn);
+    }
+    if (!yoursWrap) yoursWrap = makeRow(yoursHost, 'Yours');
+    yoursWrap.hidden = !list.length;
+    $('#yours-note').hidden = !list.length;
+    $('#yours-empty').hidden = list.length > 0;
+    for (const card of yoursHost.children) paintPiece(card);
+    requestAnimationFrame(() => updateRow(yoursWrap));
+  }
+
+  function playPiece(id) {
+    stopLive();
+    const go = () => onPlayPiece(id);
+    if (document.startViewTransition) document.startViewTransition(go);
+    else go();
+  }
+
+  /** Bring a card into view in the gallery and light it for a moment: where you came back to. */
+  function reveal({ work = null, piece = null } = {}) {
+    const card = work ? picker.buttons.get(work) : piece ? yoursHost.querySelector(`[data-piece="${CSS.escape(piece)}"]`) : null;
+    if (!card || card.hidden) return false;
+    card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    card.classList.remove('arrived');
+    void card.offsetWidth;
+    card.classList.add('arrived');
+    card.focus({ preventScroll: true });
+    return true;
   }
 
   // --- the rooms, and what is showing in them ----------------------------------
@@ -332,40 +501,73 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
 
   // --- the label for the work on show ----------------------------------------------
   let shown;
+
+  function remixButton(text, act) {
+    const row = document.createElement('div');
+    row.className = 'cartel-actions';
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'act';
+    b.id = 'work-remix';
+    b.innerHTML = REMIX_ICON;
+    b.querySelector('svg').style.cssText = 'width:14px;height:14px;margin-right:.4rem';
+    b.append(text);
+    b.addEventListener('click', act);
+    row.append(b);
+    return row;
+  }
+
   function refresh() {
     const name = current();
+    const on = name ? null : pieceOn();
     // The header is set here as well as by the page's once-a-second summary,
     // so it is right the moment a work is chosen rather than up to a second on.
-    $('#sum-works').textContent = name ? WORKS[name].title : 'Your own';
-    if (name === shown) return name;
-    shown = name;
+    $('#sum-works').textContent = name ? WORKS[name].title : on ? on.title : 'Your own';
+    const key = name || (on ? `piece:${on.id}:${on.title}` : null);
+    if (key === shown) return name;
+    shown = key;
     picker.mark(name);
+    for (const card of yoursHost.children) card.setAttribute('aria-pressed', String(Boolean(on && on.id === card.dataset.piece)));
     const box = $('#work-cartel');
     box.textContent = '';
-    if (!name) {
+    if (!name && !on) {
       const p = document.createElement('p');
       p.className = 'note';
-      p.textContent = 'Point at a work to see it move. Choose one to put it up and hear it.';
-      box.append(p);
+      p.textContent = 'Point at a work to see it move. Choose one to put it up and hear it, or remix it in Create.';
+      box.append(p, remixButton('Remix what is playing', () => onRemix({ kind: 'live' })));
       return name;
     }
-    const w = WORKS[name];
     const title = document.createElement('b');
-    title.textContent = w.title;
     const line = document.createElement('span');
     line.className = 'medium';
-    line.textContent = `${w.room} · ${w.energy} · ${medium(w)}`;
     const text = document.createElement('p');
-    text.textContent = w.cartel;
+    let act;
+    if (on) {
+      const piece = pieces().find((p) => p.id === on.id);
+      const st = piece.state;
+      title.textContent = on.title;
+      line.textContent = ['Yours', (SCENES[st.tool] || {}).label, st.finish !== 'none' && FINISHES[st.finish] ? FINISHES[st.finish].label : '',
+        st.ground && st.ground !== 'none' && GROUNDS[st.ground] ? `on ${GROUNDS[st.ground].label.toLowerCase()}` : '',
+        KITS[piece.kit] ? KITS[piece.kit].label : ''].filter(Boolean).join(' · ');
+      text.textContent = `Made in Create, variation No. ${st.seed}. Kept on this device.`;
+      act = remixButton('Remix', () => remixPiece(on.id, yoursHost.querySelector(`[data-piece="${CSS.escape(on.id)}"]`)));
+    } else {
+      const w = WORKS[name];
+      title.textContent = w.title;
+      line.textContent = `${w.room} · ${w.energy} · ${medium(w)}`;
+      text.textContent = w.cartel;
+      act = remixButton('Remix this work', () => remixWork(name));
+    }
     const label = document.createElement('div');
     label.className = 'cartel';
-    label.append(title, line, text);
+    label.append(title, line, text, act);
     box.append(label);
     return name;
   }
 
   selectEnergy(store.get('works-energy') || 'all', false);
   selectTour(store.get('works-tour') || 0, false);
+  renderYours();
 
   return {
     apply,
@@ -394,7 +596,12 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     },
     get title() {
       const name = current();
-      return name ? WORKS[name].title : '';
+      if (name) return WORKS[name].title;
+      const on = pieceOn();
+      return on ? on.title : '';
     },
+    renderYours,
+    reveal,
+    remixWork,
   };
 }

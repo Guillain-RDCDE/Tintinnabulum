@@ -1231,6 +1231,16 @@ by it disappears rather than staying as a heading. **Exhibition mode** walks
 through whatever is showing, one work every five minutes to every hour,
 dipping through the ground between them rather than cutting.
 
+Every card has a **Remix**, and so has the label of the work on show and the
+dock (or the key **R**): it opens the work in Create exactly as it hangs --
+its scene and dials, its palette as inks, its finish, paper, frame and
+instrument -- on a variation number of its own, the same each time. Above the
+rooms of works hangs a room called **Yours**: what was kept or hung in
+Create, on this device, each card the picture as it was kept and alive under
+the pointer like any other. A click plays one, the way a work is played, and
+the dock and the label then give the title it was hung with; its Remix takes it
+back to the bench, and **×** lets it go, here and on the bench alike.
+
 Choosing a work is a click; everything it sets goes through the ordinary
 controls, so it can still be changed and survives a reload. Which work is on
 show is read back from the page rather than stored, so changing any one thing
@@ -1249,11 +1259,17 @@ frame that exist, so a rename fails loudly instead of quietly falling back.
 The other four tabs set up how the world is heard and seen. **Create** is for
 making something: every visualisation, a hundred and fourteen of them, as a small
 tool on a bench, one picture at a time. It is a tab rather than a page of its
-own because the two meet: the bench opens on the picture that was playing, and
-**Play it live** puts what was made back on the feed -- the scene with its
-dials, the colours, the texture -- and starts listening. While the bench has
-the screen the live picture rests rather than drawing unseen, and everything
-comes back as it was when the bench is left.
+own because the Gallery and the bench are one place, and the way between them
+is always a picture. The bench opens on what was playing, or on the work or
+piece whose **Remix** was pressed, its frame growing out of the card or the
+wall it came from; it says where that was, and one click on that line goes
+back there -- to the card in the Gallery, lit for a moment, or to the wall.
+**Hang it** keeps what was made, under the title typed above it (or the one
+offered: *The mould at night, remixed*), puts it on the feed -- the scene with
+its dials, the colours, the texture, the instrument -- and starts listening; it
+then hangs in the Gallery with yours. While the bench has the screen the live
+picture rests rather than drawing unseen, and everything comes back as it was
+when the bench is left.
 
 **Events from** says what moves the picture. **The live feed**, the default, is
 whatever the sandbox listens to, Wikipedia unless something else was chosen:
@@ -1266,7 +1282,7 @@ drawn from the number, at the tempo set, with the feed paused so two pieces
 of music never play at once. The first version had only the second, and a
 picture that was meant to be listening to Wikipedia ticked like a metronome.
 
-**All tools** shows every tool as a live card, numbered, on its shelf. Typing
+**Start from scratch** shows every tool as a live card, numbered, on its shelf. Typing
 filters, Enter opens the first, **Surprise me** opens one at random from what
 is showing, and **From what was playing** takes the live picture onto the
 bench again.
@@ -1286,11 +1302,11 @@ Around the picture, the way a print workshop is laid out:
 | | |
 |---|---|
 | **The dials** | The tool's own, varied with each number. A dial moves from where the scene ships towards one end or the other and never more than three quarters of the way, so a variation never switches one off. **Shuffle the dials** goes further; **As it ships** puts them back. |
-| **Colour** | A ground and up to five inks, each editable. **New colours** draws a set from a number in three moods -- a pale paper, a dark night, a strong ground -- with the violet band of the wheel removed and every ink kept well clear of the ground in lightness. **Rotate** makes the next ink the ground. Any palette can be taken as a starting point, except those with a violet in them, and a set can be saved. |
+| **Colour** | A ground and up to five inks, each editable, under the name of the palette they are, if they are one. **New colours** draws a set from a number in three moods -- a pale paper, a dark night, a strong ground -- with the violet band of the wheel removed and every ink kept well clear of the ground in lightness. **Rotate** makes the next ink the ground. Any palette can be taken as a starting point, except those with a violet in them, and a set can be saved. |
 | **Texture** | The fourteen finishes, the nine papers, film grain and the mats. |
 | **Frame** | Eight shapes, from 9:16 to 16:9. |
 | **Motion and sound** | Where the events come from, how many a second on the picture's own rhythm, and **Hear it**: each event of the picture is one note from the chosen instrument, in a pentatonic scale, larger marks lower. It plays through the sandbox's own audio engine, so there is one volume and one permission to play sound. |
-| **Kept** | **K** keeps the picture on screen, with a thumbnail, on this device; a click brings it back exactly. |
+| **Yours** | **K** keeps the picture on screen, with a thumbnail and its title, on this device; a click brings it back exactly. The same pieces hang in the Gallery. |
 | **Export** | The picture as a PNG at 1080, 2048 or 3200 pixels, developed again at that size from its number; or a video of it moving, with its sound if it is being heard. |
 
 While the bench is open the whole state is in the address -- `#create/`, then
@@ -1505,7 +1521,7 @@ demo/
   broadcast.js          forwarding events to that window
   connect.js            the "Your data" panel: the standard, without a server
   look.js               scenes, finishes, palettes, shapes, colour variety, the ceiling
-  works.js              the Gallery: rooms by light, filter, exhibition mode, the label
+  works.js              the Gallery: rooms by light, Yours, Remix, filter, exhibition mode, the label
   dom.js                picker, canvas sizing and caption helpers
   store.js              guarded local storage
   feed-catalog.js       what the sandbox can listen to, as data

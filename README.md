@@ -23,7 +23,9 @@ Nothing to install; it runs in a browser, and on a phone.
 
 Or open **Create**, the fifth tab: every picture is a small tool. Press
 **Space** for another, change the colours, hear it, keep the ones you like,
-take them away as a picture or a video with its sound, or play them live.
+take them away as a picture or a video with its sound, or hang them on the
+wall. Any work in the Gallery has a **Remix** that opens it there, and what you
+hang comes back to the Gallery, in a room of your own.
 
 <p align="center">
   <img src=".github/create-whorl.png" width="100%" alt="The Create tab: Whorl, variation 777, striped bands twisted into a whirlpool, with its dials, inks, frame and export around it">

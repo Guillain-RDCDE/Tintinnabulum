@@ -421,6 +421,19 @@ let connectSummary = 'Paste JSON, hear it';
 // them; read through a null check for the same reason as the two above.
 let worksPanel = null;
 let shell = null;
+// Create, once it is set up below. The Gallery reads your pieces through it.
+let studio = null;
+// One of yours, hung on the wall from the bench or the Gallery: which, and the
+// look it was hung with, so that touching any control takes its name off the
+// way it does a work's.
+let hung = null;
+const hungKey = () => [canvas.sceneName, canvas.palette.background, canvas.palette.user, canvas.palette.anon,
+  canvas.finish, canvas.ground, canvas.mat, currentKit].join('|');
+function pieceOn() {
+  if (!hung || !studio || hung.key !== hungKey()) return null;
+  const piece = studio.pieces.find((p) => p.id === hung.id);
+  return piece ? { id: piece.id, title: piece.title } : null;
+}
 
 const look = setupLook({
   canvas,
@@ -569,7 +582,21 @@ worksPanel = setupWorks({
     if (shell) shell.close();
     if (startBtn.dataset.on !== 'true') startBtn.click();
   },
+  onRemix: (what) => remix(what),
+  pieces: () => (studio ? studio.pieces : []),
+  pieceOn,
+  onPlayPiece: (id) => studio && studio.playPiece(id),
+  onForgetPiece: (id) => studio && studio.forget(id),
 });
+
+$('#yours-create').addEventListener('click', () => remix());
+
+/** Take a picture to Create: a work, one of yours, or (by default) what is playing. */
+function remix(what = { kind: 'live' }) {
+  if (!studio || !shell) return;
+  studio.remix(what);
+  shell.show('create');
+}
 requestAnimationFrame(() => worksPanel.repaint());
 
 // =========================================================================
@@ -619,18 +646,36 @@ function studioShown(on) {
   forStudio.started = false;
 }
 
-const studio = setupStudio({
+studio = setupStudio({
   son,
   canvas,
   onLeave: () => { if (shell) shell.close(); },
   feedLabel: () => FEEDS[feed].label,
   onSource: () => studioSource(),
+  // What you keep hangs in the Gallery as well, in the room called Yours.
+  onYours: () => {
+    worksPanel.renderYours();
+    worksPanel.refresh();
+  },
+  // Back to where the picture came from: its card in the Gallery, or the wall.
+  onBack: (from) => {
+    if (from.kind === 'work' || from.kind === 'yours') {
+      shell.show('gallery');
+      requestAnimationFrame(() => worksPanel.reveal(from.kind === 'work' ? { work: from.name } : { piece: from.id }));
+    } else {
+      shell.close();
+    }
+  },
+  liveTitle: () => worksPanel.title || SCENES[canvas.sceneName].label,
   // A picture made on the bench, put on the live feed: the scene with its
   // dials -- remembered as if they had been turned by hand -- the colours, the
   // texture, and listening started.
-  playLive: (pic) => {
+  playLive: async (pic) => {
+    hung = null;
     look.selectRotate(0);
     look.selectSceneRotate(0);
+    // A picture hung is a fixed composition, as a work is.
+    look.selectLiving('still');
     for (const [k, v] of Object.entries(pic.params)) {
       canvas.setParam(k, v, pic.scene);
       store.set(`p:${pic.scene}:${k}`, String(v));
@@ -656,8 +701,21 @@ const studio = setupStudio({
     if (shell) shell.close();
     if (startBtn.dataset.on !== 'true') startBtn.click();
     if (shell) shell.refresh(true);
+    // Its instrument -- chosen at once, loaded in its own time -- and its name
+    // on the wall straight away rather than once the samples have arrived.
+    const kit = pic.kit && KITS[pic.kit] ? selectKit(pic.kit, { audition: false }) : null;
+    if (pic.piece) hung = { id: pic.piece, key: hungKey() };
+    worksPanel.refresh();
+    if (shell) shell.refresh(true);
+    if (kit) {
+      await kit;
+      if (shell) shell.refresh();
+    }
   },
 });
+
+// The Gallery was set up before the bench, so its room of yours is filled now.
+worksPanel.renderYours();
 
 shell = setupShell({
   canvas,
@@ -670,6 +728,7 @@ shell = setupShell({
   repaint: () => paintWhatIsNowVisible(),
   studio,
   onStudio: studioShown,
+  onRemix: () => remix(),
 });
 // An address for the bench opens the bench.
 if (location.hash.startsWith('#create')) shell.show('create');
@@ -698,7 +757,10 @@ function updateSummaries() {
     .map((c) => (WIKIPEDIA_LANGUAGES.find((l) => l.code === c) || {}).native || c)
     .slice(0, 3)
     .join(', ');
-  if (worksPanel) $('#sum-works').textContent = worksPanel.refresh() ? worksPanel.title : 'Your own';
+  if (worksPanel) {
+    worksPanel.refresh();
+    $('#sum-works').textContent = worksPanel.title || 'Your own';
+  }
   $('#sum-listen').textContent =
     FEEDS[feed].label + (FEEDS[feed].langs ? ` · ${langNames}${langs.length > 3 ? '…' : ''}` : '');
   $('#sum-sound').textContent =
