@@ -399,6 +399,7 @@ const projector = createProjector({
     shape: canvas.shape,
     richness: canvas.richness,
     finish: canvas.finish,
+    ground: canvas.ground,
     mat: canvas.mat,
     grain: canvas.grain,
     pace: canvas.pace,
@@ -439,6 +440,7 @@ const { selectScene, selectPalette, selectShape, selectRichness, selectBudget, S
 look.selectRotate(Number(store.get('rotate') || 0), false);
 look.selectSceneRotate(Number(store.get('scene-rotate') || 0), false);
 look.selectFinish(store.get('finish') || 'none', false);
+look.selectGround(store.get('ground') || 'none', false);
 look.selectMat(store.get('mat') || 'none', false);
 look.selectGrain(store.flag('grain'), false);
 look.selectLiving(store.get('living') || 'still', false);
@@ -644,6 +646,7 @@ const studio = setupStudio({
       canvas.canvas.style.background = pic.palette.background;
     }
     look.selectFinish(pic.finish);
+    look.selectGround(pic.ground || 'none');
     look.selectMat(pic.mat);
     look.selectGrain(pic.grain);
     // Listening carries on, or starts: whatever the bench did to it is kept

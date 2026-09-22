@@ -828,6 +828,95 @@ ok('there is a card for every finish', dressing.cards === dressing.finishCount, 
 ok('a slow pace slows the picture', dressing.slow < dressing.real * 0.45, `slow ${dressing.slow.toFixed(0)} ms vs real ${dressing.real.toFixed(0)} ms`);
 ok('and back to real time afterwards', JSON.stringify(dressing.after) === JSON.stringify(['none', 'none', false, 1]), JSON.stringify(dressing.after));
 
+// --- grounds: what the picture is printed on ------------------------------------
+// Every paper changes the picture, prints it -- no pure black, no pure white --
+// leaves the drawing state as it found it and is the same sheet every time;
+// and making a sheet never holds the page.
+const grounds = await page.evaluate(async () => {
+  const m = await import('../src/index.js');
+  // Built in the background, a slice at a time. What could still hold the page
+  // is a single step of the build too long to interrupt, and the engine keeps
+  // the longest. The gap between frames is not the measure: the page is busy
+  // with its own cards at this point, and that is not the paper's doing.
+  // Judged on the steps as a whole: a single long one can be the garbage
+  // collector stopping the page for its own reasons in the middle of a step,
+  // which is not the paper's doing and is not in its power.
+  const t0 = performance.now();
+  for (const g of m.GROUND_ORDER) await m.prepareGround(g);
+  const buildMs = performance.now() - t0;
+  const all = Array.from(m.groundStats.times.slice(0, Math.min(m.groundStats.count, m.groundStats.times.length))).sort((a, b) => a - b);
+  const at = (q) => all[Math.min(all.length - 1, Math.floor(all.length * q))] || 0;
+  const worst = { median: at(0.5), p95: at(0.95), over100: all.filter((t) => t > 100).length, steps: all.length };
+  const results = [];
+  for (const g of m.GROUND_ORDER.filter((n) => n !== 'none')) {
+    for (const pal of ['porcelain', 'marine']) {
+      const cv = document.createElement('canvas');
+      cv.width = 320;
+      cv.height = 220;
+      const ctx = cv.getContext('2d');
+      m.previewScene(ctx, 'squares', { w: 320, h: 220, palette: m.PALETTES[pal].colors, budgetMs: 0 });
+      const before = ctx.getImageData(0, 0, 320, 220).data.slice();
+      ctx.globalAlpha = 0.5;
+      ctx.globalCompositeOperation = 'multiply';
+      const done = m.applyGround(ctx, g, { palette: m.PALETTES[pal].colors });
+      const state = ctx.globalAlpha === 0.5 && ctx.globalCompositeOperation === 'multiply';
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = 'source-over';
+      const after = ctx.getImageData(0, 0, 320, 220).data;
+      let changed = 0;
+      let lo = 255;
+      let hi = 0;
+      for (let i = 0; i < after.length; i += 4) {
+        if (Math.abs(after[i] - before[i]) + Math.abs(after[i + 1] - before[i + 1]) + Math.abs(after[i + 2] - before[i + 2]) > 6) changed++;
+        lo = Math.min(lo, after[i], after[i + 1], after[i + 2]);
+        hi = Math.max(hi, after[i], after[i + 1], after[i + 2]);
+      }
+      // The same sheet twice, on the same picture: the scene scatters by
+      // chance, so the picture is copied rather than drawn again.
+      const again = document.createElement('canvas');
+      again.width = 320;
+      again.height = 220;
+      const ag = again.getContext('2d');
+      ag.putImageData(new ImageData(new Uint8ClampedArray(before), 320, 220), 0, 0);
+      m.applyGround(ag, g, { palette: m.PALETTES[pal].colors });
+      const twice = ag.getImageData(0, 0, 320, 220).data;
+      let same = true;
+      for (let i = 0; i < twice.length; i += 97) if (twice[i] !== after[i]) { same = false; break; }
+      results.push({ g, pal, done, state, changed: changed / (after.length / 4), lo, hi, same });
+    }
+  }
+  return { worst, buildMs: Math.round(buildMs), results };
+});
+const flatGround = grounds.results.filter((r) => !r.done || r.changed < 0.05).map((r) => `${r.g}/${r.pal} ${(r.changed * 100).toFixed(0)}%`);
+ok('every paper changes the picture it is laid under', flatGround.length === 0, flatGround.join(', ') || `${grounds.results.length} papers and palettes`);
+const unprinted = grounds.results.filter((r) => r.lo < 10 || r.hi > 252).map((r) => `${r.g}/${r.pal} ${r.lo}-${r.hi}`);
+ok('a printed picture has no pure black and no pure white', unprinted.length === 0, unprinted.join(', ') || 'all within print');
+ok('a paper leaves the drawing state as it found it', grounds.results.every((r) => r.state));
+ok('the same paper is the same sheet every time', grounds.results.every((r) => r.same));
+ok('making a sheet never holds the page',
+   grounds.worst.steps > 50 && grounds.worst.median < 15 && grounds.worst.p95 < 45 && grounds.worst.over100 <= 2,
+   `${grounds.worst.steps} steps: median ${grounds.worst.median.toFixed(1)} ms, 95% under ${grounds.worst.p95.toFixed(1)} ms, ${grounds.worst.over100} over 100 ms; nine sheets in ${grounds.buildMs} ms`);
+
+const paperPanel = await page.evaluate(async () => {
+  const son = window.son;
+  const sink = son.sinks.find((s) => s.particles);
+  const cards = document.querySelectorAll('#grounds .card').length;
+  const { GROUND_ORDER } = await import('../src/index.js');
+  document.querySelector('#grounds [data-ground="washi"]').click();
+  const picked = { ground: sink.ground, stored: localStorage.getItem('t:ground'), note: document.querySelector('#ground-note').textContent.length > 20 };
+  await new Promise((r) => setTimeout(r, 300));
+  const c = document.querySelector('#canvas');
+  const px = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+  let lo = 255;
+  for (let i = 0; i < px.length; i += 4 * 53) lo = Math.min(lo, px[i], px[i + 1], px[i + 2]);
+  son.look.selectGround('none');
+  return { cards, count: GROUND_ORDER.length, picked, lo, after: sink.ground };
+});
+ok('there is a card for every paper', paperPanel.cards === paperPanel.count, `${paperPanel.cards} of ${paperPanel.count}`);
+ok('choosing a paper lays the live picture on it, and it is remembered',
+   paperPanel.picked.ground === 'washi' && paperPanel.picked.stored === 'washi' && paperPanel.picked.note && paperPanel.lo >= 10,
+   JSON.stringify(paperPanel));
+
 // --- offscreen canvases are pooled, not bought ---------------------------
 // A buffer the size of the visible canvas is several megabytes, and a scene's
 // state is thrown away every time the scene changes. Allocating a fresh one
@@ -2649,7 +2738,13 @@ ok('every work card shows its picture', worksPainted.blank.length === 0, worksPa
 // A row that scrolls sideways has to be movable with a mouse: an arrow at
 // each end, shown only when there is somewhere to go, reaching the last work.
 await page.evaluate(() => { const g = document.querySelector('#works .cards'); g.scrollLeft = 0; });
-await page.waitForTimeout(300);
+// Until the arrows' fade has actually finished, not for a fixed time: a busy
+// machine caught one at 0.07 on its way out.
+await page.waitForFunction(() => {
+  const wrap = document.querySelector('#works .rowwrap');
+  const o = (sel) => Number(getComputedStyle(wrap.querySelector(sel)).opacity);
+  return o('.row-nav.prev') < 0.01 && o('.row-nav.next') > 0.99;
+}, null, { timeout: 3000 }).catch(() => {});
 const rowStart = await page.evaluate(() => {
   const wrap = document.querySelector('#works .rowwrap');
   const style = (sel) => getComputedStyle(wrap.querySelector(sel)).opacity;
@@ -2730,6 +2825,25 @@ ok('the chosen work is marked and labelled', chosen.pressed === 'true' && /Noctu
    chosen.cartel);
 ok('the panel header names the work on show', chosen.summary === 'Nocturne in Kyoto', chosen.summary);
 ok('changing anything by hand takes the label off', chosen.afterTouch === null && chosen.pressedAfter === 'false');
+
+// A work is printed on its paper, and says so on its label.
+const onPaper = await page.evaluate(async () => {
+  const son = window.son;
+  const sink = son.sinks.find((s) => s.particles);
+  document.querySelector('#works [data-work="mould"]').click();
+  const start = performance.now();
+  while (son.works.current() !== 'mould' && performance.now() - start < 20000) await new Promise((r) => setTimeout(r, 100));
+  const out = { current: son.works.current(), scene: sink.sceneName, ground: sink.ground, cartel: document.querySelector('#work-cartel').textContent };
+  son.look.selectGround('cotton');
+  son.works.refresh();
+  out.afterTouch = son.works.current();
+  son.look.selectGround('none');
+  return out;
+});
+ok('a work is laid on its paper, and its label says which',
+   onPaper.current === 'mould' && onPaper.scene === 'physarum' && onPaper.ground === 'black' && /on black paper/.test(onPaper.cartel),
+   JSON.stringify(onPaper));
+ok('changing the paper by hand takes the label off too', onPaper.afterTouch === null);
 
 // The rooms read as rooms: a line under each, a first work hung large, and a
 // filter that hides what does not fit and whole rooms left empty by it.
@@ -3022,7 +3136,7 @@ await pg.waitForTimeout(800);
 const pgPainted = await pg.evaluate(() => document.querySelectorAll('.st-card[data-painted]').length);
 ok('Escape on the bench goes to all the tools', pgIndex.hash === '#create', pgIndex.hash);
 ok('every scene is a tool', pgIndex.cards === pgIndex.scenes, `${pgIndex.cards} tools, ${pgIndex.scenes} scenes`);
-ok('the new tools are marked as new', pgIndex.fresh === 'aura,benday,rise,whorl', pgIndex.fresh);
+ok('the new tools are marked as new', pgIndex.fresh === 'growth,physarum,ribbons,roots,stipple,topo', pgIndex.fresh);
 ok('the tools in view are painted', pgPainted >= 8, `${pgPainted} painted`);
 
 await pg.keyboard.type('whorl');
@@ -3113,6 +3227,20 @@ const pgDither = await pg.evaluate(async () => {
 ok('the dither finish prints in the inks alone', pgDither.finish === 'dither' && pgDither.colours >= 2 && pgDither.stray === 0,
    JSON.stringify(pgDither));
 await pg.evaluate(() => document.querySelector('#st-finishes [data-finish="none"]').click());
+
+// A paper on the bench, and in the address, so a link keeps it.
+await pg.evaluate(() => document.querySelector('#st-grounds [data-ground="cotton"]').click());
+await pg.waitForTimeout(300);
+await developed();
+const pgPaper = await pg.evaluate(() => ({
+  ground: window.son.studio.state.ground,
+  pressed: document.querySelector('#st-grounds [data-ground="cotton"]').getAttribute('aria-pressed'),
+  address: /[?&]p=cotton/.test(location.hash),
+  cards: document.querySelectorAll('#st-grounds .st-chip').length,
+}));
+ok('a paper can be chosen on the bench, and the address carries it',
+   pgPaper.ground === 'cotton' && pgPaper.pressed === 'true' && pgPaper.address && pgPaper.cards === 10, JSON.stringify(pgPaper));
+await pg.evaluate(() => document.querySelector('#st-grounds [data-ground="none"]').click());
 
 await pg.evaluate(() => document.querySelector('#st-ratios [data-ratio="16:9"]').click());
 await developed();

@@ -48,6 +48,7 @@ export { mosaicPool, swatchColour, poolSize } from './visual/mosaic.js';
 export { drawSpaceArt, spaceArtOf } from './visual/space-art.js';
 export { FINISHES, FINISH_ORDER, MATS, MAT_ORDER, applyFinish, drawMat, drawGrain } from './visual/finish.js';
 export { WORKS, WORK_ROOMS, WORK_ROOM_NOTES, WORK_ENERGIES, worksIn } from './works.js';
+export { GROUNDS, GROUND_ORDER, applyGround, groundTone, prepareGround, groundReady, sheetOf, groundStats } from './visual/grounds.js';
 export { inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, isViolet, rngOf } from './visual/inks.js';
 export { LIVING, LIVING_ORDER, driftNeighbours, driftColours, daylightColours, moodColours, lightOfHour, busyness } from './visual/living.js';
 

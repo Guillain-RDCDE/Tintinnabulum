@@ -22,6 +22,7 @@ import {
   SPACES,
   FINISHES,
   MATS,
+  GROUNDS,
   LIVING,
   previewScene,
   animateScene,
@@ -70,6 +71,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
       params: Object.fromEntries(Object.entries(scene.params || {}).map(([k, d]) => [k, d.default])),
       finish: w.finish,
       mat: w.mat,
+      ground: w.ground,
       pool,
     };
   };
@@ -228,6 +230,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
       SCENES[w.scene].label,
       `${PALETTES[w.palette].label} palette`,
       w.finish === 'none' ? '' : FINISHES[w.finish].label,
+      w.ground === 'none' ? '' : `on ${GROUNDS[w.ground].label.toLowerCase()}`,
       w.mat === 'none' ? '' : MATS[w.mat].label.toLowerCase(),
       KITS[w.kit].label,
       w.space === 'none' ? '' : SPACES[w.space].label.toLowerCase(),
@@ -246,6 +249,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
     look.selectScene(w.scene);
     look.selectPalette(w.palette);
     look.selectFinish(w.finish);
+    look.selectGround(w.ground);
     look.selectMat(w.mat);
     look.selectGrain(w.grain);
     look.selectPace(w.pace);
@@ -278,6 +282,7 @@ export function setupWorks({ canvas, look, selectKit, selectSpace, ensureAudio, 
         canvas.sceneName === w.scene &&
         canvas.paletteName === w.palette &&
         canvas.finish === w.finish &&
+        canvas.ground === w.ground &&
         canvas.mat === w.mat &&
         Boolean(canvas.grain) === Boolean(w.grain) &&
         Math.abs(canvas.pace - PACE[w.pace]) < 1e-6 &&

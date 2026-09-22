@@ -37,7 +37,7 @@ const LIVELY = 4;
 
 const work = (room, energy, title, o) => ({
   room, energy, title,
-  grain: false, mat: 'none', finish: 'none', space: 'none', pace: REAL_TIME, living: 'still',
+  grain: false, mat: 'none', finish: 'none', ground: 'none', space: 'none', pace: REAL_TIME, living: 'still',
   ...o,
 });
 
@@ -210,6 +210,33 @@ export const WORKS = {
     scene: 'fireworks', palette: 'cobalt', kit: 'hatnote', space: 'canyon', mat: 'thin',
     cartel: 'Small silent bursts over a far shore, trembling in the water. The bells arrive a moment late, as sound does over water.',
   }),
+  mould: work('Night', 'lively', 'The mould at night', {
+    scene: 'physarum', palette: 'abyss', kit: 'synth', space: 'plate', ground: 'black',
+    cartel: 'A slime mould spreading its veins across black card, rewiring itself towards every event as a mould reaches for food. A synthesiser note for each one it finds.',
+  }),
+
+  // --- grown on paper ------------------------------------------------------------------
+  currents: work('Daylight', 'lively', 'Gouache currents', {
+    scene: 'ribbons', palette: 'linen', kit: 'marimba', space: 'room', ground: 'cotton',
+    cartel: 'Ribbons of gouache laid along an unseen current on heavy cotton paper, each event starting one, none ever crossing another. A marimba for every stroke.',
+  }),
+  engraved: work('Daylight', 'calm', 'Spheres, engraved', {
+    scene: 'stipple', palette: 'bone', kit: 'musicbox', space: 'room', ground: 'cotton', mat: 'gallery', pace: SLOW,
+    cartel: 'Spheres on a table, stippled dot by dot as an engraver shades a ball, with their shadows cast behind them. Every event sets another down, and the dots drift to model it.',
+  }),
+  underground: work('Daylight', 'calm', 'Under the garden', {
+    scene: 'roots', palette: 'linen', kit: 'koto', space: 'room', ground: 'kraft', pace: UNHURRIED,
+    cartel: 'Roots drawn in ink on brown paper, reaching out for whatever each event leaves in the soil. A koto, plucked as they branch.',
+  }),
+  coral: work('Dawn', 'calm', 'Coral line', {
+    scene: 'growth', palette: 'porcelain', kit: 'glassy', space: 'hall', ground: 'washi', pace: SLOW,
+    cartel: 'One line on washi paper that keeps growing and folding without ever touching itself, leaving its past shapes behind it like the rings of a coral. Glass, softly, for each fold.',
+  }),
+  survey: work('Dusk', 'calm', 'Survey of the hills', {
+    scene: 'topo', palette: 'straw', kit: 'clay', space: 'room', ground: 'aged', mat: 'thin', pace: SLOW,
+    cartel: 'A survey map on an old sheet, the contours and hachures redrawn as every event raises a hill or sinks a hollow. Clay and wood for the surveyor\'s pegs.',
+  }),
+
   arrival: work('Night', 'lively', 'Arrival by night', {
     scene: 'nightflight', palette: 'amber', kit: 'airports', space: 'hall',
     mat: 'gallery', pace: UNHURRIED,

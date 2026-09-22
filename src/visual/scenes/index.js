@@ -24,6 +24,7 @@
 
 import { shadeOf, lighten, lightnessOf } from '../color.js';
 import { applyFinish, drawMat, drawGrain } from '../finish.js';
+import { applyGround } from '../grounds.js';
 import { rngOf } from '../inks.js';
 import { unitPosition } from '../../core/event.js';
 import { MARK_SCENES } from './marks.js';
@@ -44,6 +45,7 @@ import { WATER_SCENES } from './water.js';
 import { AIR_SCENES } from './air.js';
 import { TERMINAL_SCENES } from './terminal.js';
 import { GRAPHIC_SCENES } from './graphic.js';
+import { GROWN_SCENES } from './grown.js';
 import { applyCatalogue, SCENE_SHELVES, shelfOf as shelfIn } from './catalogue.js';
 
 export { noise2 } from './noise.js';
@@ -67,6 +69,7 @@ export const SCENES = {
   ...AIR_SCENES,
   ...TERMINAL_SCENES,
   ...GRAPHIC_SCENES,
+  ...GROWN_SCENES,
 };
 
 // Presentation is applied once, here, across every family at once. See
@@ -176,7 +179,7 @@ function cardEvent(rnd, i, { w, h, palette, richness, darkGround }) {
  */
 export function animateScene(ctx, name, {
   w, h, palette, shape = 'circle', richness = 0.45, depth = true, params = {},
-  finish = 'none', mat = 'none', pool = null, seed = 11, every = 380,
+  finish = 'none', mat = 'none', pool = null, seed = 11, every = 380, ground = 'none',
 } = {}) {
   const scene = SCENES[name] || SCENES[DEFAULT_SCENE];
   let s = seed;
@@ -225,6 +228,7 @@ export function animateScene(ctx, name, {
       ctx.restore();
       ctx.globalAlpha = 1;
       if (finish && finish !== 'none') applyFinish(ctx, finish, { palette, pool: buffers, now: api.now });
+      if (ground && ground !== 'none') applyGround(ctx, ground, { palette, pool: buffers });
       if (mat && mat !== 'none') drawMat(ctx, mat, { palette });
     },
     get now() {
@@ -251,7 +255,7 @@ export function animateScene(ctx, name, {
  */
 export function playScene(ctx, name, {
   w, h, palette, shape = 'circle', richness = 0.45, depth = true, params = {},
-  finish = 'none', mat = 'none', grain = 0, pool = null, seed = 1, every = 420, onArrive = null,
+  finish = 'none', mat = 'none', grain = 0, pool = null, seed = 1, every = 420, onArrive = null, ground = 'none',
 } = {}) {
   const scene = SCENES[name] || SCENES[DEFAULT_SCENE];
   const events = rngOf(seed);
@@ -335,6 +339,7 @@ export function playScene(ctx, name, {
   };
   const dress = () => {
     if (finish && finish !== 'none') applyFinish(ctx, finish, { palette, pool: buffers, now: api.now });
+    if (ground && ground !== 'none') applyGround(ctx, ground, { palette, pool: buffers });
     if (grain > 0) drawGrain(ctx, { pool: buffers, now: api.now, strength: grain });
     if (mat && mat !== 'none') drawMat(ctx, mat, { palette });
   };
@@ -441,6 +446,8 @@ export function previewScene(
     finish = 'none',
     mat = 'none',
     pool = null,
+    // The paper it is printed on, likewise.
+    ground = 'none',
   } = {}
 ) {
   const scene = SCENES[name] || SCENES[DEFAULT_SCENE];
@@ -521,6 +528,7 @@ export function previewScene(
   // Dressed once, on the frame that is kept, rather than on each of the
   // hundred that were drawn to get there.
   if (finish && finish !== 'none') applyFinish(ctx, finish, { palette, pool: pool || {}, now: frames * dt });
+  if (ground && ground !== 'none') applyGround(ctx, ground, { palette, pool: pool || {} });
   if (mat && mat !== 'none') drawMat(ctx, mat, { palette });
   return true;
 }

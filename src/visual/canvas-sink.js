@@ -1,4 +1,5 @@
 import { FINISHES, MATS, applyFinish, drawMat, drawGrain } from './finish.js';
+import { GROUNDS, applyGround } from './grounds.js';
 import { rngFrom } from '../core/event.js';
 import { PALETTES, DEFAULT_PALETTE_NAME, resolvePalette } from './palettes.js';
 import { LIVING, driftColours, daylightColours, moodColours, busyness } from './living.js';
@@ -57,6 +58,8 @@ export class CanvasSink {
     this.finish = FINISHES[opts.finish] ? opts.finish : 'none';
     this.mat = MATS[opts.mat] ? opts.mat : 'none';
     this.grain = opts.grain === true;
+    // What it is printed on: a sheet of paper, a canvas, a wall. See grounds.js.
+    this.ground = GROUNDS[opts.ground] ? opts.ground : 'none';
     // How fast the scene lives. Below one everything breathes more slowly --
     // motion, drift and how long a mark stays -- because all of it runs on a
     // clock of the scene's own rather than on the wall clock. See _clockNow.
@@ -427,6 +430,12 @@ export class CanvasSink {
     return this;
   }
 
+  /** Lay the picture on a paper, a canvas or a wall, or 'none'. See grounds.js. */
+  setGround(name) {
+    this.ground = GROUNDS[name] ? name : 'none';
+    return this;
+  }
+
   /** Moving film grain over the picture. */
   setGrain(on) {
     this.grain = Boolean(on);
@@ -751,6 +760,9 @@ export class CanvasSink {
     if (this.finish !== 'none') {
       applyFinish(ctx, this.finish, { palette: this.palette, pool: this._finishPool, now: clock });
     }
+    // The sheet under it all, after the finish -- a linocut is still printed on
+    // paper -- and before the grain, which is the film's, not the paper's.
+    if (this.ground !== 'none') applyGround(ctx, this.ground, { palette: this.palette, pool: this._finishPool });
     if (this.grain) drawGrain(ctx, { pool: this._finishPool, now });
 
     // Labels only where the marks actually sit at their particle's position.

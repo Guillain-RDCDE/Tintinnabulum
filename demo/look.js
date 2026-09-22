@@ -23,6 +23,11 @@ import {
   previewScene,
   FINISHES,
   FINISH_ORDER,
+  GROUNDS,
+  GROUND_ORDER,
+  applyGround,
+  prepareGround,
+  groundReady,
   MATS,
   applyFinish,
   LIVING,
@@ -170,6 +175,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
       params: Object.fromEntries(canvas.paramsOf(name).map((p) => [p.name, p.value])),
       finish: canvas.finish,
       mat: canvas.mat,
+      ground: canvas.ground,
       pool: previewPool,
     });
   }
@@ -200,6 +206,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     scenePicker.repaintPending(paintScenePreview);
     shapePicker.repaintPending(paintSwatch);
     finishPicker.repaintPending(paintFinishCard);
+    groundPicker.repaintPending(paintGroundCard);
   };
 
   // --- finishes -------------------------------------------------------------
@@ -247,7 +254,64 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     },
     onPick: (name) => selectFinish(name),
   });
-  const repaintFinishCards = () => finishPicker.repaint(paintFinishCard);
+  // Set once the paper cards exist, further down: a finish card repaint can be
+  // asked for before then, and a const is not there to be asked about yet.
+  let groundRepaint = null;
+  const repaintFinishCards = () => {
+    finishPicker.repaint(paintFinishCard);
+    if (groundRepaint) groundRepaint();
+  };
+
+  // --- paper ----------------------------------------------------------------
+  //
+  // The same picture on each sheet, as the finishes are shown: the choice is
+  // made by looking at the paper under the actual work. A sheet not yet built
+  // is built in the background and its card painted again when it arrives.
+  let waitingForSheets = false;
+  function paintGroundCard(cv, name) {
+    const { ctx, w, h } = fitCanvas(cv, { height: 66, fallbackWidth: 118 });
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.drawImage(baseFor(w, h), 0, 0, cv.width, cv.height);
+    ctx.restore();
+    if (name === 'none') return;
+    if (groundReady(name)) {
+      applyGround(ctx, name, { palette: PALETTES[canvas.paletteName].colors });
+      return;
+    }
+    if (!waitingForSheets) {
+      waitingForSheets = true;
+      Promise.all(GROUND_ORDER.map((n) => prepareGround(n))).then(() => {
+        waitingForSheets = false;
+        repaintGroundCards();
+      });
+    }
+  }
+
+  const groundPicker = createPicker($('#grounds'), GROUND_ORDER.map((n) => [n, GROUNDS[n]]), {
+    key: 'ground',
+    className: 'card',
+    title: (def) => def.note,
+    render: (btn, def) => {
+      btn.append(document.createElement('canvas'), caption(def.label, ''));
+    },
+    onPick: (name) => selectGround(name),
+  });
+  const repaintGroundCards = () => groundPicker.repaint(paintGroundCard);
+  groundRepaint = repaintGroundCards;
+
+  function selectGround(name, persist = true) {
+    const pick = GROUNDS[name] ? name : 'none';
+    canvas.setGround(pick);
+    groundPicker.mark(pick);
+    $('#ground-note').textContent = GROUNDS[pick].note;
+    if (persist) store.set('ground', pick);
+    // Built in the background if it is not ready: the picture goes on without
+    // it for a moment and the cards catch up when it arrives.
+    prepareGround(pick).then(() => repaintScenePreviews());
+    repaintScenePreviews();
+    onLookChange();
+  }
 
   function selectFinish(name, persist = true) {
     const pick = FINISHES[name] ? name : 'none';
@@ -624,9 +688,11 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     },
     /** True while the cards are still catching up with a palette change. */
     get previewsBusy() {
-      return scenePicker.busy || shapePicker.busy || finishPicker.busy;
+      return scenePicker.busy || shapePicker.busy || finishPicker.busy || groundPicker.busy;
     },
     selectFinish,
+    selectGround,
+    repaintGroundCards,
     selectMat,
     selectGrain,
     selectPace,

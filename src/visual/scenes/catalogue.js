@@ -46,6 +46,7 @@ export const CATALOGUE = {
   mondrian: S('Painting', 'A canvas divided into rooms of colour, one line at a time.'),
   opwaves: S('Painting', 'Bands that swell and turn, so a flat wall seems to breathe.'),
   whorl: S('Painting', 'Parallel stripes pulled into whirlpools around each event, a flat wall that seems to turn.'),
+  ribbons: S('Painting', 'Thick ribbons of colour following an unseen current, packed close and never crossing.'),
   aura: S('Painting', 'Wide soft clouds of colour drifting into one another, like light through frosted glass.'),
   rise: S('Painting', 'Rings and rays in two colours trading places where they cross, and each event running out through them.'),
 
@@ -58,6 +59,9 @@ export const CATALOGUE = {
   boids: S('Nature', 'A flock that moves as one without anyone leading it.'),
   fern: S('Nature', 'A single fern frond unfurling out of the dark.'),
   lsystem: S('Nature', 'A tree growing branch by branch, each branch a smaller copy of the whole.'),
+  growth: S('Nature', 'A single line that keeps growing and folding without ever touching itself, like coral or lichen.'),
+  physarum: S('Nature', 'A slime mould spreading its glowing veins, finding the shortest way to wherever events fall.'),
+  roots: S('Nature', 'Roots reaching out through dark soil towards whatever calls them, branching as they go.'),
 
   // --- water -------------------------------------------------------------
   bloom: S('Water', 'Each event opens like a flower and lets go, leaving a ring on the water behind it.'),
@@ -99,6 +103,7 @@ export const CATALOGUE = {
   sandpile: S('Materials', 'Sand poured on a table, holding and holding, then sliding all at once.'),
   burin: S('Materials', 'The picture cut as an old engraving, its lines swelling where things are busy.'),
   metaballs: S('Materials', 'Blobs of liquid light that merge before they touch.'),
+  stipple: S('Materials', 'Light and shade made of nothing but dots, placed as an engraver would, drifting as the light moves.'),
 
   // --- pattern -----------------------------------------------------------
   flow: S('Pattern', 'Motes carried on a current you cannot see, leaving the shape of the wind behind them.'),
@@ -133,6 +138,7 @@ export const CATALOGUE = {
   harmonograph: S('Drawing machines', 'A pendulum pen that draws while it slows, and stops when the drawing is finished.'),
   timestable: S('Drawing machines', 'Threads pulled across a circle, and a heart appearing out of them.'),
   guilloche: S('Drawing machines', 'The fine engraved rosettes on the back of a pocket watch.'),
+  topo: S('Drawing machines', 'A survey map drawn in contour lines and hachures, the land rising and sinking under each event.'),
   rose: S('Drawing machines', 'Petals drawn in a single stroke, overlapping into a bouquet.'),
 
   // --- forms and numbers -------------------------------------------------

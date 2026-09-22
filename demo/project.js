@@ -94,6 +94,7 @@ function applySettings(s) {
   // The finish, the mat, the grain and the pace, so a wall shows the picture
   // exactly as it was dressed on the laptop and not as it was drawn.
   if (typeof s.finish === 'string') sink.setFinish(s.finish);
+  if (typeof s.ground === 'string') sink.setGround(s.ground);
   if (typeof s.mat === 'string') sink.setMat(s.mat);
   if (typeof s.grain === 'boolean') sink.setGrain(s.grain);
   if (typeof s.pace === 'number') sink.setPace(s.pace);

@@ -16,9 +16,10 @@ Open the sandbox and change one thing at a time.
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Gallery** | Thirty-seven finished pieces in four rooms named for their light: dawn, daylight, dusk and night. One click sets the picture, the palette, the sound, the room, the finish, the frame, the pace and the living colour. A filter for calm or lively, and an exhibition mode that moves on every few minutes. Try **A drop in the glass**, then **Lanterns on the lake**. |
+| **Gallery** | Forty-three finished pieces in four rooms named for their light: dawn, daylight, dusk and night. One click sets the picture, the palette, the sound, the room, the finish, the paper, the frame, the pace and the living colour. A filter for calm or lively, and an exhibition mode that moves on every few minutes. Try **A drop in the glass**, then **Lanterns on the lake**. |
 | **Create** | Every visualisation as a small tool. Space for a new variation, then change the inks, the texture and the frame, hear it, keep it, take it away as a picture or a video with its sound, or play it live. The variation's number is the picture. |
-| **Studio** | A hundred and eight visualisations on eight shelves, fourteen finishes and eighty palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
+| **Paper** | Nine papers to print on, from cotton rag and cold-pressed watercolour to washi, black card and lime plaster, each a lit relief rather than a texture. Try **Gouache currents**, then **The mould at night**. |
+| **Studio** | A hundred and fourteen visualisations on eight shelves, fourteen finishes, nine papers and eighty palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -748,7 +749,7 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. A hundred and eight ship.
+A scene decides what a moment of data looks like. A hundred and fourteen ship.
 They sit on eight shelves named for what is on them -- *Painting*, *Nature*,
 *Water*, *Night*, *Materials*, *Pattern*, *Drawing machines* and *Forms and
 numbers* -- each scene with one line saying what it feels like, and the
@@ -1117,6 +1118,51 @@ sink.setGrain(true);
 sink.setPace(0.5);
 ```
 
+### Paper
+
+A finish decides what the marks are made of. A **paper** decides what they sit
+on, and it is most of the difference between a picture on a screen and a print
+on a wall.
+
+| | |
+|---|---|
+| **Cotton rag** | A heavy, warm-white rag paper with a fine fibre in it. |
+| **Cold-pressed** | Watercolour paper with its tooth: colour catches on the high points and pools in the hollows. |
+| **Hot-pressed** | Smooth, ironed watercolour paper; almost no tooth, every line crisp. |
+| **Washi** | Kozo paper, cloudy where it is thin and thick, with long fibres and the odd fleck of bark. |
+| **Kraft** | Brown wrapping paper, flecked and fibrous. |
+| **Black paper** | Deep black card with a faint fibre that catches the light. |
+| **Linen canvas** | A primed linen canvas, the weave a little irregular, as linen is. |
+| **Lime plaster** | A wall of lime wash, clouded and trowelled. |
+| **Old paper** | Yellowed towards the edges and spotted with foxing. |
+
+A sheet is not a photograph laid over the picture. Each is generated from a
+height field -- fibres drawn and read back, tooth and weave from lattice noise,
+trowel marks, foxing -- lit by a raking light from the upper left, and from an
+albedo, the paper's own colour. The picture is laid into it: the paper's colour
+through the marks where the picture is light, as it shows through any
+translucent ink; the relief over everything, ink and paper alike, gentler on a
+dark picture; and on black card the fibres catching the light.
+
+The same pass prints rather than displays: nothing is pure black and nothing
+pure white, because no ink is the first and no paper the second, and a fine
+grain of colour rather than of grey lies over the whole.
+
+A sheet is built once per session at a fixed size and scaled to cover any
+canvas, and it is built in the background, eight milliseconds at a time, one
+sheet after another: made at once it held the page for up to three quarters of
+a second on a slow machine, which was felt as a click that did nothing. The
+picture goes on without its paper for that moment and the paper arrives. An
+export waits for it. The suite checks every paper on a light and a dark
+picture, that the page is never held while one is made, and that the same
+paper is the same sheet every time.
+
+```js
+sink.setGround('cotton');                 // or 'coldpress', 'washi', 'black', ... 'none'
+await prepareGround('washi');             // build ahead, in the background
+applyGround(ctx, 'aged', { palette });   // lay any canvas on a sheet
+```
+
 ### Living colour
 
 Palette rotation jumps from one scheme to another at intervals, which suits a
@@ -1142,6 +1188,22 @@ sink.setLiving('daylight');                 // or 'drift', 'mood', 'still'
 sink.setLiving('daylight', { hour: 21 });   // a fixed hour, for a preview
 daylightColours('papyrus', 19);             // what a palette looks like at seven
 ```
+
+### Grown
+
+Six scenes make their picture by growing it, from the part of generative art
+that is judged as art rather than as demonstration. Each keeps its bulk --
+agents, nodes, dots, a trail map -- in typed arrays of a fixed size, so none can
+grow past its ceiling however much arrives.
+
+| | |
+|---|---|
+| **Flow ribbons** | Ribbons laid along a flow field bent round each recent event. A ribbon's whole path is planned when it starts, walking the field both ways and reserving an occupancy grid as it goes, so ribbons pack closely and never cross; then it is revealed a step at a time, tapered, one in four striped. |
+| **Differential growth** | A closed line: every node pulled to the midpoint of its neighbours, pushed from every node near it through a spatial grid, and an edge that stretches split in two. It folds into coral and lichen, grows where events land, and leaves its past shapes behind as rings. |
+| **Slime mould** | Physarum, as Jeff Jones modelled it in 2010: thousands of agents sensing a trail ahead and to either side, turning to the strongest, laying trail of their own. Every event is food that keeps giving for a while, and the network of veins rewires itself between the sources. |
+| **Stippled light** | Weighted Voronoi stippling, after Adrian Secord, 2002: dots moved again and again to the density-weighted centre of their own region, estimated by sampling against a tone grid so it runs live. The picture is spheres shaded as an engraver shades a ball, with their cast shadows; every event sets another down. |
+| **Contour survey** | A survey map: contours by marching squares, every fifth heavier and in colour, and hachures across the slopes that turn from the light. One pass over the grid for every level at once. Events raise hills and sink hollows. |
+| **Roots** | Space colonisation, after Runions, Lane and Prusinkiewicz, 2005: points of attraction pull on the nearest growing tip, tips grow towards what pulls them, and a point is consumed when reached. Events scatter attraction; the roots go out to find it. |
 
 ### The Gallery
 
@@ -1185,7 +1247,7 @@ frame that exist, so a rename fails loudly instead of quietly falling back.
 ### Create
 
 The other four tabs set up how the world is heard and seen. **Create** is for
-making something: every visualisation, a hundred and eight of them, as a small
+making something: every visualisation, a hundred and fourteen of them, as a small
 tool on a bench, one picture at a time. It is a tab rather than a page of its
 own because the two meet: the bench opens on the picture that was playing, and
 **Play it live** puts what was made back on the feed -- the scene with its
@@ -1225,7 +1287,7 @@ Around the picture, the way a print workshop is laid out:
 |---|---|
 | **The dials** | The tool's own, varied with each number. A dial moves from where the scene ships towards one end or the other and never more than three quarters of the way, so a variation never switches one off. **Shuffle the dials** goes further; **As it ships** puts them back. |
 | **Colour** | A ground and up to five inks, each editable. **New colours** draws a set from a number in three moods -- a pale paper, a dark night, a strong ground -- with the violet band of the wheel removed and every ink kept well clear of the ground in lightness. **Rotate** makes the next ink the ground. Any palette can be taken as a starting point, except those with a violet in them, and a set can be saved. |
-| **Texture** | The fourteen finishes, film grain and the mats. |
+| **Texture** | The fourteen finishes, the nine papers, film grain and the mats. |
 | **Frame** | Eight shapes, from 9:16 to 16:9. |
 | **Motion and sound** | Where the events come from, how many a second on the picture's own rhythm, and **Hear it**: each event of the picture is one note from the chosen instrument, in a pentatonic scale, larger marks lower. It plays through the sandbox's own audio engine, so there is one volume and one permission to play sound. |
 | **Kept** | **K** keeps the picture on screen, with a thumbnail, on this device; a click brings it back exactly. |
@@ -1405,6 +1467,7 @@ src/visual/
   mosaic.js             the colour pool the kit and room cards take from
   kit-art.js            the colour on each kit card
   living.js             living colour: drift, time of day, mood of the feed
+  grounds.js            papers: sheets built in the background, the print pass
   inks.js               inks drawn from a number, never violet; palettes built
                         from inks; a scene's dials varied from a number
   finish.js             finishes, frames and film grain, on the finished frame
@@ -1413,7 +1476,7 @@ src/visual/
                         fantasia (attractors, packings), automata (things
                         that are run), tilings (tilings and fractals),
                         geometry, recursive, systems, painters, nature,
-                        materials, water, air, graphic, budget, paint; catalogue.js puts them
+                        materials, water, air, graphic, grown, budget, paint; catalogue.js puts them
                         on shelves and says what each looks like
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation

@@ -339,6 +339,12 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
     look.selectScene(scene);
     look.selectPalette(palette);
     look.selectFinish(finish);
+    // A paper that suits the picture: a sheet under a light one, black card or
+    // nothing under a dark one, and more often than not no paper at all.
+    const lightPicture = lightnessOf(PALETTES[palette].colors.background) >= 0.5;
+    look.selectGround(lightPicture
+      ? pick(['none', 'none', 'cotton', 'coldpress', 'hotpress', 'washi', 'aged'])
+      : pick(['none', 'none', 'black']));
     look.selectMat(pick(['none', 'none', 'thin', 'gallery']));
     look.selectGrain(Math.random() < 0.25);
     look.selectLiving(Math.random() < 0.25 ? 'drift' : 'still');

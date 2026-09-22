@@ -16,6 +16,7 @@
 
 import {
   SCENES, SCENE_SHELVES, WORKS, KITS, PALETTES, PALETTE_FAMILIES, familyOf, FINISHES, FINISH_ORDER, MATS, MAT_ORDER,
+  GROUNDS, GROUND_ORDER, prepareGround,
   Sonifier, makeKit, previewScene, animateScene, playScene,
   inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, isViolet,
 } from '../src/index.js';
@@ -27,7 +28,7 @@ const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 const el = (id) => document.getElementById(`st-${id}`);
 
 /** The scenes new to the bench, marked as such. */
-const NEW_TOOLS = new Set(['aura', 'whorl', 'benday', 'rise']);
+const NEW_TOOLS = new Set(['ribbons', 'growth', 'physarum', 'stipple', 'topo', 'roots']);
 
 const RATIOS = ['9:16', '3:4', '4:5', '1:1', '5:4', '4:3', '3:2', '16:9'];
 const ratioOf = (r) => r.split(':').map(Number);
@@ -85,10 +86,11 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
         finish: FINISHES[work.finish] ? work.finish : 'none',
         mat: MATS[work.mat] ? work.mat : 'none',
         grain: work.grain ? 0.18 : 0,
+        ground: GROUNDS[work.ground] ? work.ground : 'none',
       };
     }
     const h = hashOf(name);
-    return { inks: inkSet(h, 4), kit: SOUND_KITS[h % SOUND_KITS.length], finish: 'none', mat: 'none', grain: 0 };
+    return { inks: inkSet(h, 4), kit: SOUND_KITS[h % SOUND_KITS.length], finish: 'none', mat: 'none', grain: 0, ground: 'none' };
   }
 
   // --- state -----------------------------------------------------------------------
@@ -101,6 +103,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     finish: 'none',
     grain: 0,
     mat: 'none',
+    ground: 'none',
     ratio: RATIOS.includes(store.get('play-ratio')) ? store.get('play-ratio') : '4:5',
     tempo: store.number('play-tempo', 1.5, 0.25, 6),
     animate: store.flag('play-animate', true),
@@ -136,6 +139,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     if (s.finish !== 'none') q.set('f', s.finish);
     if (s.grain > 0) q.set('g', String(s.grain));
     if (s.mat !== 'none') q.set('m', s.mat);
+    if (s.ground && s.ground !== 'none') q.set('p', s.ground);
     q.set('r', s.ratio.replace(':', 'x'));
     return `${PREFIX}/${s.tool}/${s.seed}?${q.toString()}`;
   }
@@ -167,6 +171,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       finish: FINISHES[q.get('f')] ? q.get('f') : null,
       grain: q.has('g') ? clamp(Number(q.get('g')) || 0, 0, 0.6) : null,
       mat: MATS[q.get('m')] ? q.get('m') : null,
+      ground: GROUNDS[q.get('p')] ? q.get('p') : null,
       ratio: RATIOS.includes(ratio) ? ratio : null,
       full: q.has('i'),
     };
@@ -368,6 +373,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       state.finish = r.finish || (r.full ? 'none' : look.finish);
       state.grain = r.grain ?? (r.full ? 0 : look.grain);
       state.mat = r.mat || (r.full ? 'none' : look.mat);
+      state.ground = r.ground || (r.full ? 'none' : look.ground);
     }
     if (r.ratio) state.ratio = r.ratio;
     if (fresh) {
@@ -455,6 +461,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     refreshInks();
     for (const b of el('finishes').querySelectorAll('.st-chip')) b.setAttribute('aria-pressed', String(b.dataset.finish === state.finish));
     for (const b of el('mat').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.mat === state.mat));
+    for (const b of el('grounds').querySelectorAll('.st-chip')) b.setAttribute('aria-pressed', String(b.dataset.ground === state.ground));
     for (const b of el('ratios').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.ratio === state.ratio));
     const grain = el('grain');
     grain.value = state.grain;
@@ -612,6 +619,24 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       });
       el('mat').append(b);
     }
+    for (const name of GROUND_ORDER) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'st-chip';
+      b.dataset.ground = name;
+      b.textContent = GROUNDS[name].label;
+      b.title = GROUNDS[name].note;
+      b.addEventListener('click', () => {
+        state.ground = name;
+        // The sheet is built in the background; the picture is drawn again
+        // on it the moment it is ready.
+        prepareGround(name).then(() => {
+          if (state.ground === name) scheduleRebuild();
+        });
+        changed();
+      });
+      el('grounds').append(b);
+    }
     for (const r of RATIOS) {
       const [w, h] = ratioOf(r);
       const k = 20 / Math.max(w, h);
@@ -747,6 +772,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       finish: state.finish,
       mat: state.mat,
       grain: state.grain,
+      ground: state.ground,
       pool,
       seed: state.seed,
       every: 1000 / state.tempo,
@@ -942,7 +968,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
 
   const snapshot = () => ({
     tool: state.tool, seed: state.seed, params: { ...state.params }, inks: state.inks.slice(),
-    finish: state.finish, grain: state.grain, mat: state.mat, ratio: state.ratio,
+    finish: state.finish, grain: state.grain, mat: state.mat, ground: state.ground, ratio: state.ratio,
   });
 
   function keep() {
@@ -1009,7 +1035,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     if (!SCENES[s.tool]) return;
     openTool({
       tool: s.tool, seed: s.seed, inks: s.inks.slice(), dials: { ...s.params },
-      finish: s.finish, grain: s.grain, mat: s.mat, ratio: s.ratio, full: true,
+      finish: s.finish, grain: s.grain, mat: s.mat, ground: s.ground || 'none', ratio: s.ratio, full: true,
     });
   }
 
@@ -1040,12 +1066,14 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     const [rw, rh] = ratioOf(state.ratio);
     const w = rw >= rh ? long : Math.round((long * rw) / rh);
     const h = rw >= rh ? Math.round((long * rh) / rw) : long;
+    // A picture taken away has its paper: wait for the sheet if it is still being made.
+    await prepareGround(state.ground);
     const cv = document.createElement('canvas');
     cv.width = w;
     cv.height = h;
     const player = playScene(cv.getContext('2d'), state.tool, {
       w, h, palette: paletteFromInks(state.inks), params: { ...state.params },
-      finish: state.finish, mat: state.mat, grain: state.grain, pool: {}, seed: state.seed, every: 1000 / state.tempo,
+      finish: state.finish, mat: state.mat, grain: state.grain, ground: state.ground, pool: {}, seed: state.seed, every: 1000 / state.tempo,
     });
     status('Developing at full size…');
     await new Promise((resolve) => {
@@ -1068,16 +1096,12 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     toast('Picture saved');
   }
 
-  async function exportVideo() {
-    if (busy || !state.tool || bench.hidden) return;
-    if (typeof MediaRecorder === 'undefined' || !stage.captureStream) {
-      status('This browser cannot record video.');
-      return;
-    }
-    busy = true;
-    const seconds = Number(el('video-length').value) || 12;
+  /**
+   * One recording of the picture as it moves, with its sound if it is being
+   * heard: the chunks it produced and the type they are in.
+   */
+  async function record(seconds, withSound, note = '') {
     const stream = stage.captureStream(30);
-    const withSound = state.hear && sound && !sound.locked;
     if (withSound) for (const t of sound.engine.captureStream().getAudioTracks()) stream.addTrack(t);
     const type = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
       .find((t) => MediaRecorder.isTypeSupported(t)) || '';
@@ -1085,9 +1109,8 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     try {
       rec = new MediaRecorder(stream, type ? { mimeType: type, videoBitsPerSecond: 8000000 } : undefined);
     } catch (e) {
-      busy = false;
-      status('This browser cannot record video.');
-      return;
+      for (const t of stream.getVideoTracks()) t.stop();
+      return null;
     }
     const chunks = [];
     rec.ondataavailable = (e) => {
@@ -1096,13 +1119,9 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     const stopped = new Promise((r) => {
       rec.onstop = r;
     });
-    const wasMoving = state.animate;
-    if (!state.animate) setAnimate(true);
-    const button = el('export-video');
-    button.disabled = true;
     rec.start(250);
     let left = seconds;
-    const say = () => status(`Recording${withSound ? ' with sound' : ''}… ${left} s`);
+    const say = () => status(`${note}Recording${withSound ? ' with sound' : ''}… ${left} s`);
     say();
     await new Promise((resolve) => {
       const t = setInterval(() => {
@@ -1114,14 +1133,46 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
         }
       }, 1000);
     });
+    if (rec.state === 'recording') rec.requestData();
     rec.stop();
     await stopped;
+    // The picture's own track is let go; the sound's belongs to the engine
+    // and carries on for the next recording.
     for (const t of stream.getVideoTracks()) t.stop();
+    return { chunks, type };
+  }
+
+  async function exportVideo() {
+    if (busy || !state.tool || bench.hidden) return;
+    if (typeof MediaRecorder === 'undefined' || !stage.captureStream) {
+      status('This browser cannot record video.');
+      return;
+    }
+    busy = true;
+    const seconds = Number(el('video-length').value) || 12;
+    const withSound = Boolean(state.hear && sound && !sound.locked);
+    const wasMoving = state.animate;
+    if (!state.animate) setAnimate(true);
+    const button = el('export-video');
+    button.disabled = true;
+    let take = await record(seconds, withSound);
+    // A machine hard at work can hand back an empty recording: the encoder
+    // never caught a frame. It is said, and done again, rather than saving an
+    // empty file.
+    if (take && !take.chunks.length) take = await record(seconds, withSound, 'The first take came out empty. ');
     if (!wasMoving) setAnimate(false);
     button.disabled = false;
     busy = false;
-    const blob = new Blob(chunks, { type: type.split(';')[0] || 'video/webm' });
-    download(blob, `${fileBase()}.${type.includes('mp4') ? 'mp4' : 'webm'}`);
+    if (!take) {
+      status('This browser cannot record video.');
+      return;
+    }
+    if (!take.chunks.length) {
+      status('The recording came out empty. The machine may be too busy; try again in a moment.');
+      return;
+    }
+    const blob = new Blob(take.chunks, { type: take.type.split(';')[0] || 'video/webm' });
+    download(blob, `${fileBase()}.${take.type.includes('mp4') ? 'mp4' : 'webm'}`);
     status(`Saved, ${seconds} seconds${withSound ? ' with sound' : ', silent: press Hear it first to record the sound'}.`);
     toast('Video saved');
   }
@@ -1145,7 +1196,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     return {
       tool: name, seed: randomSeed(), inks: inks.length >= 2 ? inks : toolLook(name).inks, dials: params,
       finish: FINISHES[canvas.finish] ? canvas.finish : 'none', grain: canvas.grain ? 0.18 : 0,
-      mat: MATS[canvas.mat] ? canvas.mat : 'none', ratio: null, full: true,
+      mat: MATS[canvas.mat] ? canvas.mat : 'none', ground: GROUNDS[canvas.ground] ? canvas.ground : 'none', ratio: null, full: true,
     };
   }
 
@@ -1164,6 +1215,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
       finish: state.finish,
       mat: state.mat,
       grain: state.grain > 0,
+      ground: state.ground,
     });
   }
 
@@ -1326,7 +1378,7 @@ export function setupStudio({ son: live, canvas, onLeave, playLive, feedLabel = 
     const r = parse(location.hash);
     if (r && r.index) showIndex();
     else if (r) openTool(r);
-    else if (state.tool) openTool({ tool: state.tool, seed: state.seed, inks: state.inks, dials: state.params, finish: state.finish, grain: state.grain, mat: state.mat, ratio: state.ratio, full: true });
+    else if (state.tool) openTool({ tool: state.tool, seed: state.seed, inks: state.inks, dials: state.params, finish: state.finish, grain: state.grain, mat: state.mat, ground: state.ground, ratio: state.ratio, full: true });
     else openTool(fromLive());
   }
 
