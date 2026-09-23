@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="demo/social-preview.png" width="100%" alt="Three framed pictures hung on a gallery wall — coloured ribbons on cotton rag, a glowing mould on black card, a stippled engraving — beside the title Tintinnabulum and the line: turn any stream of events into sound">
+  <img src="demo/social-preview.png" width="100%" alt="Four framed pictures hung in a line on a dark wall — gouache ribbons on cotton rag, a glowing mould on black card, flat shapes from a workshop exercise, lanterns on the water at night — over the title Tintinnabulum and the line: turn any stream of events into sound">
 </p>
 
 # Tintinnabulum

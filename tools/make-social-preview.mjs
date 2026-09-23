@@ -8,11 +8,17 @@
 // things follow: the card cannot flatter the product, and it cannot go stale
 // while the visuals change underneath it.
 //
-// It is a wall with pictures hung on it because that is what the thing is: the
-// Gallery is the front door, and a work is a picture you can also hear. The
-// first version of this card was a band of coloured circles above a title,
-// which was honest in 2026-09 and was left behind by the papers, the finishes
-// and the grown systems.
+// It is a dark wall with pictures hung on it because that is what the thing
+// is: the Gallery is the front door, and a work is a picture you can also
+// hear. The first version was a band of coloured circles above a title, which
+// was honest in 2026-09 and was left behind by the papers, the finishes and
+// the grown systems.
+//
+// The furniture around the pictures -- charcoal ground, brass rule down the
+// left edge, a band of artwork fading into the type below it, Arial as the
+// others are set -- is the house style of the whole portfolio's cards, which
+// live together in Dropbox/Perso/GitHub/_social-previews. A card that wandered
+// off on a light ground would read as somebody else's project.
 //
 // The card names no single data source. An earlier version ended on "Wikipedia
 // edits", which was true of where the idea came from and wrong about what the
@@ -30,17 +36,25 @@ const H = 640;
 const COPY = {
   title: 'Tintinnabulum',
   tagline: 'Turn any stream of events into sound.',
-  examples: 'Latencies, trades, commits, quakes — heard, and hung.',
+  examples: 'Latencies, trades, commits, quakes - heard, and hung.',
   url: 'github.com/Guillain-RDCDE/Tintinnabulum',
 };
 
-// Three works, hung as they would be on a wall: the hero in colour on cotton
-// rag, a dark one on black card below it, a quiet engraving above. Each seed is
+// The house style of the portfolio's cards.
+const BRASS = '#e8b44a';
+const CREAM = '#faf4e8';
+const MUTED = '#b0b0b8';
+const STRIPE = 26;
+
+// Four works hung in a line, their centres level as a hanging is hung, in four
+// different hands: gouache on cotton rag, a mould on black card, a workshop
+// exercise in flat colour, and lanterns on the water at night. Each seed is
 // fixed, so the card is the same picture every time it is made.
 const HANGING = [
-  { work: 'mould', x: 690, y: 300, w: 208, h: 260, mat: 16, seed: 4312 },
-  { work: 'currents', x: 950, y: 92, w: 264, h: 330, mat: 22, seed: 61297 },
-  { work: 'engraved', x: 700, y: 96, w: 170, h: 136, mat: 14, seed: 771 },
+  { work: 'currents', x: 110, y: 34, w: 184, h: 230, mat: 15, seed: 61297 },
+  { work: 'mould', x: 386, y: 50, w: 168, h: 210, mat: 14, seed: 4312 },
+  { work: 'bauhaus', x: 646, y: 66, w: 236, h: 177, mat: 13, seed: 2207 },
+  { work: 'lanterns', x: 974, y: 56, w: 264, h: 198, mat: 14, seed: 8823 },
 ];
 
 const { srv, base } = await startServer(8892);
@@ -98,31 +112,35 @@ try {
     const ctx = big.getContext('2d');
     ctx.setTransform(2, 0, 0, 2, 0, 0);
 
-    // The wall: plaster from the paper mill, lit from where the type sits.
+    // The wall: the portfolio's charcoal, with the grain of the engine's own
+    // black card over it so it is a wall and not a fill.
+    const ground = ctx.createLinearGradient(0, 0, 0, o.h);
+    ground.addColorStop(0, '#121215');
+    ground.addColorStop(1, '#222227');
+    ctx.fillStyle = ground;
+    ctx.fillRect(0, 0, o.w, o.h);
     const wall = document.createElement('canvas');
     wall.width = o.w * 2;
     wall.height = o.h * 2;
     const wctx = wall.getContext('2d');
-    wctx.fillStyle = GROUNDS.plaster.tint;
+    wctx.fillStyle = GROUNDS.black.tint || '#141414';
     wctx.fillRect(0, 0, wall.width, wall.height);
-    applyGround(wctx, 'plaster', { palette: PALETTES.linen.colors, sync: true });
+    applyGround(wctx, 'black', { palette: PALETTES.abyss.colors, sync: true });
+    ctx.save();
+    ctx.globalAlpha = 0.5;
     ctx.drawImage(wall, 0, 0, o.w, o.h);
-    const light = ctx.createRadialGradient(o.w * 0.32, o.h * 0.42, 60, o.w * 0.32, o.h * 0.42, o.w * 0.8);
-    light.addColorStop(0, 'rgba(255,252,246,.55)');
-    light.addColorStop(1, 'rgba(74,60,44,.22)');
-    ctx.fillStyle = light;
-    ctx.fillRect(0, 0, o.w, o.h);
+    ctx.restore();
 
     for (const h of o.hanging) {
       ctx.save();
-      ctx.shadowColor = 'rgba(38,30,22,.40)';
-      ctx.shadowBlur = 38;
+      ctx.shadowColor = 'rgba(0,0,0,.55)';
+      ctx.shadowBlur = 34;
       ctx.shadowOffsetY = 14;
       ctx.fillStyle = '#fbf8f2';
       ctx.fillRect(h.x - h.mat, h.y - h.mat, h.w + h.mat * 2, h.h + h.mat * 2);
       ctx.restore();
       ctx.drawImage(drawWork(h.work, h.w * 2, h.h * 2, h.seed), h.x, h.y, h.w, h.h);
-      ctx.strokeStyle = 'rgba(38,30,22,.16)';
+      ctx.strokeStyle = 'rgba(255,248,236,.14)';
       ctx.lineWidth = 1;
       ctx.strokeRect(h.x - h.mat + 0.5, h.y - h.mat + 0.5, h.w + h.mat * 2 - 1, h.h + h.mat * 2 - 1);
     }
@@ -133,27 +151,26 @@ try {
     const fin = out.getContext('2d');
     fin.drawImage(big, 0, 0, o.w, o.h);
 
-    // The type, set the way the Gallery sets a label: a rule, a title, the
-    // medium under it in italic.
-    const sans = '"Segoe UI", Roboto, Helvetica, Arial, sans-serif';
-    const serif = 'Georgia, "Times New Roman", serif';
-    const x = 92;
+    // The brass rule down the left edge, as every card in the set wears.
+    fin.fillStyle = o.brass;
+    fin.fillRect(0, 0, o.stripe, o.h);
+
+    // The type, in the set's own hand: the title, the promise, the examples.
+    const sans = 'Arial, "Segoe UI", Helvetica, sans-serif';
     fin.textBaseline = 'alphabetic';
-    fin.fillStyle = '#b4482e';
-    fin.fillRect(x, 206, 3, 148);
-    fin.fillStyle = '#17150f';
-    fin.font = `700 74px ${sans}`;
-    fin.fillText(o.title, x + 28, 268);
-    fin.fillStyle = '#3d372e';
-    fin.font = `400 28px ${sans}`;
-    fin.fillText(o.tagline, x + 28, 314);
-    fin.fillStyle = '#655c50';
-    fin.font = `italic 21px ${serif}`;
-    fin.fillText(o.examples, x + 28, 352);
-    fin.fillStyle = '#867c6f';
-    fin.font = `400 21px ${sans}`;
-    fin.fillText(o.url, x + 28, 470);
-  }, { w: W, h: H, hanging: HANGING, ...COPY });
+    fin.fillStyle = o.cream;
+    fin.font = `700 86px ${sans}`;
+    fin.fillText(o.title, 70, 432);
+    fin.fillStyle = o.brass;
+    fin.font = `400 36px ${sans}`;
+    fin.fillText(o.tagline, 72, 490);
+    fin.fillStyle = o.muted;
+    fin.font = `400 29px ${sans}`;
+    fin.fillText(o.examples, 72, 536);
+    fin.fillStyle = '#96a0af';
+    fin.font = `400 30px ${sans}`;
+    fin.fillText(o.url, 70, 598);
+  }, { w: W, h: H, stripe: STRIPE, brass: BRASS, cream: CREAM, muted: MUTED, hanging: HANGING, ...COPY });
 
   if (errors.length) throw new Error('page errors: ' + errors.join(' | '));
 
