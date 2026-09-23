@@ -35,9 +35,17 @@ export function hashOf(name) {
   return h >>> 0;
 }
 
-// Six values per hue. Fewer and twenty-two cards run out of colours; more and
-// neighbouring steps stop being tellable apart at this size.
-const STEPS = [0.2, 0.12, 0.04, -0.04, -0.13, -0.22];
+// Nine values per hue, four hues, and then the duplicates are thrown away.
+//
+// Six steps was enough until the chimes made twenty-six kits, at which point
+// the grid ran out of colours and two cards were handed the same one. Simply
+// adding steps does not fix it: several palettes give two roles the SAME
+// colour -- `user` and `anon` identical -- and every step of those two hues
+// then collides, so a pool of twenty-eight could hold as few as twenty-three
+// distinguishable colours. What the grid needs is not more slots but more
+// colours, so the pool is built wide and deduplicated, and reports what is
+// actually left.
+const STEPS = [0.26, 0.19, 0.13, 0.07, 0, -0.07, -0.14, -0.22, -0.3];
 const ROLES = ['user', 'anon', 'bot', 'alert'];
 
 /**
@@ -53,6 +61,9 @@ const ROLES = ['user', 'anon', 'bot', 'alert'];
  * Interleaved by value rather than grouped by hue, so a grid walking the pool
  * in order alternates colours instead of running four blues and then four
  * greens.
+ *
+ * Two colours that round to the same eight-bit triple are one colour to a
+ * viewer, so only the first of them is kept.
  */
 export function mosaicPool(palette) {
   const ground = palette.background;
@@ -64,10 +75,15 @@ export function mosaicPool(palette) {
     return short > 0 ? lighten(colour, dir * short) : colour;
   };
   const out = [];
+  const seen = new Set();
   for (const step of STEPS) {
     for (const role of ROLES) {
       const base = palette[role] || palette.default;
-      out.push(clear(lighten(mixColors(base, ground, 0.06), step)));
+      const colour = clear(lighten(mixColors(base, ground, 0.06), step));
+      const key = String(colour).trim().toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(colour);
     }
   }
   return out;
