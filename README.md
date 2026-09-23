@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/social-preview.png" width="100%" alt="Tintinnabulum — turn any stream of events into sound">
+  <img src="demo/social-preview.png" width="100%" alt="Three framed pictures hung on a gallery wall — coloured ribbons on cotton rag, a glowing mould on black card, a stippled engraving — beside the title Tintinnabulum and the line: turn any stream of events into sound">
 </p>
 
 # Tintinnabulum

@@ -1511,7 +1511,7 @@ tools/
   render.mjs            drive the real visualiser headless, out to PNG
   contact-sheet.mjs     every scene on one sheet, to look at them
   level-kits.mjs        measure every kit and write the loudness corrections
-  make-social-preview.mjs  regenerate the card in .github/, from the engine
+  make-social-preview.mjs  regenerate demo/social-preview.png, from the engine
 demo/
   demo.js               the sandbox page
   shell.js              the tabs, the inspector, the dock, the keys, fading away
