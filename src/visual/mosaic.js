@@ -35,17 +35,24 @@ export function hashOf(name) {
   return h >>> 0;
 }
 
-// Nine values per hue, four hues, and then the duplicates are thrown away.
+// Six values per hue, twice over -- once in the palette's own colour and once
+// with it pulled towards the ground -- and then the duplicates are thrown out.
 //
-// Six steps was enough until the chimes made twenty-six kits, at which point
-// the grid ran out of colours and two cards were handed the same one. Simply
-// adding steps does not fix it: several palettes give two roles the SAME
-// colour -- `user` and `anon` identical -- and every step of those two hues
-// then collides, so a pool of twenty-eight could hold as few as twenty-three
-// distinguishable colours. What the grid needs is not more slots but more
-// colours, so the pool is built wide and deduplicated, and reports what is
-// actually left.
-const STEPS = [0.26, 0.19, 0.13, 0.07, 0, -0.07, -0.14, -0.22, -0.3];
+// Six steps of four hues was enough until the chimes made twenty-six kits, at
+// which point the grid ran out of colours and handed two cards the same one.
+// Neither obvious fix works on its own. More steps run off both ends: a step
+// past this range saturates to white, and white is the same white in every
+// palette, so that card stops following the palette at all. And more slots do
+// not mean more colours, because several palettes give two roles the SAME
+// colour -- `user` and `anon` identical -- and every value of those two hues
+// then collides.
+//
+// So the second family is the same hues muted towards the ground rather than
+// lightened past it: a colour that is genuinely different at the same value,
+// that cannot clip, and that stays the palette's own.
+const STEPS = [0.2, 0.12, 0.04, -0.04, -0.13, -0.22];
+// How far each hue is pulled towards the ground: as it comes, and muted.
+const MIXES = [0.06, 0.42];
 const ROLES = ['user', 'anon', 'bot', 'alert'];
 
 /**
@@ -77,13 +84,19 @@ export function mosaicPool(palette) {
   const out = [];
   const seen = new Set();
   for (const step of STEPS) {
-    for (const role of ROLES) {
-      const base = palette[role] || palette.default;
-      const colour = clear(lighten(mixColors(base, ground, 0.06), step));
-      const key = String(colour).trim().toLowerCase();
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push(colour);
+    for (const mix of MIXES) {
+      for (const role of ROLES) {
+        const base = palette[role] || palette.default;
+        const colour = clear(lighten(mixColors(base, ground, mix), step));
+        const key = String(colour).trim().toLowerCase();
+        if (seen.has(key)) continue;
+        // Pure white and pure black are not colours from this palette, they
+        // are what a colour becomes when it is pushed off the end. A card
+        // wearing one would look the same whatever palette is on.
+        if (/^rgb\(255, ?255, ?255\)$|^#f{3,6}$/i.test(key) || /^rgb\(0, ?0, ?0\)$|^#0{3,6}$/i.test(key)) continue;
+        seen.add(key);
+        out.push(colour);
+      }
     }
   }
   return out;
