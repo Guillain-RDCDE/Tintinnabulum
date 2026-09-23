@@ -863,5 +863,45 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('dither is a finish with a note of its own', m.FINISH_ORDER.includes('dither') && m.FINISHES.dither.note.length > 30);
 }
 
+// --- a chime has eight rods and cannot play a wrong note ---
+// The synthesis needs a browser; the rule that makes a chime a chime does not.
+{
+  const { ChimeInstrument, CHORDS } = await import('../src/audio/chime.js');
+  const { KITS } = await import('../src/audio/kits.js');
+
+  for (const [name, rods] of Object.entries(CHORDS)) {
+    const sorted = [...rods].sort((a, b) => a - b);
+    ok(`the ${name} chime is eight rods, in order, from its lowest`,
+       rods.length === 8 && rods[0] === 0 && rods.join() === sorted.join(), rods.join(' '));
+  }
+
+  const rods = CHORDS.earth;
+  const chime = new ChimeInstrument({ rods });
+  let off = 0;
+  let wrong = 0;
+  // Whatever is asked for, from two octaves below the chime to three above it,
+  // comes back as one of the eight rods -- and as the nearest one, once the
+  // pitch has been folded into the chime's own compass.
+  for (let s = -24; s <= 60; s += 0.5) {
+    const i = chime.nearest(s);
+    if (!Number.isInteger(i) || i < 0 || i >= rods.length) { off++; continue; }
+    let folded = s;
+    while (folded > rods[rods.length - 1] + 0.5) folded -= 12;
+    while (folded < rods[0] - 0.5) folded += 12;
+    const best = rods.reduce((a, b) => (Math.abs(b - folded) < Math.abs(a - folded) ? b : a), rods[0]);
+    if (rods[i] !== best) wrong++;
+  }
+  ok('every note asked of a chime lands on one of its rods', off === 0, `off=${off}`);
+  ok('a note outside the chime is folded into it, not dropped', wrong === 0, `wrong=${wrong}`);
+
+  const chimes = ['earthchime', 'waterchime', 'airchime', 'firechime'];
+  const missing = chimes.filter((n) => !KITS[n] || !KITS[n].level || KITS[n].note.length < 40);
+  ok('the four chimes are kits, measured and described', missing.length === 0, missing.join(','));
+  ok('a chime kit answers in three roles', chimes.every((n) => {
+    const k = KITS[n].make();
+    return k.add && k.sub && k.accent;
+  }));
+}
+
 console.log(fails ? `\n${fails} FAILURE(S): ${failedNames.join(' | ')}` : '\nall core checks passed');
 process.exit(fails ? 1 : 0);

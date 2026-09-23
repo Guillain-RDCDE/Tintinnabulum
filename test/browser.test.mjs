@@ -432,6 +432,48 @@ for (const [kit, roles] of Object.entries(kitPeaks)) {
   }
 }
 ok('every kit sounds in every role', silentRoles.length === 0, silentRoles.join(' '));
+
+// A chime is one clapper on eight rods: one event is a small arpeggio, not a
+// note. Counted at the source -- every rod the clapper reaches -- rather than
+// from the waveform, where two rods ringing together are one sound.
+const chimeSwing = await page.evaluate(async () => {
+  const { ChimeInstrument, CHORDS } = await import('../src/audio/chime.js');
+  const swing = async (inst, velocity) => {
+    const off = new OfflineAudioContext(1, 44100 * 3, 44100);
+    await inst.load(off);
+    const rods = [];
+    const real = inst.voice.play.bind(inst.voice);
+    inst.voice.play = (ctx, dest, o) => {
+      rods.push({ semitone: o.semitone, when: o.when, velocity: o.velocity });
+      return real(ctx, dest, o);
+    };
+    const handle = inst.play(off, off.destination, { semitone: 7, velocity });
+    const d = (await off.startRendering()).getChannelData(0);
+    let peak = 0;
+    for (let i = 0; i < d.length; i++) peak = Math.max(peak, Math.abs(d[i]));
+    return { rods, peak, duration: handle.duration };
+  };
+  const loud = await swing(new ChimeInstrument({ rods: CHORDS.earth, strikes: 3 }), 1);
+  const soft = await swing(new ChimeInstrument({ rods: CHORDS.earth, strikes: 1 }), 1);
+  const set = new Set(CHORDS.earth);
+  return {
+    swing: loud.rods.length,
+    single: soft.rods.length,
+    peak: loud.peak,
+    // Every rod struck is one of the chime's own, give or take the few cents
+    // of scatter a hand-tuned rod has.
+    onRods: loud.rods.every((r) => set.has(Math.round(r.semitone))),
+    inOrder: loud.rods.every((r, i) => i === 0 || r.when > loud.rods[i - 1].when),
+    fading: loud.rods.every((r, i) => i === 0 || r.velocity < loud.rods[i - 1].velocity),
+    long: soft.duration,
+  };
+});
+ok('one event swings the clapper through several rods, each softer and later',
+   chimeSwing.swing >= 2 && chimeSwing.single === 1 && chimeSwing.inOrder && chimeSwing.fading,
+   JSON.stringify(chimeSwing));
+ok('a chime only ever strikes its own rods, and they ring on',
+   chimeSwing.onRods && chimeSwing.peak > 0.05 && chimeSwing.long > 3,
+   JSON.stringify(chimeSwing));
 ok('there are several kits to choose from', Object.keys(kitPeaks).length >= 6,
    Object.keys(kitPeaks).join(', '));
 

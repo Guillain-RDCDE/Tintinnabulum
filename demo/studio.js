@@ -34,7 +34,7 @@ const RATIOS = ['9:16', '3:4', '4:5', '1:1', '5:4', '4:3', '3:2', '16:9'];
 const ratioOf = (r) => r.split(':').map(Number);
 
 // Instruments rather than ambiences: a picture's events should each be heard.
-const SOUND_KITS = ['musicbox', 'marimba', 'glassy', 'chimes', 'handbells', 'koto', 'steelpan', 'strings', 'water', 'clay', 'synth', 'hatnote']
+const SOUND_KITS = ['musicbox', 'marimba', 'glassy', 'chimes', 'earthchime', 'waterchime', 'airchime', 'firechime', 'handbells', 'koto', 'steelpan', 'strings', 'water', 'clay', 'synth', 'hatnote']
   .filter((k) => KITS[k]);
 
 const hashOf = (s) => {

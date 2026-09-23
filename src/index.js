@@ -42,6 +42,7 @@ export { SPACES, SPACE_NAMES, DEFAULT_SPACE, impulse } from './audio/space.js';
 export { pluck, plucksHeldMB } from './audio/string.js';
 export { strike, strikesHeldMB } from './audio/modal.js';
 export { AMBIENCES, AMBIENCE_NAMES } from './audio/ambiences.js';
+export { ChimeInstrument, CHORDS, chimeKit } from './audio/chime.js';
 export { noiseBuffer, noiseSource } from './audio/noise.js';
 export { drawKitArt, kitArtOf } from './visual/kit-art.js';
 export { mosaicPool, swatchColour, poolSize } from './visual/mosaic.js';

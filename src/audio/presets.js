@@ -89,6 +89,24 @@ export const SYNTH_PRESETS = {
       { ratio: 13.34, gain: 0.12, decay: 0.16, q: 60 },
     ],
   },
+  rod: {
+    // A steel rod brazed to a plate at one end: a clamped-free bar, whose
+    // bending modes stand at 1 : 6.27 : 17.55. The upper two are brief and
+    // quiet -- a bright instant, then a clean pitch that will not stop.
+    //
+    // The second mode here is not a mode at all. It is the same rod bending in
+    // the other plane, a few cents away because no hand-brazed joint is
+    // symmetric, and the slow beat between the two is the whole shimmer of
+    // these chimes. Take it out and the note goes dead straight away.
+    engine: 'modal', attack: 0.002, decay: 6, colour: 'white', strike: 0.0025, hardness: 0.3,
+    modes: [
+      { ratio: 1, gain: 1, decay: 1, q: 220 },
+      { ratio: 1.0034, gain: 0.85, decay: 0.96, q: 220 },
+      { ratio: 2.71, gain: 0.1, decay: 0.22, q: 90 },    // the plate it is brazed to
+      { ratio: 6.27, gain: 0.18, decay: 0.13, q: 130 },
+      { ratio: 17.55, gain: 0.05, decay: 0.04, q: 130 },
+    ],
+  },
   singingbowl: {
     // A standing bowl: nearly harmonic, slightly stretched, and it rings for
     // an unreasonably long time.

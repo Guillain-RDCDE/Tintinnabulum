@@ -23,10 +23,21 @@ function softClipCurve(points = 8192, k = 2.2) {
 }
 
 export class AudioEngine {
-  constructor({ volume = 0.7, latencyHint = 'interactive', space = DEFAULT_SPACE } = {}) {
+  /**
+   * @param {object} [o]
+   * @param {number} [o.volume]
+   * @param {string} [o.latencyHint]
+   * @param {string} [o.space]
+   * @param {BaseAudioContext} [o.ctx]  a context to adopt rather than make one
+   *   of its own. An OfflineAudioContext here renders the whole engine --
+   *   room, limiter and ceiling included -- to a buffer, which is how a kit
+   *   can be listened to or written to a file away from a browser.
+   */
+  constructor({ volume = 0.7, latencyHint = 'interactive', space = DEFAULT_SPACE, ctx = null } = {}) {
     this._volume = volume;
     this._muted = false;
     this._latencyHint = latencyHint;
+    this._given = ctx;
     this._ctx = null;
     this._master = null;
     this._limiter = null;
@@ -51,9 +62,13 @@ export class AudioEngine {
 
   get ctx() {
     if (!this._ctx) {
-      const AC = window.AudioContext || window.webkitAudioContext;
-      if (!AC) throw new Error('Web Audio is not available in this browser');
-      this._ctx = new AC({ latencyHint: this._latencyHint });
+      if (this._given) {
+        this._ctx = this._given;
+      } else {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) throw new Error('Web Audio is not available in this browser');
+        this._ctx = new AC({ latencyHint: this._latencyHint });
+      }
       // Anyone who wants to know when the context changes state gets told
       // here, where the context is made, rather than wherever it happens to be
       // unlocked from. Hung off unlock() instead, this was never attached at

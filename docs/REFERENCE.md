@@ -225,7 +225,7 @@ nothing beyond `node:http`.
 Implement `load(ctx)` and `play(ctx, dest, {semitone, velocity})` and you have a
 new instrument.
 
-Fifteen kits ship, selectable at runtime. Three of them are places rather than instruments.
+The kits ship selectable at runtime. A few of them are places rather than instruments.
 
 | Kit | Sound |
 |---|---|
@@ -237,15 +237,47 @@ Fifteen kits ship, selectable at runtime. Three of them are places rather than i
 | **Gongs** | Large, slow, deliberately inharmonic. Best with a sparse feed |
 | **Glass** | Long and ringing; turns a busy feed into a wash |
 | **Wind chimes** | Tubes rather than bars, with a long tail |
+| **Earth / Water / Air / Fire chime** | Eight steel rods on one chord, struck two or three at a time by a single clapper. See below |
 | **Steel pan** | Nearly harmonic partials, so it sings where a gong clangs |
 | **Plucked strings** | Harp above, deep pizzicato below. The warmest of the set |
 | **Dawn chorus** | Birdsong, built from swept whistles rather than recordings |
 | **Night** | Crickets and low wind. The quietest thing here |
 
-Only five use audio files. **Seventeen of the twenty-two are pure synthesis: nothing to download, nothing
-to license, and they work offline.** Five carry recordings — the celesta, the
-two birdsong banks and the animal calls in the two ambiences, all public
-domain or CC0.
+**Nearly all of them are pure synthesis: nothing to download, nothing to
+license, and they work offline.** Only the celesta, the two birdsong banks and
+the animal calls in the two ambiences are recordings, all public domain or CC0.
+
+#### Chimes of eight rods
+
+The small bamboo chimes are not a scale. They are eight steel rods brazed to a
+plate inside a tube, tuned to one chord, with a clapper on a thread that
+touches two or three of them on every swing — and everything that makes them
+beautiful follows from that, so `chime.js` models the object rather than the
+sound.
+
+A rod clamped at one end bends at 1 : 6.27 : 17.55, and the upper modes are
+quiet and brief: a bright instant, then a clean pitch that will not stop. It
+vibrates in two planes at once, and no hand-brazed joint is symmetric, so the
+two are a few cents apart — the slow beat between them is the whole shimmer of
+these instruments, and taking it out leaves the note dead straight. One event
+is one swing of the clapper rather than one note: two or three rods in quick
+succession, each softer than the last, an arpeggio nobody played.
+
+And it has eight notes. Whatever pitch the mapper asks for is folded into the
+chime's own compass, an octave at a time, and snapped to the nearest rod — so
+a chime cannot play a wrong note, and two of them in a room never disagree.
+Because only eight pitches are ever rendered, the strike cache draws each one
+once and every later swing is a buffer replay.
+
+Four chords ship, tuned by ear against the engine: `earth` a wide major triad,
+`water` a seventh over a fourth, `air` a major ninth pitched high where the
+shimmer reads best, `fire` a major sixth with the fifth doubled. They are
+`CHORDS` in `src/audio/chime.js`, and any eight semitones can take their place.
+
+```js
+import { ChimeInstrument, CHORDS, chimeKit } from './src/index.js';
+new ChimeInstrument({ rods: CHORDS.water, baseFreq: 349.23, strikes: 3 });
+```
 
 - `SampleInstrument` plays recorded banks, resampled through `playbackRate`, so
   pitch is continuous rather than limited to the number of recorded notes.
@@ -1469,6 +1501,7 @@ src/audio/
   loop-wave.js          the repeating swell, as a Fourier series
   string.js             Karplus-Strong, rendered to a buffer
   modal.js              a struck body, as the sum of its modes
+  chime.js              eight rods and one clapper: the chord-bound chimes
   granular.js           a recording taken apart and put back as a cloud
   space.js              the room: impulse responses, built not recorded
   buffer-cache.js       rendered notes, kept to a memory budget rather than a count
@@ -1511,6 +1544,7 @@ tools/
   render.mjs            drive the real visualiser headless, out to PNG
   contact-sheet.mjs     every scene on one sheet, to look at them
   level-kits.mjs        measure every kit and write the loudness corrections
+  audition.mjs          render a kit to a WAV, to hear it away from a browser
   make-social-preview.mjs  regenerate demo/social-preview.png, from the engine
 demo/
   demo.js               the sandbox page

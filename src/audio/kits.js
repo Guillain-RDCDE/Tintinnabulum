@@ -4,6 +4,7 @@ import { SampleInstrument } from './sample-instrument.js';
 import { SynthInstrument } from './synth-instrument.js';
 import { AMBIENCES } from './ambiences.js';
 import { GranularInstrument } from './granular.js';
+import { chimeKit, CHORDS } from './chime.js';
 
 
 // Resolved from this module's own location rather than the site root, so the
@@ -81,10 +82,10 @@ function trio(addP, subP, accentP, o = {}) {
 /**
  * Named kits for a picker.
  *
- * Twelve of the fifteen are pure synthesis: no audio files, nothing to
- * download, nothing to license, and they work offline. Three carry recordings
- * -- `hatnote`'s celesta, and the animal calls in `shore` and `camargue`. Every
- * recorded file is public domain or CC0, listed in NOTICE.
+ * Nearly all of them are pure synthesis: no audio files, nothing to download,
+ * nothing to license, and they work offline. Only `hatnote`'s celesta, the
+ * birdsong banks and the animal calls in the ambiences are recordings, and
+ * every recorded file is public domain or CC0, listed in NOTICE.
  */
 export const KITS = {
   hatnote: {
@@ -136,6 +137,37 @@ export const KITS = {
     note: 'Tubes rather than bars, with a long tail. Best on a slow feed.',
     make: trio('chime', 'harp', 'glass'),
   },
+  // --- chimes of eight rods ------------------------------------------------
+  //
+  // Four chords, one instrument. See chime.js: each is eight rods and a
+  // clapper, so every event is a small arpeggio and no event can be out of
+  // tune. They are the calmest kits here and the ones that survive a feed
+  // running all day.
+  earthchime: {
+    level: 1.295,
+    label: 'Earth chime',
+    note: 'Eight steel rods on a wide major chord, struck two or three at a time by one clapper. Whatever arrives, it can only answer with one of its eight.',
+    make: () => chimeKit({ rods: CHORDS.earth, baseFreq: 392, name: 'earthchime' }),
+  },
+  waterchime: {
+    level: 1.161,
+    label: 'Water chime',
+    note: 'The same eight rods tuned to a seventh over a fourth: moving, unresolved, and never sad. The one for a feed that never stops.',
+    make: () => chimeKit({ rods: CHORDS.water, baseFreq: 349.23, name: 'waterchime' }),
+  },
+  airchime: {
+    level: 1.233,
+    label: 'Air chime',
+    note: 'A major ninth, thin and open, pitched high enough that the shimmer of the rods beating against themselves is most of what you hear.',
+    make: () => chimeKit({ rods: CHORDS.air, baseFreq: 440, name: 'airchime' }),
+  },
+  firechime: {
+    level: 1.25,
+    label: 'Fire chime',
+    note: 'A major sixth with the fifth doubled, low and bright at once. It will not sit still, so it suits a feed that arrives in bursts.',
+    make: () => chimeKit({ rods: CHORDS.fire, baseFreq: 329.63, name: 'firechime' }),
+  },
+
   steelpan: {
     level: 1.642,
     label: 'Steel pan',
