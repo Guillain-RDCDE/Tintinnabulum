@@ -239,6 +239,21 @@
   .seg button { border: 0; background: none; font-size: .8125rem; font-weight: 600; padding: .4rem .95rem; border-radius: 999px;
                 cursor: pointer; color: var(--muted); transition: background .25s ease, color .25s ease; }
   .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+  .show-list { display: grid; gap: 6px; margin: .6rem 0 .2rem; }
+  .show-list:empty { display: none; }
+  .show-row { display: flex; align-items: center; gap: .5rem; padding: .4rem .55rem;
+              border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  .show-row .n { color: var(--faint); font-variant-numeric: tabular-nums; font-size: .75rem; width: 1.2rem; }
+  .show-row b { flex: 1; font-size: .8125rem; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .show-row input { width: 4.2rem; min-height: 32px; padding: .25rem .4rem; text-align: right; }
+  .show-row .unit { color: var(--muted); font-size: .75rem; }
+  .show-row .x, .show-row .up { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 1rem; padding: .1rem .3rem; }
+  .show-row .x:hover, .show-row .up:hover { color: var(--fg); }
+  /* Closing time on this screen as well: the picture goes down like the lights. */
+  #shut { position: fixed; inset: 0; z-index: 60; background: #000; opacity: 0; pointer-events: none;
+          transition: opacity 3s ease; display: grid; place-content: center; text-align: center;
+          color: var(--muted); font-size: .9rem; line-height: 1.8; }
+  body.shut #shut { opacity: 1; pointer-events: auto; cursor: pointer; }
   #work-cartel { margin: .9rem 0 .4rem; }
   #work-cartel .note { margin-top: 0; }
   .cartel { border-left: 2px solid var(--accent); padding: .15rem 0 .15rem .85rem; }
@@ -789,6 +804,22 @@
           <option value="60">Every hour</option>
         </select></label>
       <p class="note" id="works-tour-note"></p>
+
+      <p class="sub-label">Programme</p>
+      <p class="note">A room that shows work has a programme rather than a shuffle: these
+        pieces, in this order, each for as long as it deserves, from opening until closing.
+        Where the show has got to is read from the clock, so two screens agree without
+        talking to each other and a machine rebooted overnight comes back where the
+        programme is.</p>
+      <div id="show-list" class="show-list"></div>
+      <div class="row">
+        <button type="button" class="act" id="show-add">Add the work on show</button>
+        <button type="button" class="act" id="show-clear">Clear</button>
+      </div>
+      <label class="field"><span>Open</span>
+        <input type="text" id="show-hours" placeholder="10:00-18:00" spellcheck="false" autocomplete="off"></label>
+      <label class="check"><input type="checkbox" id="show-run"> Run the programme on this screen too</label>
+      <p class="note" id="show-note"></p>
     </div>
   </details>
 
@@ -1046,6 +1077,8 @@
 
   </main>
 </aside>
+
+<div id="shut" aria-hidden="true"><span id="shut-note"></span></div>
 
 <footer id="dock" class="glass chrome" aria-label="Player">
   <button type="button" class="icon" id="prev-work" aria-label="Previous work" title="Previous work (Left arrow)">

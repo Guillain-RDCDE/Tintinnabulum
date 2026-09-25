@@ -2020,6 +2020,108 @@ const wallOffer = await page.evaluate(() => {
 ok('the dock carries the second screen, and P opens it',
    wallOffer.tag === 'A' && wallOffer.target === 'tintinnabulum-projection' && wallOffer.byKey === 1,
    JSON.stringify(wallOffer));
+// --- the programme ---------------------------------------------------------
+// A room that shows work has a programme rather than a shuffle, and where the
+// show has got to is read from the clock -- so a wall started at any moment
+// hangs what the clock says, and a room outside its hours is dark.
+const runs = await context.newPage();
+const showErrors = [];
+runs.on('pageerror', (e) => showErrors.push(String(e.message)));
+await runs.goto(BASE + '/demo/project.html?show=lanterns:1,mould:1,currents:1&feed=demo', { waitUntil: 'domcontentloaded' });
+await runs.bringToFront();
+await runs.waitForFunction(() => window.projection && window.projection.labelled, null, { timeout: 25000 });
+const onNow = await runs.evaluate(async () => {
+  const { showAt } = await import('../src/show.js');
+  const due = showAt(window.projection.programme, new Date());
+  return {
+    programme: window.projection.programme.length,
+    hanging: window.projection.labelled,
+    due: due.work,
+    scene: window.projection.sink.sceneName,
+  };
+});
+ok('a wall given a programme hangs what the clock says is due',
+   onNow.programme === 3 && onNow.hanging === onNow.due, JSON.stringify(onNow));
+await runs.close();
+
+// Closing time. The hours here are already past today, so the wall should be
+// dark the moment it opens rather than after a wait.
+const shutHour = (new Date().getHours() + 22) % 24;
+const shutHours = `${String(shutHour).padStart(2, '0')}:00-${String((shutHour + 1) % 24).padStart(2, '0')}:00`;
+const dark = await context.newPage();
+dark.on('pageerror', (e) => showErrors.push(String(e.message)));
+await dark.goto(`${BASE}/demo/project.html?work=coral&feed=demo&open=${encodeURIComponent(shutHours)}`, { waitUntil: 'domcontentloaded' });
+await dark.bringToFront();
+await dark.waitForFunction(() => window.projection && window.projection.closed, null, { timeout: 20000 });
+const closed = await dark.evaluate(() => ({
+  closed: window.projection.closed,
+  shut: document.body.classList.contains('shut'),
+  suspended: Boolean(window.projection.sink.suspended),
+  until: Math.round(window.projection.untilOpen),
+  says: document.getElementById('note').textContent,
+}));
+ok('outside its hours the wall goes dark, and says when it comes back',
+   closed.closed && closed.shut && closed.suspended && closed.until > 0 && /returns at/.test(closed.says),
+   JSON.stringify(closed));
+await dark.close();
+ok('a wall running a programme logged no errors', showErrors.length === 0, showErrors.join(' | '));
+
+// The console builds that programme, and the address carries it.
+await drive(page);
+const built = await page.evaluate(async () => {
+  const add = document.querySelector('#show-add');
+  document.querySelector('#show-clear').click();
+  window.son.works.apply('lanterns');
+  return new Promise((resolve) => {
+    const wait = setInterval(() => {
+      if (window.son.works.current() !== 'lanterns') return;
+      clearInterval(wait);
+      add.click();
+      const hoursField = document.querySelector('#show-hours');
+      // Typed loosely on purpose: a gallery types what it says out loud.
+      hoursField.value = '9h30-18:00';
+      hoursField.dispatchEvent(new Event('change'));
+      resolve({
+        rows: [...document.querySelectorAll('.show-row')].map((r) => `${r.dataset.work}:${r.querySelector('input').value}`),
+        hours: hoursField.value,
+        address: document.querySelector('#wall-address').value,
+        note: document.querySelector('#show-note').textContent,
+      });
+    }, 150);
+  });
+});
+ok('the panel builds a programme from the work on show',
+   built.rows.length === 1 && built.rows[0] === 'lanterns:10' && /Lanterns on the lake \(10 min\)/.test(built.note),
+   JSON.stringify({ rows: built.rows, note: built.note.slice(0, 80) }));
+ok('hours typed any way round are understood, and written back plainly',
+   built.hours === '09:30-18:00', built.hours);
+ok('and the wall address carries the whole show',
+   /show=lanterns%3A10/.test(built.address) && /open=09%3A30-18%3A00/.test(built.address), built.address);
+
+// This screen can run the programme too, for a room with only one of them.
+const sleeps = await page.evaluate(async (hoursText) => {
+  const field = document.querySelector('#show-hours');
+  field.value = hoursText;
+  field.dispatchEvent(new Event('change'));
+  const run = document.querySelector('#show-run');
+  run.checked = true;
+  run.dispatchEvent(new Event('change'));
+  await new Promise((r) => setTimeout(r, 300));
+  const shut = document.body.classList.contains('shut');
+  document.querySelector('#shut').click();
+  await new Promise((r) => setTimeout(r, 300));
+  const woke = !document.body.classList.contains('shut');
+  // Put the room back as it was found.
+  run.checked = false;
+  run.dispatchEvent(new Event('change'));
+  field.value = '';
+  field.dispatchEvent(new Event('change'));
+  document.querySelector('#show-clear').click();
+  return { shut, woke };
+}, shutHours);
+ok('this screen keeps the same hours, and a click wakes it for a while',
+   sleeps.shut && sleeps.woke, JSON.stringify(sleeps));
+
 ok('the address offered is a wall of its own, on what is showing now',
    /project\.html\?/.test(wallOffer.address) && /work=/.test(wallOffer.address) &&
    /feed=/.test(wallOffer.address) && /full=1/.test(wallOffer.address) && wallOffer.tried === wallOffer.address,

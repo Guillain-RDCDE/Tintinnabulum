@@ -28,6 +28,7 @@
 // difference between an artwork and a crashed screen.
 
 import { parseColor, lightnessOf } from '../src/visual/color.js';
+import { parseShow, parseHours, showAt, isOpen, untilOpen, formatClock } from '../src/show.js';
 import {
   CanvasSink, PALETTES, WORKS, SCENES, Mapper, normalize, mediumOf, drawQr,
   FINISHES, GROUNDS, MATS, KITS, LIVING,
@@ -312,6 +313,7 @@ const keepAlive = params.get('idle') !== 'off';
 let pulse = 0;
 if (keepAlive) {
   setInterval(() => {
+    if (closed) return;
     if (performance.now() - last < IDLE_AFTER) return;
     const ev = normalize({
       id: 'wall-' + pulse++,
@@ -329,14 +331,71 @@ if (keepAlive) {
   }, 3200);
 }
 
-// The address is the installation: a work to show, a feed to listen to.
-const wanted = params.get('work');
-if (wanted) {
-  showWork(wanted);
-  if (params.get('label') !== 'off') showCartel(wanted);
+// --- the programme ------------------------------------------------------
+//
+// A room that shows work has a programme, not a shuffle: these pieces, in this
+// order, each for as long as it deserves, from opening until closing and dark
+// in between. Where in the programme we are is read from the clock (see
+// show.js), so a screen rebooted overnight comes back where the show is and
+// two screens in one room agree without talking to each other.
+const programme = parseShow(params.get('show'), (n) => Boolean(WORKS[n]));
+const hours = parseHours(params.get('open'));
+const shut = document.getElementById('shut');
+let closed = false;
+
+/** Closing time: the picture goes down like the lights, and nothing burns in. */
+function close(yes) {
+  if (yes === closed) return;
+  closed = yes;
+  document.body.classList.toggle('shut', yes);
+  sink.setSuspended(yes);
+  if (yes) {
+    if (source && source.stop) source.stop();
+    // Cleared rather than frozen: a still picture held for fourteen hours is
+    // how a panel learns a shape it will keep for good.
+    setTimeout(() => { if (closed) sink.clear(); }, 4200);
+    note.hidden = false;
+    note.innerHTML = `<b>Closed</b>The programme returns at ${hours ? formatClock(hours.open) : 'opening'}.`;
+  } else {
+    note.hidden = true;
+    if (feed) listenAlone(feed);
+    const now = showAt(programme, new Date());
+    if (now) hang(now.work);
+  }
 }
+
+function hang(name) {
+  if (name === labelled && !cartel.hidden) return;
+  showWork(name);
+  if (params.get('label') !== 'off') showCartel(name);
+}
+
+/** Where the programme is now; checked often enough that a minute is a minute. */
+function followProgramme() {
+  const when = new Date();
+  if (hours) close(!isOpen(hours, when));
+  if (closed || !programme.length) return;
+  const now = showAt(programme, when);
+  if (now && now.work !== labelled) hang(now.work);
+}
+
+// The address is the installation: a programme, or a single work, and a feed.
 const feed = params.get('feed');
-if (feed) listenAlone(feed);
+if (programme.length) {
+  followProgramme();
+  setInterval(followProgramme, 5000);
+} else {
+  const wanted = params.get('work');
+  if (wanted) {
+    showWork(wanted);
+    if (params.get('label') !== 'off') showCartel(wanted);
+  }
+  if (hours) {
+    close(!isOpen(hours, new Date()));
+    setInterval(() => close(!isOpen(hours, new Date())), 5000);
+  }
+}
+if (feed && !closed) listenAlone(feed);
 if (params.get('full') === '1') addEventListener('pointerdown', goFullscreen, { once: true });
 
 // Announce ourselves, so the sandbox sends its current settings rather than
@@ -350,6 +409,9 @@ window.addEventListener('beforeunload', () => {
 // Exposed for the test suite, which needs to see what arrived.
 window.projection = {
   sink, channel, showWork, goFullscreen, showCartel, hideCartel, addressOf,
+  programme, hours, followProgramme,
+  get closed() { return closed; },
+  get untilOpen() { return untilOpen(hours, new Date()); },
   get labelled() { return cartel.classList.contains('show') ? labelled : null; },
   get seen() { return seen; },
   get standalone() { return Boolean(source); },

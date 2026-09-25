@@ -35,6 +35,7 @@ import { createProjector } from './broadcast.js';
 import { setupConnect } from './connect.js';
 import { setupWorks } from './works.js';
 import { setupShell } from './shell.js';
+import { parseShow, formatShow, parseHours, formatHours, showAt, isOpen, untilOpen, describeShow } from '../src/show.js';
 import { setupStudio } from './studio.js';
 
 const storedPalette = store.pick('palette', PALETTES, DEFAULT_PALETTE_NAME);
@@ -425,6 +426,12 @@ let connectSummary = 'Paste JSON, hear it';
 // them; read through a null check for the same reason as the two above.
 let worksPanel = null;
 let shell = null;
+// The programme, and the hours the room keeps. Declared here rather than
+// where they are filled in, because the summary line reads them a second
+// after the page opens and a `let` read before its declaration does not
+// return undefined -- it throws, and takes the whole page with it.
+let programme = [];
+let hours = null;
 // Create, once it is set up below. The Gallery reads your pieces through it.
 let studio = null;
 // One of yours, hung on the wall from the bench or the Gallery: which, and the
@@ -867,6 +874,139 @@ async function onProject(e) {
   }
 }
 
+// =========================================================================
+// The programme
+// =========================================================================
+//
+// The list lives in the address of the wall and in this panel; the logic --
+// what hangs now, whether the room is open -- is in src/show.js, where it is
+// checked without a browser. Nothing here decides anything about time.
+programme = parseShow(store.get('show') || '', (n) => Boolean(WORKS[n]));
+hours = parseHours(store.get('show-hours') || '');
+let wakeUntil = 0;
+
+function saveShow() {
+  store.set('show', formatShow(programme));
+  renderShow();
+  refreshWallAddress();
+}
+
+function renderShow() {
+  const host = $('#show-list');
+  host.textContent = '';
+  programme.forEach((entry, i) => {
+    const row = document.createElement('div');
+    row.className = 'show-row';
+    row.dataset.work = entry.work;
+    const n = document.createElement('span');
+    n.className = 'n';
+    n.textContent = String(i + 1);
+    const title = document.createElement('b');
+    title.textContent = WORKS[entry.work] ? WORKS[entry.work].title : entry.work;
+    const minutes = document.createElement('input');
+    minutes.type = 'number';
+    minutes.min = '1';
+    minutes.max = '720';
+    minutes.value = String(Math.round(entry.minutes));
+    minutes.setAttribute('aria-label', `Minutes for ${title.textContent}`);
+    minutes.addEventListener('change', () => {
+      entry.minutes = Math.max(1, Math.min(720, Number(minutes.value) || 1));
+      minutes.value = String(entry.minutes);
+      saveShow();
+    });
+    const unit = document.createElement('span');
+    unit.className = 'unit';
+    unit.textContent = 'min';
+    const up = document.createElement('button');
+    up.type = 'button';
+    up.className = 'up';
+    up.textContent = '↑';
+    up.setAttribute('aria-label', `Move ${title.textContent} earlier`);
+    up.disabled = i === 0;
+    up.addEventListener('click', () => {
+      programme.splice(i - 1, 0, programme.splice(i, 1)[0]);
+      saveShow();
+    });
+    const x = document.createElement('button');
+    x.type = 'button';
+    x.className = 'x';
+    x.textContent = '×';
+    x.setAttribute('aria-label', `Take ${title.textContent} out of the programme`);
+    x.addEventListener('click', () => {
+      programme.splice(i, 1);
+      saveShow();
+    });
+    row.append(n, title, minutes, unit, up, x);
+    host.append(row);
+  });
+  const now = showAt(programme, new Date());
+  const words = describeShow(programme, hours, (n) => (WORKS[n] ? WORKS[n].title : n));
+  const open = isOpen(hours, new Date());
+  $('#show-note').textContent = programme.length
+    ? `${words}${open ? ` On now: ${WORKS[now.work].title}, ${Math.max(1, Math.round(now.remaining))} min left.` : ` Shut; it returns in ${Math.round(untilOpen(hours, new Date()))} min.`}`
+    : 'Nothing programmed. Add the work on show to begin one.';
+}
+
+$('#show-add').addEventListener('click', () => {
+  const name = worksPanel.current();
+  if (!name) {
+    $('#show-note').textContent = 'Choose a work first: the programme is made of works, not of settings.';
+    return;
+  }
+  programme.push({ work: name, minutes: 10 });
+  saveShow();
+});
+$('#show-clear').addEventListener('click', () => {
+  programme = [];
+  saveShow();
+});
+$('#show-hours').addEventListener('change', () => {
+  const parsed = parseHours($('#show-hours').value);
+  hours = parsed;
+  // Written back in the form it was understood in, so a field that was typed
+  // as "9h30-18h" says what it became rather than leaving it to be guessed.
+  $('#show-hours').value = formatHours(parsed);
+  store.set('show-hours', formatHours(parsed));
+  renderShow();
+  refreshWallAddress();
+});
+$('#show-run').addEventListener('change', () => {
+  store.setFlag('show-run', $('#show-run').checked);
+  followProgramme();
+});
+$('#shut').addEventListener('click', () => {
+  // A gallerist opening up early, or staying late: the room wakes for ten
+  // minutes, and then goes back to its hours.
+  wakeUntil = Date.now() + 600000;
+  followProgramme();
+});
+
+/** This screen following the programme, for a room with only one of them. */
+function followProgramme() {
+  const running = $('#show-run').checked;
+  const when = new Date();
+  const awake = !running || !hours || isOpen(hours, when) || Date.now() < wakeUntil;
+  document.body.classList.toggle('shut', !awake);
+  canvas.setSuspended(!awake);
+  if (!awake) {
+    $('#shut-note').textContent = `Closed until ${formatHours(hours).split('-')[0]}. Click to wake it for ten minutes.`;
+    if (startBtn.dataset.on === 'true') startBtn.click();
+    return;
+  }
+  if (!running || !programme.length) return;
+  const now = showAt(programme, when);
+  if (now && now.work !== worksPanel.current()) worksPanel.apply(now.work);
+  if (startBtn.dataset.on !== 'true' && hours) startBtn.click();
+}
+
+$('#show-hours').value = formatHours(hours);
+$('#show-run').checked = store.flag('show-run', false);
+renderShow();
+setInterval(() => {
+  followProgramme();
+  if ($('#sec-works').open) renderShow();
+}, 5000);
+
 /**
  * The address a gallery bookmarks: the work, the feed, and fullscreen.
  *
@@ -875,8 +1015,14 @@ async function onProject(e) {
  */
 function wallAddress() {
   const url = new URL('project.html', location.href);
-  const work = worksPanel && worksPanel.current();
-  if (work) url.searchParams.set('work', work);
+  // A programme rather than a single work, when there is one: the wall then
+  // runs the whole show from the same address.
+  if (programme.length) url.searchParams.set('show', formatShow(programme));
+  else {
+    const work = worksPanel && worksPanel.current();
+    if (work) url.searchParams.set('work', work);
+  }
+  if (hours) url.searchParams.set('open', formatHours(hours));
   const WALL_FEEDS = {
     wikipedia: 'wikipedia', commons: 'commons', bitcoin: 'bitcoin', coinbase: 'coinbase',
     earthquakes: 'quakes', bluesky: 'bluesky', github: 'github', weather: 'weather',

@@ -1411,6 +1411,34 @@ JSON per event and is of no use to a picture. Settings cross it too, so choosing
 a palette on the laptop changes the wall, and a window that has just opened asks
 for them rather than sitting on defaults.
 
+#### The programme
+
+Exhibition mode moves to another work every so many minutes, picked from
+whatever the filter shows. That is a screensaver. A room that shows work has a
+**programme**: these pieces, in this order, each for as long as it deserves,
+from opening until closing and dark in between. The Gallery panel builds one —
+add the work on show, set its minutes, reorder, and give the room its hours —
+and the wall address carries the whole thing:
+
+```
+project.html?show=lanterns:20,coral:10,currents:30&open=10:00-18:00
+```
+
+Where the show has got to is **read from the clock**, not from when a window
+happened to open, and that one decision buys three things: two screens in a
+room started an hour apart hang the same work at the same moment with no
+channel between them; a machine rebooted overnight comes back where the
+programme is rather than at its first piece; and anybody can work out what will
+be on the wall at four o'clock. It is arithmetic on a date and a list, in
+`src/show.js`, checked in Node.
+
+Outside its hours the picture goes down like the lights rather than being
+covered by a black rectangle, and the canvas is cleared a few seconds later:
+a still picture held for fourteen hours is how a panel learns a shape it keeps
+for good. The console can keep the same hours (*Run the programme on this
+screen too*), for a room with only one screen in it; a click on the dark wakes
+it for ten minutes, which is what somebody opening up early actually wants.
+
 #### The wall label
 
 A gallery tells you what you are looking at. So does the wall: when the work

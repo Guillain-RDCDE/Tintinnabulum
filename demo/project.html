@@ -64,11 +64,22 @@
   #cartel canvas { display: block; width: 132px; height: 132px; flex: none; border-radius: 2px; }
   #cartel { margin: 0; }
   #cartel[hidden] { display: none; }
+
+  /* Closing time. Not a black rectangle dropped over the work -- the picture
+     fades out the way a room's lights are taken down, and fades back up when
+     the gallery opens. Nothing is left on screen to burn into a panel. */
+  #shut {
+    position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none;
+    transition: opacity 4s ease;
+  }
+  body.shut #shut { opacity: 1; }
+  body.shut #cartel { opacity: 0; }
 </style>
 </head>
 <body>
   <canvas id="stage"></canvas>
   <p id="note"><b>Waiting for the sandbox</b>Leave the main window open and press Start there.<br>This window draws what it is listening to.</p>
+  <div id="shut" aria-hidden="true"></div>
   <figure id="cartel" hidden>
     <canvas id="cartel-qr" width="132" height="132"></canvas>
     <div class="text">
