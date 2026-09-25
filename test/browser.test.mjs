@@ -3182,7 +3182,16 @@ const emptyGround = async () =>
 // check ran last than about the sky: it failed at 0.38% against a threshold of
 // 0.4% purely because an earlier section had left a light palette up.
 await showTab('picture');
-await page.evaluate(() => document.querySelector('[data-palette="ink"]').click());
+// On a ground and a scene of this section's own choosing. Stars are light, so
+// a pale palette hides them -- and a scene that repaints the whole frame every
+// tick hides them too, whatever the canvas was cleared to. Both were inherited
+// before, which made this a measurement of whichever check ran last: it failed
+// at 0.38% and 0.37% against a threshold of 0.4%, twice, for two different
+// inherited reasons.
+await page.evaluate(() => {
+  document.querySelector('[data-palette="ink"]').click();
+  window.son.sinks.find((s) => s.particles).setScene('bloom');
+});
 await page.waitForTimeout(150);
 const plainGround = await emptyGround();
 await openMore('#more-look');
