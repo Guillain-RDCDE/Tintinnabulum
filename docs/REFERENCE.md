@@ -1003,6 +1003,29 @@ place has one, and still takes every colour from the palette.
 | **Frost** | Diffusion-limited aggregation. A particle wanders until it touches what is already frozen, and stays. Nothing decides the shape: a wanderer is likelier to meet a tip than to find a hollow, so what sticks out gathers more — which is why frost on a window is feathered. Walkers are released on a ring just outside the frozen edge, because a walk from the corner of a large picture almost never arrives, and in hundreds a frame: the first version released twenty-six and grew specks. |
 | **Fracture** | A pane struck, and struck again. Cracks leave each blow in every direction, wander, fork where the stress divides, and stop dead on a crack already there — which is why a broken window is a map of the order it was struck in, and why the second blow makes the smaller pattern. One sheet is one material, so each blow's colour is pulled most of the way to the palette's ink. |
 
+#### Documents
+
+Two that are objects before they are pictures.
+
+**Manuscript** is a page in a script nobody can read. Asemic writing is writing
+without language — the shapes, the rhythm, the way a line sits on a page — and
+the eye reads all of that long before it notices there are no words. A glyph is
+a few strokes over a three-by-five lattice, chosen by a generator seeded from
+the event's own identity, so the same event always writes the same letter and
+the page is a faithful transcription of a text in a language that does not
+exist. Words end, lines wrap at the measure, the margin holds, and now and
+then a letter is set in red.
+
+**Collapse** is not a drawing but a solver: wave function collapse. Every cell
+begins as every tile at once; the cell with the fewest possibilities left is
+chosen, one of its tiles is picked, and the consequences travel outwards until
+nothing more is forced. Twelve tiles, described by what each offers on its four
+edges, and one rule — touching edges must agree — which is why what comes out
+is continuous everywhere. Possibilities are a bitmask per cell, so propagation
+is a queue and some bitwise ands; a contradiction clears a small neighbourhood
+and lets it settle again rather than throwing the page away. Each event drops a
+crossing into the grid and makes the solver find its way round it.
+
 #### Water, air and night
 
 | | |

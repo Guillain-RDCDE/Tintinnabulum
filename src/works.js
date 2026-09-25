@@ -224,6 +224,15 @@ export const WORKS = {
     cartel: 'A sheet of glass, struck wherever an event lands. The cracks run out until they meet a crack already there and stop dead, so the pane keeps the order it was broken in: the first blow is the wide pattern, and every one after it is smaller.',
   }),
 
+  codex: work('Daylight', 'calm', 'The unread codex', {
+    scene: 'asemic', palette: 'papyrus', kit: 'musicbox', space: 'room', ground: 'aged', pace: UNHURRIED,
+    cartel: 'A page in a hand nobody can read. Each event writes one character, and the character comes from the event itself -- so the same event always writes the same letter, and the page is a faithful transcription of a text in a language that does not exist. A music box, one note a letter.',
+  }),
+  junction: work('Daylight', 'calm', 'Junctions', {
+    scene: 'collapse', palette: 'linen', kit: 'marimba', space: 'room', ground: 'cotton',
+    cartel: 'Tiles that may only sit beside tiles they join up with, settling one at a time into a pattern that is continuous everywhere. Every event drops a crossing into the grid and the solver finds its way round it.',
+  }),
+
   // --- grown on paper ------------------------------------------------------------------
   currents: work('Daylight', 'lively', 'Gouache currents', {
     scene: 'ribbons', palette: 'linen', kit: 'marimba', space: 'room', ground: 'cotton',

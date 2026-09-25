@@ -48,6 +48,7 @@ export const CATALOGUE = {
   whorl: S('Painting', 'Parallel stripes pulled into whirlpools around each event, a flat wall that seems to turn.'),
   ribbons: S('Painting', 'Thick ribbons of colour following an unseen current, packed close and never crossing.'),
   aura: S('Painting', 'Wide soft clouds of colour drifting into one another, like light through frosted glass.'),
+  asemic: S('Painting', 'A page written in a hand nobody can read, one letter for every event.'),
   rise: S('Painting', 'Rings and rays in two colours trading places where they cross, and each event running out through them.'),
 
   // --- nature ------------------------------------------------------------
@@ -158,6 +159,7 @@ export const CATALOGUE = {
   walk: S('Forms and numbers', 'Wandering lines, each one lost in thought.'),
   pursuit: S('Forms and numbers', 'Dancers each chasing the next, spiralling in towards the middle.'),
   julia: S('Forms and numbers', 'The coastline of an imaginary island, endlessly detailed.'),
+  collapse: S('Forms and numbers', 'Tiles that may only sit beside tiles they join up with, settling into a pattern that is continuous everywhere.'),
   ulam: S('Forms and numbers', 'Whole numbers laid on a spiral, and the prime ones lining up on diagonals nobody can explain.'),
   collatz: S('Forms and numbers', 'A strange tree grown from one simple rule about numbers.'),
 };
