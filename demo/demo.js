@@ -389,6 +389,33 @@ $('#record').onclick = async (ev) => {
   }
 };
 
+// --- where the sound comes from ------------------------------------------
+//
+// An event's mark is placed by its identity; its note is placed the same way.
+// On a wall, what you hear is then where you are looking -- which is the
+// difference between a picture with music over it and a room with something
+// happening in it.
+function selectSpread(value, persist = true) {
+  const pc = Math.max(0, Math.min(100, Math.round(Number(value) || 0)));
+  $('#spread').value = String(pc);
+  son.audio.setSpread(pc / 100);
+  const word = pc === 0 ? 'in the middle' : pc < 35 ? 'narrow' : pc < 75 ? 'wide' : 'the whole room';
+  $('#spread-val').textContent = word;
+  $('#spread-note').textContent = pc === 0
+    ? 'Every note in the middle, whatever it is. Choose this for one speaker, or for headphones that make a wide picture tiring.'
+    : `A note sounds where its mark is drawn: an event on the left of the picture comes from the left. ${
+      pc >= 75 ? 'At this width the edges are hard left and right, which suits two speakers set apart on a wall.' : 'Held in from the edges, which suits speakers close together.'}`;
+  // Only on a real change. The first call happens while the page is still
+  // being built, and the summary reads things declared further down -- which
+  // does not come back undefined, it throws and takes the page with it.
+  if (persist) {
+    store.set('spread', String(pc));
+    updateSummaries();
+  }
+}
+$('#spread').addEventListener('input', () => selectSpread($('#spread').value));
+selectSpread(store.get('spread') ?? 70, false);
+
 // Look
 // =========================================================================
 

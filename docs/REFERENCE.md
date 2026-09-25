@@ -105,6 +105,21 @@ son.audio.setRestraint(700);  // ms between notes; 0 sounds everything
 Quantising costs a little synchronisation. A note waits at most one
 subdivision, so at a slow tempo the picture leads the sound.
 
+### Where the sound comes from
+
+An event's mark is placed by its identity — the same identity, through the
+same function, wherever it is drawn. Its note is placed the same way, so a
+mark on the left of the picture sounds from the left. On a wall with two
+speakers that is the difference between a picture with music over it and a
+room with something happening in it; the eye and the ear agree about where.
+
+*Across the room* sets how wide: nothing at all, for one speaker or for
+headphones a wide picture tires, up to the full width, for speakers set apart.
+It is a bank of nine fixed positions rather than a panner per note — a busy
+feed is thirty events a second, a node each would be a thousand a minute to
+build and collect, and the ear cannot place a bell to within a ninth of a room
+anyway.
+
 ### Restraint
 
 Wikipedia produces a couple of edits a second. Each note is a bell with a

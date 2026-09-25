@@ -474,6 +474,55 @@ ok('one event swings the clapper through several rods, each softer and later',
 ok('a chime only ever strikes its own rods, and they ring on',
    chimeSwing.onRods && chimeSwing.peak > 0.05 && chimeSwing.long > 3,
    JSON.stringify(chimeSwing));
+// --- a note comes from where its mark is -----------------------------------
+// An event's mark is placed by its identity; its note is placed the same way.
+// Measured as energy in each channel of an offline render, with events chosen
+// for where they land: three that fall on the left of the picture, three on
+// the right, and the same three with the room narrowed to nothing.
+const placedSound = await page.evaluate(async () => {
+  const { Sonifier, makeKit, unitPosition } = await import('../src/index.js');
+  const { AudioEngine } = await import('../src/audio/engine.js');
+  // Found by asking where each identity lands, rather than assumed.
+  const left = [];
+  const right = [];
+  for (let i = 0; i < 6000 && (left.length < 3 || right.length < 3); i++) {
+    const id = 'e' + i;
+    const { u } = unitPosition(id);
+    if (u < 0.04 && left.length < 3) left.push(id);
+    if (u > 0.96 && right.length < 3) right.push(id);
+  }
+  const measure = async (ids, spread) => {
+    const rate = 44100;
+    const off = new OfflineAudioContext(2, rate * 2, rate);
+    const son = new Sonifier({ engine: new AudioEngine({ ctx: off, space: 'none' }), kit: makeKit('musicbox') });
+    await son.audio.load();
+    son.audio.setSpread(spread);
+    for (const id of ids) son.emit({ id, magnitude: 800, ts: Date.now() });
+    const buf = await off.startRendering();
+    const energy = (ch) => {
+      const d = buf.getChannelData(ch);
+      let e = 0;
+      for (let i = 0; i < d.length; i++) e += d[i] * d[i];
+      return e;
+    };
+    const L = energy(0);
+    const R = energy(1);
+    return { heard: L + R > 0.001, bias: (R - L) / (L + R || 1) };
+  };
+  return {
+    left: await measure(left, 0.7),
+    right: await measure(right, 0.7),
+    middle: await measure(left, 0),
+  };
+});
+ok('a note sounds where its mark is drawn',
+   placedSound.left.heard && placedSound.right.heard &&
+   placedSound.left.bias < -0.5 && placedSound.right.bias > 0.5,
+   `left ${placedSound.left.bias.toFixed(2)}, right ${placedSound.right.bias.toFixed(2)}`);
+ok('and the room can be narrowed to nothing, for one speaker',
+   placedSound.middle.heard && Math.abs(placedSound.middle.bias) < 0.02,
+   `bias ${placedSound.middle.bias.toFixed(3)}`);
+
 ok('there are several kits to choose from', Object.keys(kitPeaks).length >= 6,
    Object.keys(kitPeaks).join(', '));
 

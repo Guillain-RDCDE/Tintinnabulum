@@ -1,10 +1,19 @@
 import { VoicePool } from '../core/voices.js';
+import { unitPosition } from '../core/event.js';
 import { Bed } from './bed.js';
 import { AMBIENCES } from './ambiences.js';
 
 // Turns mapped events into sound. Instrument choice is: category override
 // first, then polarity. Accents bypass the voice pool entirely, because a rare
 // notable event should never be dropped by a burst of ordinary ones.
+//
+// A note also comes from somewhere. An event's mark is placed by its identity,
+// and the sound is placed the same way, so what you hear is where you are
+// looking -- which is the difference between a picture with music over it and
+// a room with something happening in it.
+
+/** Positions across the room. Nine is finer than the ear places a bell. */
+const PAN_SLOTS = 9;
 
 export class AudioSink {
   constructor(engine, opts = {}) {
@@ -34,6 +43,13 @@ export class AudioSink {
     this.accentGap = opts.accentGap ?? 250;
     this._accentAt = -Infinity;
     this._now = opts.now || (() => (typeof performance !== 'undefined' ? performance.now() : Date.now()));
+    // How wide the sound is laid across the room: 0 puts every note in the
+    // middle, 1 puts the leftmost event hard left. An event already has a
+    // place on the picture -- the same place, from the same identity -- and
+    // giving the sound that place is what ties the two together: on a wall,
+    // what you hear is where you are looking. See _panFor.
+    this.spread = opts.spread ?? 0.7;
+    this._pans = null;
     this.stats = { played: 0, dropped: 0, passedOver: 0, accentsHeld: 0 };
   }
 
@@ -292,9 +308,59 @@ export class AudioSink {
     return (ev.accent ? 2 : 0) + (ev.map ? ev.map.salience : 0);
   }
 
+  /**
+   * How wide the sound sits in the room.
+   *
+   * @param {number} spread 0 (all in the middle) to 1 (the full width)
+   */
+  setSpread(spread) {
+    this.spread = Math.max(0, Math.min(1, Number(spread) || 0));
+    if (this._pans) {
+      for (let i = 0; i < this._pans.length; i++) {
+        this._pans[i].pan.value = this._panPosition(i);
+      }
+    }
+    return this;
+  }
+
+  /** Where slot `i` of the bank sits, from left to right, at this spread. */
+  _panPosition(i) {
+    const steps = PAN_SLOTS - 1;
+    return ((i / steps) * 2 - 1) * this.spread;
+  }
+
+  /**
+   * Where an event's sound comes from: the place its mark takes on the
+   * picture, which is drawn from its identity and so is the same in both.
+   *
+   * A bank of fixed positions rather than a panner per note. A note is a few
+   * hundred milliseconds and a busy feed is thirty a second, so a node per
+   * event is a thousand nodes a minute to build, connect and collect -- for a
+   * difference nobody can hear, since the ear cannot place a bell to within a
+   * ninth of the room anyway.
+   */
+  _panFor(ev) {
+    const ctx = this.engine.ctx;
+    if (!this.spread || typeof ctx.createStereoPanner !== 'function') return this.engine.destination;
+    // Built once, and again if the engine ever hands out a different context
+    // (an offline render, a context that had to be replaced after a stall).
+    if (!this._pans || this._panCtx !== ctx) {
+      this._panCtx = ctx;
+      this._pans = [];
+      for (let i = 0; i < PAN_SLOTS; i++) {
+        const node = ctx.createStereoPanner();
+        node.pan.value = this._panPosition(i);
+        node.connect(this.engine.destination);
+        this._pans.push(node);
+      }
+    }
+    const { u } = unitPosition(String(ev.id ?? ''));
+    return this._pans[Math.max(0, Math.min(PAN_SLOTS - 1, Math.round(u * (PAN_SLOTS - 1))))];
+  }
+
   _play(ev) {
     const ctx = this.engine.ctx;
-    const dest = this.engine.destination;
+    const dest = this._panFor(ev);
 
     const when = this._onset(ctx);
 
