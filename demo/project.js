@@ -11,10 +11,43 @@
 // The channel is a BroadcastChannel, which needs no server and works from a
 // static host. It carries settings too, so changing the palette next door
 // changes the wall.
+//
+// It also runs on its own. A gallery does not want a laptop it must not touch
+// standing next to the projector for three months, so this window takes a work
+// and a feed in its address and listens to the world itself:
+//
+//   project.html?work=lanterns&feed=wikipedia
+//
+// That address is the whole installation: open it on the machine behind the
+// screen, press fullscreen, and leave. A console that turns up later on the
+// same machine still steers it, because the channel is still listening.
+//
+// And it does not stop. If the feed goes quiet -- the network drops, the
+// console is closed, the API changes -- the picture carries on at its own
+// slow pulse rather than freezing on whatever was last drawn, which is the
+// difference between an artwork and a crashed screen.
 
-import { CanvasSink, PALETTES } from '../src/index.js';
+import {
+  CanvasSink, PALETTES, WORKS, SCENES, Mapper, normalize,
+  wikipedia, bitcoin, coinbase, earthquakes, bluesky, github, noaaAlerts, hackerNews, randomSource,
+} from '../src/index.js';
 
 const CHANNEL = 'tintinnabulum';
+const params = new URLSearchParams(location.search);
+
+/** The feeds a wall may be pointed at on its own, without a console. */
+const FEEDS = {
+  wikipedia: () => wikipedia({ langs: (params.get('langs') || 'en').split(',').filter(Boolean) }),
+  commons: () => wikipedia({ wikis: ['commonswiki'], mainNamespaceOnly: false }),
+  bitcoin: () => bitcoin(),
+  coinbase: () => coinbase(),
+  quakes: () => earthquakes(),
+  bluesky: () => bluesky(),
+  github: () => github(),
+  weather: () => noaaAlerts(),
+  hn: () => hackerNews(),
+  demo: () => randomSource({ rate: 1.4 }),
+};
 
 const canvas = document.getElementById('stage');
 const note = document.getElementById('note');
@@ -46,6 +79,24 @@ window.addEventListener('resize', fit);
 if (screen.orientation) screen.orientation.addEventListener?.('change', fit);
 document.addEventListener('fullscreenchange', () => setTimeout(fit, 60));
 
+/**
+ * Dress the wall as a work: scene, palette and every layer of the finish.
+ *
+ * The same fields a work sets on the sandbox, set here directly. A wall opened
+ * on `?work=lanterns` is showing the work before the first event arrives, so
+ * nobody is ever looking at a default.
+ */
+function showWork(name) {
+  const w = WORKS[name];
+  if (!w || !SCENES[w.scene]) return false;
+  applySettings({
+    scene: w.scene, palette: w.palette, finish: w.finish, ground: w.ground,
+    mat: w.mat, grain: Boolean(w.grain), living: w.living,
+    pace: [0.25, 0.5, 0.75, 1, 1.3, 1.7][w.pace] ?? 1,
+  });
+  return true;
+}
+
 // --- the controls, which are meant to disappear -------------------------
 let sleepTimer = 0;
 function wake() {
@@ -58,13 +109,24 @@ for (const ev of ['mousemove', 'pointerdown', 'keydown', 'touchstart']) {
 }
 wake();
 
-document.getElementById('full').addEventListener('click', async () => {
+async function goFullscreen() {
   try {
-    if (document.fullscreenElement) await document.exitFullscreen();
-    else await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    if (document.fullscreenElement) return true;
+    await document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+    return true;
   } catch (e) {
-    /* a browser that refuses fullscreen still shows the picture */
+    // A browser that refuses fullscreen still shows the picture, and the bar
+    // says which key to press. Refusing silently is what made this look broken.
+    note.hidden = false;
+    note.innerHTML = '<b>Press F for fullscreen</b>This window is the wall. Fullscreen could not be taken on its own.';
+    setTimeout(() => { if (seen) note.hidden = true; }, 6000);
+    return false;
   }
+}
+
+document.getElementById('full').addEventListener('click', async () => {
+  if (document.fullscreenElement) await document.exitFullscreen().catch(() => {});
+  else await goFullscreen();
 });
 document.getElementById('clear').addEventListener('click', () => sink.clear());
 
@@ -76,7 +138,18 @@ window.addEventListener('keydown', (e) => {
 
 // --- listening ----------------------------------------------------------
 let seen = false;
+let last = performance.now();
 const channel = new BroadcastChannel(CHANNEL);
+
+/** Something arrived: draw it, and remember that the world is still there. */
+function arrive(ev) {
+  if (!seen) {
+    seen = true;
+    note.hidden = true;
+  }
+  last = performance.now();
+  sink.handle(ev);
+}
 
 /** Apply whatever the sandbox says its settings are. */
 function applySettings(s) {
@@ -113,15 +186,78 @@ channel.onmessage = (m) => {
   if (!msg || typeof msg !== 'object') return;
   if (msg.type === 'settings') return applySettings(msg.settings);
   if (msg.type === 'event') {
-    if (!seen) {
-      seen = true;
-      note.hidden = true;
-    }
-    sink.handle(msg.event);
+    arrive(msg.event);
     return;
   }
   if (msg.type === 'clear') sink.clear();
+  // The console can ask for fullscreen on the screen it put this window on.
+  // It is asked for rather than taken, because only this window can grant it.
+  if (msg.type === 'fullscreen') goFullscreen();
 };
+
+// --- a wall of its own --------------------------------------------------
+
+const mapper = new Mapper({ mode: 'adaptive' });
+let source = null;
+
+/** Listen to the world directly, for a wall with no console beside it. */
+function listenAlone(name) {
+  const make = FEEDS[name];
+  if (!make) return false;
+  try {
+    source = make();
+    source.start((raw) => {
+      const ev = normalize(raw);
+      if (!ev) return;
+      ev.map = mapper.map(ev.magnitude);
+      arrive(ev);
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/**
+ * The picture does not stop when the world does.
+ *
+ * A wall in a gallery outlives the network it was pointed at: a feed changes
+ * its API, a console is closed, a router is rebooted overnight. Frozen on the
+ * last frame it drew, the piece reads as a broken screen -- which is worse
+ * than an empty wall, because somebody has to come and look at it.
+ *
+ * So when nothing has arrived for a while the wall keeps its own slow pulse,
+ * an event every few seconds, until the world comes back. It is deliberately
+ * slower than any real feed, so a watched wall never mistakes it for one.
+ */
+const IDLE_AFTER = Number(params.get('idle') || 20) * 1000;
+const keepAlive = params.get('idle') !== 'off';
+let pulse = 0;
+if (keepAlive) {
+  setInterval(() => {
+    if (performance.now() - last < IDLE_AFTER) return;
+    const ev = normalize({
+      id: 'wall-' + pulse++,
+      // The same heavy tail a real feed has, so the picture composes as it
+      // would on the world rather than filling with one size of mark.
+      magnitude: Math.round(Math.pow(Math.random(), 3) * 6000) + 1,
+      category: ['user', 'anon', 'bot'][pulse % 3],
+      ts: Date.now(),
+    });
+    ev.map = mapper.map(ev.magnitude);
+    // Not through arrive(): this is the wall talking to itself, and it must
+    // not look like the world has come back.
+    sink.handle(ev);
+    if (!seen) note.hidden = true;
+  }, 3200);
+}
+
+// The address is the installation: a work to show, a feed to listen to.
+const wanted = params.get('work');
+if (wanted) showWork(wanted);
+const feed = params.get('feed');
+if (feed) listenAlone(feed);
+if (params.get('full') === '1') addEventListener('pointerdown', goFullscreen, { once: true });
 
 // Announce ourselves, so the sandbox sends its current settings rather than
 // leaving this window on defaults until somebody changes something.
@@ -132,4 +268,9 @@ window.addEventListener('beforeunload', () => {
 });
 
 // Exposed for the test suite, which needs to see what arrived.
-window.projection = { sink, channel, get seen() { return seen; } };
+window.projection = {
+  sink, channel, showWork, goFullscreen,
+  get seen() { return seen; },
+  get standalone() { return Boolean(source); },
+  get quietFor() { return performance.now() - last; },
+};

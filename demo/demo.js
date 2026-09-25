@@ -751,6 +751,9 @@ son.filter((ev) => ev.magnitude >= (Number($('#minmag').value) || 0));
 // Each panel header carries its own current value, so the whole configuration
 // can be read at a glance without opening anything.
 function updateSummaries() {
+  // The wall's address is part of the summary: it says what is showing now,
+  // so it follows the work and the feed rather than a timer of its own.
+  refreshWallAddress();
   const cats = [...$('#cats').selectedOptions].map((o) => o.value);
   const minmag = Number($('#minmag').value) || 0;
   const langNames = langs
@@ -813,10 +816,90 @@ projector.onListeners(refreshProjectState);
 // instead of the 1280x800 window.open could ask for. That is a poor trade to
 // refuse: anyone projecting puts the window fullscreen anyway, which is what
 // the message says.
-$('#project-open').addEventListener('click', () => {
-  $('#project-state').textContent =
-    'Opening — put that window fullscreen on the screen you want.';
+$('#project-open').addEventListener('click', onProject);
+$('#project').addEventListener('click', onProject);
+
+/**
+ * Open the wall, and put it where a wall goes.
+ *
+ * A link with a target is used rather than window.open, because a pop-up is
+ * exactly what blockers, policies and enterprise settings stop -- silently.
+ * But a browser that grants window management can do the thing a gallery
+ * actually wants: put the window on the OTHER screen, fullscreen, in one
+ * click. That path is tried first and, if anything at all refuses, the click
+ * falls through to the ordinary link, which nothing blocks.
+ */
+async function onProject(e) {
+  const url = $('#project-open').getAttribute('href');
+  if (!window.getScreenDetails) return;   // the link does its own work
+  try {
+    const details = await window.getScreenDetails();
+    const other = details.screens.find((s) => s !== details.currentScreen);
+    if (!other) return;
+    e.preventDefault();
+    const win = window.open(
+      url, 'tintinnabulum-projection',
+      `popup=yes,left=${other.availLeft},top=${other.availTop},width=${other.availWidth},height=${other.availHeight}`
+    );
+    if (!win) {
+      // Blocked after all. Fall back to the navigation the click asked for.
+      window.open(url, 'tintinnabulum-projection');
+      return;
+    }
+    // It cannot go fullscreen until it exists; it says hello when it does.
+    projector.onHello(() => {
+      projector.fullscreen();
+      projector.onHello(() => {});
+    });
+    $('#project-state').textContent = 'On the second screen.';
+  } catch (err) {
+    // Permission refused, or a browser that half-implements it: the link
+    // still opens a window, which is the behaviour everyone had before.
+  }
+}
+
+/**
+ * The address a gallery bookmarks: the work, the feed, and fullscreen.
+ *
+ * Kept up to date as the work and the feed change, so whatever is on the
+ * screen now is what that machine will show when it is switched on.
+ */
+function wallAddress() {
+  const url = new URL('project.html', location.href);
+  const work = worksPanel && worksPanel.current();
+  if (work) url.searchParams.set('work', work);
+  const WALL_FEEDS = {
+    wikipedia: 'wikipedia', commons: 'commons', bitcoin: 'bitcoin', coinbase: 'coinbase',
+    earthquakes: 'quakes', bluesky: 'bluesky', github: 'github', weather: 'weather',
+    hackernews: 'hn', random: 'demo',
+  };
+  const wall = WALL_FEEDS[feed];
+  if (wall) url.searchParams.set('feed', wall);
+  if (wall === 'wikipedia' && langs.length && langs.join(',') !== 'en') url.searchParams.set('langs', langs.join(','));
+  url.searchParams.set('full', '1');
+  return url.href;
+}
+
+function refreshWallAddress() {
+  const href = wallAddress();
+  $('#wall-address').value = href;
+  $('#wall-open').setAttribute('href', href);
+}
+
+$('#wall-copy').addEventListener('click', async () => {
+  const href = wallAddress();
+  try {
+    await navigator.clipboard.writeText(href);
+    $('#wall-state').textContent = 'Copied. Open it on the machine behind the screen.';
+  } catch (e) {
+    // Clipboard refused -- over http, or without permission. Select it
+    // instead, so the address can still be copied by hand.
+    $('#wall-address').select();
+    $('#wall-state').textContent = 'Press Ctrl+C to copy.';
+  }
 });
+refreshWallAddress();
+
 refreshProjectState();
 
 const log = $('#log');

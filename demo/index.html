@@ -913,13 +913,27 @@
       <div id="scene-params"></div>
 
       <p class="sub-label">Projection</p>
-      <p class="note">Open the work in its own window, then put that window
-        fullscreen on a projector or a second screen. It draws at whatever size
-        and shape that screen is — not a letterboxed copy of this one.</p>
+      <p class="note">Open the work in its own window and put it on the projector or the
+        second screen. It draws at whatever size and shape that screen is — not a
+        letterboxed copy of this one. Where the browser allows it, it lands on the
+        second screen already fullscreen.</p>
       <div class="row">
         <a class="btn" id="project-open" href="project.html"
            target="tintinnabulum-projection" rel="noopener">Open projection window</a>
         <span class="note" id="project-state"></span>
+      </div>
+
+      <p class="sub-label">A wall of its own</p>
+      <p class="note">For a screen that has to run without a laptop beside it: this address
+        opens the work full screen and listens to the feed itself. Bookmark it on the
+        machine behind the screen. If the feed goes quiet it keeps its own slow pulse
+        rather than freezing.</p>
+      <label class="field" style="margin-top:.4rem"><span class="sr">Address for a wall on its own</span>
+        <input type="text" id="wall-address" readonly spellcheck="false"></label>
+      <div class="row">
+        <button type="button" class="act" id="wall-copy">Copy the address</button>
+        <a class="btn" id="wall-open" href="project.html" target="tintinnabulum-wall" rel="noopener">Try it</a>
+        <span class="note" id="wall-state"></span>
       </div>
 
       <details class="more" id="more-look">
@@ -1053,6 +1067,10 @@
   </label>
   <button type="button" id="remix" title="Take what is playing to Create (R)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 11.5l7-7 2 2-7 7h-2z"/><path d="M8.5 5.5l2 2"/></svg>Remix</button>
   <button type="button" id="surprise" title="A new combination, chosen for you (S)">Surprise me</button>
+  <a class="icon" id="project" href="project.html" target="tintinnabulum-projection" rel="noopener"
+     aria-label="Put the work on a second screen" title="Second screen (P)">
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="3.5" width="15" height="10" rx="1.5"/><path d="M7 17h6M10 13.5V17"/></svg>
+  </a>
   <button type="button" class="icon" id="fullscreen" aria-label="Full screen" title="Full screen (F)">
     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V3h4M13 3h4v4M17 13v4h-4M7 17H3v-4"/></svg>
   </button>

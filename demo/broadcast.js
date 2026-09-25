@@ -21,6 +21,7 @@ export function createProjector({ settings }) {
   const channel = supported ? new BroadcastChannel(CHANNEL) : null;
   let listeners = 0;
   let onChange = () => {};
+  let onHelloFn = () => {};
 
   if (channel) {
     channel.onmessage = (m) => {
@@ -32,6 +33,7 @@ export function createProjector({ settings }) {
         listeners++;
         channel.postMessage({ type: 'settings', settings: settings() });
         onChange(listeners);
+        onHelloFn(listeners);
       }
       if (msg.type === 'goodbye') {
         listeners = Math.max(0, listeners - 1);
@@ -67,6 +69,23 @@ export function createProjector({ settings }) {
           map: ev.map,
         },
       });
+    },
+
+    /**
+     * Ask the wall to go fullscreen on the screen it was put on.
+     *
+     * Asked rather than taken: only the window itself can enter fullscreen,
+     * and only while it still has the activation the click that opened it
+     * gave it. If it is refused, it says so on its own face.
+     */
+    fullscreen() {
+      if (!channel) return;
+      channel.postMessage({ type: 'fullscreen' });
+    },
+
+    /** Called once for each window that announces itself. */
+    onHello(fn) {
+      onHelloFn = fn;
     },
 
     /** Push the current look across, after anything visual changes. */

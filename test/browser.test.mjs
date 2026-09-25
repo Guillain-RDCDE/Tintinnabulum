@@ -1880,6 +1880,75 @@ ok('it re-lays out for a portrait screen', reshaped.w === 540 && reshaped.h === 
    `${reshaped.w}x${reshaped.h}`);
 ok('the projection window logged no errors', wallErrors.length === 0, wallErrors.join(' | '));
 await wall.close();
+
+// --- a wall that needs no laptop -------------------------------------------
+// A gallery cannot leave a console standing next to the projector for three
+// months. The address is the installation: a work to show and a feed to listen
+// to, and the window does the rest -- including carrying on when the world
+// goes quiet, because a frozen screen reads as broken rather than as art.
+const alone = await context.newPage();
+const aloneErrors = [];
+alone.on('pageerror', (e) => aloneErrors.push(String(e.message)));
+await alone.goto(BASE + '/demo/project.html?work=lanterns&feed=demo', { waitUntil: 'domcontentloaded' });
+await alone.bringToFront();
+await alone.waitForFunction(() => window.projection && window.projection.seen, null, { timeout: 25000 });
+const aloneState = await alone.evaluate(async () => {
+  const { WORKS } = await import('../src/index.js');
+  const sink = window.projection.sink;
+  return {
+    standalone: window.projection.standalone,
+    scene: sink.sceneName, wantScene: WORKS.lanterns.scene,
+    palette: sink.paletteName, wantPalette: WORKS.lanterns.palette,
+    drawn: sink.particles.length,
+    waiting: document.getElementById('note').hidden === false,
+  };
+});
+ok('a wall opened on an address hangs the work and listens to the feed itself',
+   aloneState.standalone && aloneState.scene === aloneState.wantScene &&
+   aloneState.palette === aloneState.wantPalette && aloneState.drawn > 0 && !aloneState.waiting,
+   JSON.stringify(aloneState));
+await alone.close();
+
+const patient = await context.newPage();
+patient.on('pageerror', (e) => aloneErrors.push(String(e.message)));
+// A second of patience rather than the twenty a wall keeps, so the suite does
+// not have to wait for a gallery's idea of a pause.
+await patient.goto(BASE + '/demo/project.html?work=coral&idle=1', { waitUntil: 'domcontentloaded' });
+await patient.bringToFront();
+await patient.waitForFunction(() => window.projection, null, { timeout: 20000 });
+const before = await patient.evaluate(() => window.projection.sink.particles.length);
+await patient.waitForTimeout(7500);
+const after = await patient.evaluate(() => window.projection.sink.particles.length);
+ok('a wall with nothing to listen to keeps its own pulse rather than freezing',
+   after > before, `${before} -> ${after} marks`);
+await patient.close();
+ok('a wall on its own logged no errors', aloneErrors.length === 0, aloneErrors.join(' | '));
+
+// The console offers that address, kept on the work and the feed that are on
+// now, and the dock carries the way to a second screen.
+await drive(page);
+await page.evaluate(() => window.son.works.apply('lanterns'));
+await page.waitForFunction(() => window.son.works.current() === 'lanterns', null, { timeout: 20000 });
+const wallOffer = await page.evaluate(() => {
+  const dock = document.querySelector('#project');
+  let clicked = 0;
+  dock.click = () => { clicked++; };
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'p', bubbles: true }));
+  return {
+    tag: dock.tagName,
+    target: dock.getAttribute('target'),
+    byKey: clicked,
+    address: document.querySelector('#wall-address').value,
+    tried: document.querySelector('#wall-open').getAttribute('href'),
+  };
+});
+ok('the dock carries the second screen, and P opens it',
+   wallOffer.tag === 'A' && wallOffer.target === 'tintinnabulum-projection' && wallOffer.byKey === 1,
+   JSON.stringify(wallOffer));
+ok('the address offered is a wall of its own, on what is showing now',
+   /project\.html\?/.test(wallOffer.address) && /work=/.test(wallOffer.address) &&
+   /feed=/.test(wallOffer.address) && /full=1/.test(wallOffer.address) && wallOffer.tried === wallOffer.address,
+   wallOffer.address);
 // Back to the sandbox, so the rest of the suite is not driving a hidden page.
 await page.bringToFront();
 

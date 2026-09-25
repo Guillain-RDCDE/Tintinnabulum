@@ -292,6 +292,11 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
       case 'r': case 'R':
         onRemix();
         break;
+      case 'p': case 'P':
+        // The wall: the same click as the dock's, so every route through
+        // this goes through the one place that knows about second screens.
+        $('#project').click();
+        break;
       case '1': case '2': case '3': case '4': case '5':
         toggle(ORDER[Number(e.key) - 1]);
         break;

@@ -1385,9 +1385,17 @@ player.frame(16);                // then live
 ### The projection window
 
 An exhibition puts the work on a projector and the controls on a laptop, which
-are two screens. **Project** opens a second window that carries the picture and
-nothing else: the controls in it fade after three seconds of stillness, `f` is
-full screen, `c` clears.
+are two screens. The dock carries the way there — the screen icon, or **P** —
+and so does the Picture panel. It opens a second window that carries the
+picture and nothing else: the controls in it fade after three seconds of
+stillness, `f` is full screen, `c` clears.
+
+Where the browser grants window management, that click does what a gallery
+actually wants: the window opens **on the other screen, already fullscreen**.
+Everywhere else the same click is an ordinary link with a target, which no
+pop-up blocker can stop, and the window opens where the browser puts it. The
+link is the fallback rather than the exception: a pop-up that is blocked
+returns null and leaves the person with nothing.
 
 It runs **its own renderer** rather than mirroring the first. A mirror would
 mean copying a canvas between windows every frame -- slow, soft, and locked to
@@ -1402,6 +1410,32 @@ it stripped of `data` -- the producer's original payload can be a kilobyte of
 JSON per event and is of no use to a picture. Settings cross it too, so choosing
 a palette on the laptop changes the wall, and a window that has just opened asks
 for them rather than sitting on defaults.
+
+#### A wall of its own
+
+A gallery will not leave a laptop it must not touch standing next to the
+projector for three months. So the window also runs alone: the address is the
+installation.
+
+```
+project.html?work=lanterns&feed=wikipedia&full=1
+```
+
+`work` hangs a work before the first event arrives, so nobody is ever looking
+at a default; `feed` connects the window straight to the world, no console in
+the room; `full=1` takes fullscreen on the first touch, since no browser grants
+it unasked. A console opened later on the same machine still steers that
+window, because the channel is still listening. The Picture panel keeps this
+address up to date with whatever is showing and offers to copy it — that is
+what a gallery bookmarks on the machine behind the screen.
+
+And it does not stop. If nothing arrives for twenty seconds -- a feed changes
+its API overnight, a router reboots, the console is closed -- the wall keeps
+its own slow pulse, an event every few seconds, until the world comes back. It
+is deliberately slower than any real feed, so a watched wall never mistakes one
+for the other, and `idle=off` turns it off. A frozen screen does not read as a
+quiet artwork; it reads as a broken television, and somebody has to come and
+look at it.
 
 ### The kit cards and the room cards
 
