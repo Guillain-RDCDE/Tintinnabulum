@@ -998,9 +998,20 @@ function plantRoots(api) {
     s.ny[i] = api.h * (0.9 + Math.random() * 0.06);
     s.depth[i] = 0;
   }
+  const m = Math.min(api.w, api.h);
   // Something to reach for from the start, above the roots.
   for (let k = 0; k < 7; k++) {
-    scatter(s, api.w * (0.1 + Math.random() * 0.8), api.h * (0.1 + Math.random() * 0.65), Math.min(api.w, api.h) * 0.16, 45);
+    scatter(s, api.w * (0.1 + Math.random() * 0.8), api.h * (0.1 + Math.random() * 0.65), m * 0.16, 45);
+  }
+  // And a handful within reach of each tip, where the first root will find it.
+  //
+  // A tip senses only as far as `reach` -- about a tenth of the picture -- and
+  // on a small canvas every one of those scattered clouds can land outside it.
+  // A root that senses nothing never takes a step, and the whole picture stays
+  // empty: measured at one preview in twenty-four, which is a card promising a
+  // picture it does not have.
+  for (let k = 0; k < s.n; k++) {
+    scatter(s, s.nx[k] + (Math.random() - 0.5) * m * 0.05, s.ny[k] - m * 0.05, m * 0.045, 14);
   }
 }
 

@@ -586,8 +586,12 @@ worksPanel = setupWorks({
   ensureAudio,
   getKit: () => currentKit,
   getSpace: () => son.space,
-  // The dock says what is on the moment a work is up, not a second later.
-  onChange: () => { if (shell) shell.refresh(); },
+  // The dock says what is on the moment a work is up, not a second later --
+  // and so does the address a gallery is about to copy onto another machine.
+  onChange: () => {
+    if (shell) shell.refresh();
+    refreshWallAddress();
+  },
   // A work chosen by hand goes up full screen and starts playing.
   onPlay: () => {
     if (shell) shell.close();

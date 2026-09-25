@@ -737,6 +737,42 @@ const previewFollows = await page.evaluate(async () => {
   };
   return { flat: count(0, false), rich: count(0.6, true) };
 });
+// Once each is not enough for the scenes that grow. They start from a seed and
+// reach for what is scattered near them, so whether anything is drawn at all
+// depends on the draw: roots came out completely blank about one preview in
+// twenty-four -- a card promising a picture it does not have, and a card
+// nobody would think to look at twice.
+const grownPreviews = await page.evaluate(async () => {
+  const { previewScene, PALETTES } = await import('../src/index.js');
+  const palette = PALETTES.marine.colors;
+  const out = {};
+  for (const name of ['roots', 'growth', 'stipple']) {
+    let blank = 0;
+    let least = 100;
+    for (let run = 0; run < 6; run++) {
+      const cv = document.createElement('canvas');
+      cv.width = 220;
+      cv.height = 120;
+      const ctx = cv.getContext('2d');
+      previewScene(ctx, name, { w: 220, h: 120, palette, richness: 0.45, depth: true });
+      const { data } = ctx.getImageData(0, 0, 220, 120);
+      const g = [data[0], data[1], data[2]];
+      let inked = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (Math.abs(data[i] - g[0]) + Math.abs(data[i + 1] - g[1]) + Math.abs(data[i + 2] - g[2]) > 24) inked++;
+      }
+      const part = (inked / (220 * 120)) * 100;
+      if (part < 0.05) blank++;
+      least = Math.min(least, part);
+    }
+    out[name] = { blank, least: Number(least.toFixed(2)) };
+  }
+  return out;
+});
+const sometimesBlank = Object.entries(grownPreviews).filter(([, v]) => v.blank > 0);
+ok('a scene that grows paints something every time, not most times',
+   sometimesBlank.length === 0, JSON.stringify(grownPreviews));
+
 ok('scene cards reflect the colour settings',
    previewFollows.rich > previewFollows.flat * 1.5,
    `flat=${previewFollows.flat} rich=${previewFollows.rich}`);
@@ -2004,6 +2040,10 @@ await scanned.close();
 await drive(page);
 await page.evaluate(() => window.son.works.apply('lanterns'));
 await page.waitForFunction(() => window.son.works.current() === 'lanterns', null, { timeout: 20000 });
+// The address follows the work rather than a timer, so this should already be
+// true; waited for all the same, because a check that races is a check that
+// reports something other than what it is about.
+await page.waitForFunction(() => /work=lanterns/.test(document.querySelector('#wall-address').value), null, { timeout: 10000 });
 const wallOffer = await page.evaluate(() => {
   const dock = document.querySelector('#project');
   let clicked = 0;
@@ -2020,6 +2060,11 @@ const wallOffer = await page.evaluate(() => {
 ok('the dock carries the second screen, and P opens it',
    wallOffer.tag === 'A' && wallOffer.target === 'tintinnabulum-projection' && wallOffer.byKey === 1,
    JSON.stringify(wallOffer));
+// How this page was found, so it can be left that way. What follows hangs
+// works, sets opening hours and lets the room start listening, and the checks
+// after it sample the canvas expecting the plain picture they were left with.
+const asFound = await page.evaluate(() => document.querySelector('#start').dataset.on);
+
 // --- one picture across two screens ----------------------------------------
 // Two screens can show two pictures, which anybody can do, or one picture,
 // which is a different object. Each panel lays the composition out for the
@@ -2210,6 +2255,23 @@ const sleeps = await page.evaluate(async (hoursText) => {
 }, shutHours);
 ok('this screen keeps the same hours, and a click wakes it for a while',
    sleeps.shut && sleeps.woke, JSON.stringify(sleeps));
+
+// Everything above hung works on this page to see the wall follow them, and a
+// work sets a scene, a palette, a paper and a frame at once. The sections
+// after this one sample the canvas expecting the plain picture they were left
+// by the checks before it, so the room is put back as it was found: a picture
+// rather than a work.
+await page.evaluate((was) => {
+  document.querySelector('[data-palette="neon"]').click();
+  document.querySelector('[data-scene="truchet"]').click();
+  // Listening as it was: the programme starts the feed when a room has hours,
+  // and a feed left running paints marks over the corner of the canvas that
+  // the palette checks below read the ground from.
+  const start = document.querySelector('#start');
+  if (start.dataset.on !== was) start.click();
+  window.son.sinks.find((s) => s.particles).clear();
+}, asFound);
+await page.waitForFunction(() => window.son.works.current() === null, null, { timeout: 10000 });
 
 ok('the address offered is a wall of its own, on what is showing now',
    /project\.html\?/.test(wallOffer.address) && /work=/.test(wallOffer.address) &&
@@ -3872,15 +3934,48 @@ await pg.keyboard.press('5');
 await pg.waitForTimeout(400);
 
 // Something else on the wall, then one of yours played from its card.
+//
+// Reported rather than thrown. A work goes up in stages -- the picture at
+// once, the instrument once its samples are in -- so under load this can take
+// longer than a fixed wait allows, and a wait that throws takes the whole
+// suite with it and says only "timeout". This says which stage was reached.
 await pg.evaluate(() => window.son.works.apply('mould'));
-await pg.waitForFunction(() => window.son.works.current() === 'mould', null, { timeout: 15000 });
+const wentUp = await pg.waitForFunction(() => window.son.works.current() === 'mould', null, { timeout: 40000 })
+  .then(() => true)
+  .catch(() => false);
+if (!wentUp) {
+  const stuck = await pg.evaluate(async () => {
+    const { WORKS } = await import('../src/index.js');
+    const sink = window.son.sinks.find((s) => s.particles);
+    const w = WORKS.mould;
+    return {
+      scene: [sink.sceneName, w.scene], palette: [sink.paletteName, w.palette],
+      ground: [sink.ground, w.ground], finish: [sink.finish, w.finish],
+      kit: [document.querySelector('#kits .card[aria-pressed="true"]') && document.querySelector('#kits .card[aria-pressed="true"]').dataset.kit, w.kit],
+      audio: window.son.engine.ctx.state,
+    };
+  });
+  ok('the work on the wall goes all the way up', false, JSON.stringify(stuck));
+}
 await openGallery();
 await pg.waitForTimeout(400);
 await pg.evaluate(() => document.querySelector('#yours-cards .card').click());
-await pg.waitForFunction(() => document.querySelector('#now-title').textContent === 'Veins, for the hall', null, { timeout: 15000 });
+// Reported, not thrown: putting a piece up sets a picture and then loads an
+// instrument, and a wait that throws ends the suite saying only "timeout".
+const pieceUp = await pg.waitForFunction(() => document.querySelector('#now-title').textContent === 'Veins, for the hall', null, { timeout: 40000 })
+  .then(() => true)
+  .catch(() => false);
+const playing = await pg.evaluate(() => ({
+  now: document.querySelector('#now-title').textContent,
+  scene: window.son.sinks.find((s) => s.particles).sceneName,
+  wanted: window.son.studio.captures[0] && window.son.studio.captures[0].state.tool,
+  title: window.son.studio.captures[0] && window.son.studio.captures[0].title,
+  listening: document.querySelector('#start').dataset.on,
+  cards: document.querySelectorAll('#yours-cards .card').length,
+}));
 ok('a card in Yours puts the piece up and plays it, like a work',
-   await pg.evaluate(() => window.son.sinks.find((s) => s.particles).sceneName === window.son.studio.captures[0].state.tool &&
-     document.querySelector('#start').dataset.on === 'true'));
+   pieceUp && playing.scene === playing.wanted && playing.listening === 'true',
+   JSON.stringify(playing));
 
 // Kept across a reload, and let go from the Gallery.
 await pg.reload({ waitUntil: 'domcontentloaded' });
