@@ -1013,8 +1013,15 @@ setInterval(() => {
  * Kept up to date as the work and the feed change, so whatever is on the
  * screen now is what that machine will show when it is switched on.
  */
-function wallAddress() {
+function wallAddress(panel = 1) {
   const url = new URL('project.html', location.href);
+  // One picture across several screens: each panel draws the whole
+  // composition and shows its own share, so the work crosses the seam.
+  const across = Number($('#wall-across').value) || 1;
+  if (across > 1) {
+    url.searchParams.set('wall', String(panel));
+    url.searchParams.set('of', String(across));
+  }
   // A programme rather than a single work, when there is one: the wall then
   // runs the whole show from the same address.
   if (programme.length) url.searchParams.set('show', formatShow(programme));
@@ -1036,10 +1043,44 @@ function wallAddress() {
 }
 
 function refreshWallAddress() {
-  const href = wallAddress();
+  const across = Number($('#wall-across').value) || 1;
+  const href = wallAddress(1);
   $('#wall-address').value = href;
   $('#wall-open').setAttribute('href', href);
+  $('#wall-across-note').textContent = across > 1
+    ? `One composition laid across ${across} screens: each opens its own address below, on its own machine or in its own window, and shows its share of the same picture. Screens of the same size, side by side, in order.`
+    : '';
+  // The other panels, each on its own line, because each goes to a different
+  // machine and somebody has to copy them one at a time.
+  const host = $('#wall-panels');
+  host.textContent = '';
+  if (across > 1) {
+    for (let panel = 1; panel <= across; panel++) {
+      const row = document.createElement('div');
+      row.className = 'show-row';
+      const n = document.createElement('span');
+      n.className = 'n';
+      n.textContent = String(panel);
+      const field = document.createElement('input');
+      field.type = 'text';
+      field.readOnly = true;
+      field.value = wallAddress(panel);
+      field.style.flex = '1';
+      field.style.width = 'auto';
+      field.style.textAlign = 'left';
+      field.setAttribute('aria-label', `Address for screen ${panel}`);
+      field.addEventListener('focus', () => field.select());
+      row.append(n, field);
+      host.append(row);
+    }
+  }
 }
+
+$('#wall-across').addEventListener('change', () => {
+  store.set('wall-across', $('#wall-across').value);
+  refreshWallAddress();
+});
+$('#wall-across').value = store.get('wall-across') || '1';
 
 $('#wall-copy').addEventListener('click', async () => {
   const href = wallAddress();

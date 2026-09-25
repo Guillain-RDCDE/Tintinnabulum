@@ -2020,6 +2020,95 @@ const wallOffer = await page.evaluate(() => {
 ok('the dock carries the second screen, and P opens it',
    wallOffer.tag === 'A' && wallOffer.target === 'tintinnabulum-projection' && wallOffer.byKey === 1,
    JSON.stringify(wallOffer));
+// --- one picture across two screens ----------------------------------------
+// Two screens can show two pictures, which anybody can do, or one picture,
+// which is a different object. Each panel lays the composition out for the
+// WHOLE wall and shows its own share, so what lands at the seam is the middle
+// of the picture rather than two edges meeting.
+//
+// Checked by where a mark lands rather than by how it looks: the same event
+// must sit at the same place on the wall in both panels, and the ink must be
+// on the panel whose share of the wall that place falls in -- and on no other.
+const panels = [];
+const seamErrors = [];
+for (const which of [1, 2]) {
+  const panelPage = await context.newPage();
+  panelPage.on('pageerror', (e) => seamErrors.push(String(e.message)));
+  await panelPage.setViewportSize({ width: 600, height: 400 });
+  await panelPage.goto(`${BASE}/demo/project.html?work=lanterns&wall=${which}&of=2&label=off`, { waitUntil: 'domcontentloaded' });
+  await panelPage.bringToFront();
+  await panelPage.waitForFunction(() => window.projection, null, { timeout: 20000 });
+  panels.push(panelPage);
+}
+const placed = [];
+for (const panelPage of panels) {
+  await panelPage.bringToFront();
+  placed.push(await panelPage.evaluate(async () => {
+    const { Mapper, normalize } = await import('../src/index.js');
+    const sink = window.projection.sink;
+    sink.clear();
+    const mapper = new Mapper({ mode: 'adaptive' });
+    const marks = [];
+    for (let i = 0; i < 24; i++) {
+      const ev = normalize({ id: 'seam-' + i, magnitude: 400 + i * 211, category: 'user', ts: Date.now() });
+      ev.map = mapper.map(ev.magnitude);
+      sink.handle(ev);
+      const mark = sink.particles[sink.particles.length - 1];
+      if (mark) marks.push({ id: 'seam-' + i, x: Math.round(mark.x) });
+    }
+    return {
+      wall: sink.w,
+      panel: sink.canvas.width / (window.devicePixelRatio || 1),
+      shift: sink._shift,
+      tile: sink.tile,
+      marks,
+    };
+  }));
+}
+for (const panelPage of panels) await panelPage.close();
+ok('each panel lays the picture out for the whole wall and takes its own share',
+   placed[0].wall === placed[1].wall && placed[0].wall === Math.round(placed[0].panel * 2) &&
+   placed[0].shift === 0 && placed[1].shift === Math.round(placed[0].panel),
+   JSON.stringify({ wall: placed[0].wall, panel: placed[0].panel, shifts: [placed[0].shift, placed[1].shift] }));
+const sameSpot = placed[0].marks.every((m, i) => placed[1].marks[i] && placed[1].marks[i].x === m.x);
+const spread = new Set(placed[0].marks.map((m) => (m.x < placed[0].panel ? 'left' : 'right')));
+ok('an event lands at the same place on the wall in both panels, on either side of the seam',
+   sameSpot && spread.size === 2,
+   `${placed[0].marks.length} marks, ${[...spread].join(' and ')}`);
+ok('one picture across two screens logged no errors', seamErrors.length === 0, seamErrors.join(' | '));
+
+// The panel that is not the first does not repeat the label: one card to a
+// wall, as there is one beside a real diptych rather than one per canvas.
+const second = await context.newPage();
+await second.goto(`${BASE}/demo/project.html?work=coral&wall=2&of=2`, { waitUntil: 'domcontentloaded' });
+await second.bringToFront();
+await second.waitForFunction(() => window.projection, null, { timeout: 20000 });
+await second.waitForTimeout(500);
+const secondCard = await second.evaluate(() => ({
+  labelled: window.projection.labelled,
+  wall: window.projection.wall,
+  scene: window.projection.sink.sceneName,
+}));
+ok('the label belongs to the wall, not to each panel of it',
+   secondCard.labelled === null && secondCard.wall.panel === 2 && secondCard.scene === 'growth',
+   JSON.stringify(secondCard));
+await second.close();
+
+// And the console hands out one address per screen.
+await drive(page);
+const spread2 = await page.evaluate(() => {
+  const across = document.querySelector('#wall-across');
+  across.value = '2';
+  across.dispatchEvent(new Event('change'));
+  const rows = [...document.querySelectorAll('#wall-panels input')].map((i) => i.value);
+  across.value = '1';
+  across.dispatchEvent(new Event('change'));
+  return { rows, after: document.querySelectorAll('#wall-panels input').length };
+});
+ok('the panel hands out one address per screen, and takes them back',
+   spread2.rows.length === 2 && /wall=1&of=2/.test(spread2.rows[0]) && /wall=2&of=2/.test(spread2.rows[1]) && spread2.after === 0,
+   JSON.stringify(spread2.rows.map((r) => r.replace(/^https?:\/\/[^/]+/, ''))));
+
 // --- the programme ---------------------------------------------------------
 // A room that shows work has a programme rather than a shuffle, and where the
 // show has got to is read from the clock -- so a wall started at any moment

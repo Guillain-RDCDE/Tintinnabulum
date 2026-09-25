@@ -959,8 +959,16 @@
         opens the work full screen and listens to the feed itself. Bookmark it on the
         machine behind the screen. If the feed goes quiet it keeps its own slow pulse
         rather than freezing.</p>
+      <label class="field" style="margin-top:.4rem"><span>Screens across</span>
+        <select id="wall-across">
+          <option value="1">One screen</option>
+          <option value="2">Two, one picture across both</option>
+          <option value="3">Three, one picture across all</option>
+        </select></label>
+      <p class="note" id="wall-across-note"></p>
       <label class="field" style="margin-top:.4rem"><span class="sr">Address for a wall on its own</span>
         <input type="text" id="wall-address" readonly spellcheck="false"></label>
+      <div id="wall-panels" class="show-list"></div>
       <div class="row">
         <button type="button" class="act" id="wall-copy">Copy the address</button>
         <a class="btn" id="wall-open" href="project.html" target="tintinnabulum-wall" rel="noopener">Try it</a>

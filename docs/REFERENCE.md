@@ -1411,6 +1411,26 @@ JSON per event and is of no use to a picture. Settings cross it too, so choosing
 a palette on the laptop changes the wall, and a window that has just opened asks
 for them rather than sitting on defaults.
 
+#### One picture across two screens
+
+Two screens side by side can show two pictures, which anybody can do, or one
+picture, which is a different object. `wall=2&of=3` is the middle screen of
+three: each panel lays the composition out for the **whole wall** and shows its
+own share of it, so what lands at the seam is the middle of the picture rather
+than two edges meeting.
+
+It is done by telling the renderer it is wider than it is. `setTile(index, of)`
+makes `this.w` the width of the wall and shifts the transform by this panel's
+share; nothing else in the renderer knows. Marks are placed in wall coordinates
+because that is what the width now is, a scene sizes its grids to the wall for
+the same reason, and an event halfway through the data lands halfway across the
+wall. The label appears on the first panel only — one card to a wall, as beside
+a real diptych.
+
+The screens should be the same size and in order, and each opens its own
+address, on its own machine or in its own window. The Picture panel hands them
+out, one line per screen.
+
 #### The programme
 
 Exhibition mode moves to another work every so many minutes, picked from

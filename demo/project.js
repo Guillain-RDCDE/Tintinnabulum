@@ -56,6 +56,12 @@ const canvas = document.getElementById('stage');
 const note = document.getElementById('note');
 const body = document.body;
 
+// One panel of a wider wall, when the address says so: `wall=2&of=3` is the
+// middle screen of three. Each panel draws the whole composition and shows its
+// own share of it, so the picture crosses the seam instead of stopping at it.
+const across = Math.max(1, Math.min(8, Number(params.get('of') || 1)));
+const panel = Math.max(1, Math.min(across, Number(params.get('wall') || 1)));
+
 const sink = new CanvasSink(canvas, {
   showHud: false,
   showLabels: false,
@@ -65,6 +71,7 @@ const sink = new CanvasSink(canvas, {
   maxRadius: 140,
   maxParticles: 1400,
 });
+if (across > 1) sink.setTile(panel, across);
 sink.start();
 
 /**
@@ -101,6 +108,9 @@ function addressOf(name) {
 function showCartel(name, { hold = 15000 } = {}) {
   const w = WORKS[name];
   if (!w) return false;
+  // One label to a wall, not one to a panel: on a diptych it belongs on the
+  // first screen, as it would beside the left-hand canvas of a real one.
+  if (panel !== 1) return false;
   document.getElementById('cartel-title').textContent = w.title;
   document.getElementById('cartel-medium').textContent =
     mediumOf(w, { SCENES, PALETTES, FINISHES, GROUNDS, MATS, KITS, LIVING });
@@ -409,6 +419,7 @@ window.addEventListener('beforeunload', () => {
 // Exposed for the test suite, which needs to see what arrived.
 window.projection = {
   sink, channel, showWork, goFullscreen, showCartel, hideCartel, addressOf,
+  wall: { panel, across },
   programme, hours, followProgramme,
   get closed() { return closed; },
   get untilOpen() { return untilOpen(hours, new Date()); },

@@ -141,15 +141,44 @@ export class CanvasSink {
     return this;
   }
 
+  /**
+   * Tell this canvas it is one panel of a wider wall.
+   *
+   * Two screens side by side can show two pictures, which anybody can do, or
+   * one picture -- and one picture across two screens is a different object.
+   * It is done by lying to the renderer about its own width: the scene is laid
+   * out for the whole wall, and each panel draws the whole thing shifted by
+   * its own share, so what lands at the seam is the middle of the composition
+   * rather than two edges meeting.
+   *
+   * Nothing else in the renderer knows. Marks are placed in wall coordinates
+   * because that is what `this.w` now is; a scene sizes its grids to the wall
+   * for the same reason; and an event at 0.5 of the way across the data lands
+   * halfway across the WALL, which is the whole point.
+   *
+   * @param {number} index  which panel, from 1
+   * @param {number} of     how many panels the wall has
+   */
+  setTile(index = 1, of = 1) {
+    const across = Math.max(1, Math.min(8, Math.round(of)));
+    this.tile = { index: Math.max(1, Math.min(across, Math.round(index))), of: across };
+    this._onResize();
+    return this;
+  }
+
   _onResize() {
     const dpr = window.devicePixelRatio || 1;
     const rect = this.canvas.getBoundingClientRect();
-    this.w = Math.max(1, Math.round(rect.width));
+    const tile = this.tile || { index: 1, of: 1 };
+    const panel = Math.max(1, Math.round(rect.width));
+    // The picture is the whole wall; the canvas is this panel of it.
+    this.w = panel * tile.of;
     this.h = Math.max(1, Math.round(rect.height));
     this._dpr = dpr;
-    this.canvas.width = Math.round(this.w * dpr);
+    this._shift = panel * (tile.index - 1);
+    this.canvas.width = Math.round(panel * dpr);
     this.canvas.height = Math.round(this.h * dpr);
-    this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.ctx.setTransform(dpr, 0, 0, dpr, -this._shift * dpr, 0);
     // Keep existing particles where their id says they belong.
     for (const p of this.particles) this._place(p);
     this._stars = null; // rebuilt against the new size
