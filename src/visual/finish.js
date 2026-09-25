@@ -19,10 +19,11 @@
 // the palette's warmest mark where it has one.
 
 import { lightnessOf, mixColors, lighten, parseColor } from './color.js';
+import { hatch, hatchLines, crossHatch, stipple } from './engrave.js';
 
 export const FINISH_ORDER = [
   'none', 'paper', 'watercolour', 'ink', 'riso', 'lino',
-  'neon', 'glass', 'stitch', 'cyanotype', 'chalk', 'gold', 'pointillist', 'dither',
+  'neon', 'glass', 'stitch', 'cyanotype', 'chalk', 'gold', 'pointillist', 'dither', 'engraved',
 ];
 
 export const FINISHES = {
@@ -40,6 +41,7 @@ export const FINISHES = {
   gold: { label: 'Gold leaf', note: 'Marks laid in gold on black lacquer, catching a slow light.' },
   pointillist: { label: 'Pointillism', note: 'The picture rebuilt from dots of colour set side by side, left for the eye to mix.' },
   dither: { label: 'Dither', note: 'The picture reduced to the palette\'s own inks and a fine pattern of dots, as an early computer screen would have shown it.' },
+  engraved: { label: 'Engraved', note: 'The picture cut as a copper plate: one ink, parallel burin lines that swell where the form turns away from the light, a second set crossing them in the darkest passages, and flick work between.' },
 };
 
 export const MAT_ORDER = ['none', 'thin', 'gallery'];
@@ -164,6 +166,208 @@ function inked(pool, key, dens, W, H, ink) {
 
 const APPLY = {
   none() {},
+
+  /**
+   * The picture as a copper plate.
+   *
+   * An engraving has no greys. Every tone in it is made by how thick a line is
+   * and how close it runs to its neighbour, which is exactly what the burin in
+   * engrave.js does -- so the picture is not filtered here, it is CUT: the
+   * frame becomes a tone, and the tone is engraved.
+   *
+   * Three things make it affordable on a live picture. The tone is read once
+   * from a small copy rather than per line. The plate is re-cut a few times a
+   * second rather than every frame, because a mark takes seconds to fade.
+   * And a re-cut is spread across frames, a few dozen lines at a time, with
+   * the last plate still showing meanwhile: cutting one at the size of a wall
+   * is sixty milliseconds, which is a stutter anybody can see. The FIRST plate
+   * is cut in one go, because a still -- an export, a card, a preview -- has
+   * only that one call and has to come back finished.
+   */
+  engraved(ctx, o) {
+    const { W, H, pool, palette, now } = o;
+    const src = snapshot(ctx, pool, W, H);
+    const m = Math.min(W, H);
+    const plate = buffer(pool, 'finish:plate', W, H);
+    const cutting = buffer(pool, 'finish:plateCut', W, H);
+    const state = pool['finish:plateState'] || (pool['finish:plateState'] = {
+      at: -1e9, w: 0, h: 0, phase: null, line: 0, ready: false,
+    });
+    const box = { x: 0, y: 0, w: W, h: H };
+    const spacing = Math.max(3.5, m / 118);
+    const weight = spacing * 0.5;
+    // Samples along a line: enough to find an edge, few enough that a plate
+    // the size of a wall is cut in a few tens of milliseconds.
+    const steps = Math.max(36, Math.min(80, Math.round(m / 11)));
+    const crossSpacing = spacing * 1.4;
+
+    const fresh = state.w !== W || state.h !== H;
+    if (fresh) {
+      state.ready = false;
+      state.phase = null;
+    }
+
+    // --- start a plate: read the tone, lay the paper ------------------------
+    // How often a new plate is begun. Reading the frame back off the graphics
+    // card is the one expensive moment -- some twenty milliseconds on a wall,
+    // because the card has to finish everything it had queued first -- so a
+    // big picture waits longer between plates than a small one. Measured in a
+    // real animation loop, this leaves a median frame of under two
+    // milliseconds and one long frame every half second.
+    const period = 240 + m / 3;
+    if (!state.phase && (fresh || now - state.at > period)) {
+      // An eighth of the size, which is about one cell per line of hatching --
+      // finer buys nothing and costs a great deal. Reading pixels back off a
+      // canvas the graphics card is holding forces it to finish everything it
+      // had queued: measured on a wall-sized frame, a quarter-size read cost
+      // a hundred and seventy-five milliseconds where an eighth-size one cost
+      // five.
+      const cw = Math.max(24, Math.round(W / 8));
+      const ch = Math.max(16, Math.round(H / 8));
+      const small = buffer(pool, 'finish:platetone', cw, ch);
+      const sg = small.getContext('2d', { willReadFrequently: true });
+      sg.save();
+      sg.globalCompositeOperation = 'copy';
+      sg.imageSmoothingEnabled = true;
+      sg.drawImage(src, 0, 0, W, H, 0, 0, cw, ch);
+      sg.restore();
+      let data;
+      try {
+        data = sg.getImageData(0, 0, cw, ch).data;
+      } catch (e) {
+        return; // a tainted canvas: leave the picture as it was drawn
+      }
+
+      // Smoothed before anything is cut. An engraver draws the form, not the
+      // grain of the paper it was photographed on: unblurred, a picture with
+      // texture in it -- water, a paper ground, a stipple -- gives a tone that
+      // changes every pixel, and the plate comes out as a rubbing of noise
+      // rather than as a picture.
+      const lum = new Float32Array(cw * ch);
+      const bins = new Int32Array(64);
+      for (let i = 0, k = 0; k < lum.length; i += 4, k++) {
+        const L = (data[i] * 0.2126 + data[i + 1] * 0.7152 + data[i + 2] * 0.0722) / 255;
+        lum[k] = L;
+        bins[Math.min(63, (L * 64) | 0)]++;
+      }
+      // Separable: across, then down. The same blur as a three-by-three box
+      // for a sixth of the arithmetic, which matters because this runs inside
+      // one frame.
+      const soft = new Float32Array(cw * ch);
+      for (let y = 0; y < ch; y++) {
+        const row = y * cw;
+        for (let x = 0; x < cw; x++) {
+          const l = lum[row + (x > 0 ? x - 1 : 0)];
+          const c = lum[row + x];
+          const r = lum[row + (x < cw - 1 ? x + 1 : cw - 1)];
+          soft[row + x] = (l + c * 2 + r) / 4;
+        }
+      }
+      for (let x = 0; x < cw; x++) {
+        for (let y = 0; y < ch; y++) {
+          const u = soft[(y > 0 ? y - 1 : 0) * cw + x];
+          const c = soft[y * cw + x];
+          const d = soft[(y < ch - 1 ? y + 1 : ch - 1) * cw + x];
+          // Weighted to the centre rather than flat: a flat box twice over
+          // averages a thin mark -- a ribbon, a root, a vein -- down into the
+          // paper, and the plate came out as scratches instead of a drawing.
+          lum[y * cw + x] = (u + c * 2 + d) / 4;
+        }
+      }
+
+      // What the paper is, and how far the picture departs from it. Not the
+      // palette's background: the ground on screen is textured, lit, and
+      // sometimes printed on paper already, so measuring against the nominal
+      // colour called every pixel a mark and cut the whole plate into tartan.
+      // The frame is asked instead -- its commonest luminance is the paper.
+      let modal = 0;
+      for (let i = 1; i < 64; i++) if (bins[i] > bins[modal]) modal = i;
+      const ground = (modal + 0.5) / 64;
+      let far = 0;
+      for (let k = 0; k < lum.length; k++) {
+        const d = Math.abs(lum[k] - ground);
+        if (d > far) far = d;
+      }
+      const range = Math.max(0.12, far * 0.62);
+      state.tone = (x, y) => {
+        const sx = x <= 0 ? 0 : x >= W ? cw - 1 : (x * cw / W) | 0;
+        const sy = y <= 0 ? 0 : y >= H ? ch - 1 : (y * ch / H) | 0;
+        // The paper keeps its own quiet: a small departure is texture, not a
+        // mark, and an engraver leaves it uncut. The curve above that keeps
+        // the light half of the picture open too -- a plate that hatches every
+        // mid-tone is a rubbing rather than a picture.
+        const away = (Math.abs(lum[sy * cw + sx] - ground) - range * 0.1) / range;
+        return away <= 0 ? 0 : away >= 1 ? 1 : away * away * (1.7 - 0.7 * away);
+      };
+
+      const inkL = lightnessOf(palette.text || '#1d1a15');
+      state.ink = inkL < 0.45 ? palette.text || '#1d1a15' : '#241d16';
+      const cg = cutting.getContext('2d');
+      cg.save();
+      cg.setTransform(1, 0, 0, 1, 0, 0);
+      cg.fillStyle = paperOf(palette);
+      cg.fillRect(0, 0, W, H);
+      cg.restore();
+      state.phase = 'hatch';
+      state.line = 0;
+      state.w = W;
+      state.h = H;
+    }
+
+    // --- cut it, a run of lines at a time ---------------------------------
+    if (state.phase) {
+      const cg = cutting.getContext('2d');
+      cg.save();
+      cg.setTransform(1, 0, 0, 1, 0, 0);
+      cg.fillStyle = state.ink;
+      // The first plate is cut whole: a still has one call and must come back
+      // finished. Later ones are sliced, so a live picture never stutters.
+      let budget = state.ready ? 56 : Infinity;
+      while (budget > 0 && state.phase) {
+        if (state.phase === 'hatch') {
+          const total = hatchLines(box, spacing);
+          const take = Math.min(budget, total - state.line);
+          hatch(cg, box, -0.42, state.tone, { spacing, weight, gamma: 1.05, min: 0.05, steps, skip: state.line, take });
+          state.line += take;
+          budget -= take;
+          if (state.line >= total) {
+            state.phase = 'cross';
+            state.line = 0;
+          }
+        } else if (state.phase === 'cross') {
+          const total = hatchLines(box, crossSpacing);
+          const take = Math.min(budget, total - state.line);
+          crossHatch(cg, box, 0.72, state.tone, {
+            spacing: crossSpacing, weight: weight * 0.8, from: 0.62, steps, skip: state.line, take,
+          });
+          state.line += take;
+          budget -= take;
+          if (state.line >= total) {
+            state.phase = 'flick';
+            state.line = 0;
+          }
+        } else {
+          // Flick work: dots where the tone is neither dark enough for a line
+          // nor light enough for nothing. Cheap, so it goes in one pass.
+          stipple(cg, box, state.tone, {
+            count: Math.round((W * H) / 2600), size: Math.max(0.55, spacing * 0.17), band: [0.08, 0.5], seed: 7,
+          });
+          state.phase = null;
+          state.at = now;
+          state.ready = true;
+          const g = plate.getContext('2d');
+          g.save();
+          g.setTransform(1, 0, 0, 1, 0, 0);
+          g.globalCompositeOperation = 'copy';
+          g.drawImage(cutting, 0, 0);
+          g.restore();
+        }
+      }
+      cg.restore();
+    }
+
+    if (state.ready) ctx.drawImage(plate, 0, 0);
+  },
 
   pointillist(ctx, o) {
     const { W, H, pool, palette } = o;

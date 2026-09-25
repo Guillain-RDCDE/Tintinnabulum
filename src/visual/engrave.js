@@ -107,8 +107,19 @@ export function burin(ctx, at, tone, { weight = 1.5, steps = 26, gamma = 1, min 
  * @param {object} box   {x, y, w, h}
  * @param {number} angle radians
  */
+/** How many lines a hatch of this spacing lays across a box. */
+export function hatchLines(box, spacing = 4) {
+  return Math.ceil((Math.hypot(box.w, box.h) / 2) * 2 / spacing) * 2 + 1;
+}
+
 export function hatch(ctx, box, angle, tone, o = {}) {
   const { spacing = 4, weight = 1.6, gamma = 1, min = 0.04 } = o;
+  // A plate can be cut a few lines at a time rather than all at once: `skip`
+  // and `take` select a run of them. A card is cut in one go, but a wall is
+  // sixty milliseconds of hatching and that is a stutter you can see, so the
+  // finish that engraves a live picture cuts it across frames.
+  const skip = o.skip ?? 0;
+  const take = o.take ?? Infinity;
   const { x, y, w, h } = box;
   const cx = x + w / 2;
   const cy = y + h / 2;
@@ -126,7 +137,11 @@ export function hatch(ctx, box, angle, tone, o = {}) {
   const px = -dy;
   const py = dx;
   const lines = Math.ceil((reach * 2) / spacing);
+  let at = -1;
   for (let i = -lines; i <= lines; i++) {
+    at++;
+    if (at < skip) continue;
+    if (at >= skip + take) break;
     const ox = cx + px * i * spacing;
     const oy = cy + py * i * spacing;
     burin(
@@ -147,6 +162,7 @@ export function hatch(ctx, box, angle, tone, o = {}) {
  */
 export function crossHatch(ctx, box, angle, tone, o = {}) {
   const from = o.from ?? 0.45;
+  // `skip` and `take` pass straight through: see hatch.
   hatch(ctx, box, angle, (x, y) => {
     const v = tone(x, y);
     return v <= from ? 0 : (v - from) / (1 - from);

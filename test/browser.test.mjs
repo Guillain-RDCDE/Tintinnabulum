@@ -907,6 +907,43 @@ ok('no finish leaves a filter, an alpha or a blend mode behind', finishes.leaked
 const slowFinish = Object.entries(finishes.slow).filter(([, ms]) => ms > 250);
 ok('no finish costs more than a quarter of a second at card size', slowFinish.length === 0,
    Object.entries(finishes.slow).map(([k, ms]) => `${k} ${ms.toFixed(0)}`).join(', '));
+// The engraved finish is not a filter over the picture: it is the picture cut
+// as a plate. Checked as an engraver would look at one -- ink on paper, made
+// of lines with paper between them rather than of tone, and the paper left
+// open where the picture is quiet.
+const plate = await page.evaluate(async () => {
+  const { playScene, PALETTES } = await import('../src/index.js');
+  const W = 700;
+  const H = 480;
+  const cv = document.createElement('canvas');
+  cv.width = W;
+  cv.height = H;
+  const ctx = cv.getContext('2d');
+  const player = playScene(ctx, 'bauhaus', { w: W, h: H, palette: PALETTES.papyrus.colors, finish: 'engraved', seed: 771, every: 90 });
+  while (!player.develop(40)) { /* the whole picture, in one call as a still */ }
+  const d = ctx.getImageData(0, 0, W, H).data;
+  const at = (x, y) => d[(y * W + x) * 4];
+  let ink = 0;
+  const tones = new Set();
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] < 140) ink++;
+    tones.add(d[i] >> 5);
+  }
+  // Across the middle: how many times the row changes from paper to ink and
+  // back. A plate made of lines crosses many times; a wash crosses twice.
+  let crossings = 0;
+  let wasInk = at(0, H >> 1) < 140;
+  for (let x = 1; x < W; x++) {
+    const nowInk = at(x, H >> 1) < 140;
+    if (nowInk !== wasInk) crossings++;
+    wasInk = nowInk;
+  }
+  return { ink: (ink / (W * H)) * 100, crossings, tones: tones.size };
+});
+ok('the engraved finish cuts the picture into lines rather than shading it',
+   plate.crossings > 20 && plate.ink > 2 && plate.ink < 45,
+   `${plate.crossings} crossings, ${plate.ink.toFixed(1)}% ink`);
+
 ok('the gallery mat frames the edge and leaves the middle alone',
    Object.values(finishes.mat).every((m) => m.edgeUniform && m.middleKept), JSON.stringify(finishes.mat));
 

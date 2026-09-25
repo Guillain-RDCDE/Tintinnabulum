@@ -1165,6 +1165,35 @@ sink.setGrain(true);
 sink.setPace(0.5);
 ```
 
+#### Engraved
+
+The others are printing: the picture is drawn, then a press is put over it.
+This one is **cutting**. An engraving has no greys — every tone in it is made
+by how thick a line is and how close it runs to its neighbour — so the frame
+becomes a tone, and the tone is engraved with the burin in `engrave.js`, the
+same one that cuts the kit cards: parallel lines that swell where the form
+turns away from the light, a second set crossing them in the darkest passages
+only, and flick work between.
+
+The tone is measured from the picture rather than from the palette. The ground
+on screen is textured, lit, and often printed on paper already, so measuring
+against the nominal background called every pixel a mark and cut the whole
+plate into tartan; the frame is asked instead, its commonest luminance is the
+paper, and how far the rest departs from that is the picture. It is smoothed
+first — an engraver draws the form, not the grain — and the quiet part of the
+range is left uncut, because a plate that hatches every mid-tone is a rubbing.
+
+Three things keep it affordable on a live picture. The tone is read once per
+plate from a copy an eighth of the size: reading pixels back off a canvas the
+graphics card is holding makes it finish everything it had queued, and on a
+wall-sized frame a quarter-size read cost a hundred and seventy-five
+milliseconds where an eighth-size one cost five. A plate is re-cut a few times
+a second rather than every frame, since a mark takes seconds to fade. And a
+re-cut is spread across frames, a few dozen lines at a time, with the last
+plate still showing — cutting one at the size of a wall is sixty milliseconds,
+which is a stutter anybody can see. The first plate is cut whole, because a
+still has one call and has to come back finished.
+
 ### Paper
 
 A finish decides what the marks are made of. A **paper** decides what they sit
