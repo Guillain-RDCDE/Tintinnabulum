@@ -1000,6 +1000,8 @@ place has one, and still takes every colour from the palette.
 | **Spray paint** | A soft core, a halo of droplets thinning with distance, and the odd drip. |
 | **Tesserae** | Stones laid in rows that follow the floor. Laid once, then only the stones an event touches are reset: re-laying four thousand every frame cost seventeen milliseconds. |
 | **Torn paper** | Coloured sheets with ragged edges, the white core showing and a thin shadow under each. |
+| **Frost** | Diffusion-limited aggregation. A particle wanders until it touches what is already frozen, and stays. Nothing decides the shape: a wanderer is likelier to meet a tip than to find a hollow, so what sticks out gathers more — which is why frost on a window is feathered. Walkers are released on a ring just outside the frozen edge, because a walk from the corner of a large picture almost never arrives, and in hundreds a frame: the first version released twenty-six and grew specks. |
+| **Fracture** | A pane struck, and struck again. Cracks leave each blow in every direction, wander, fork where the stress divides, and stop dead on a crack already there — which is why a broken window is a map of the order it was struck in, and why the second blow makes the smaller pattern. One sheet is one material, so each blow's colour is pulled most of the way to the palette's ink. |
 
 #### Water, air and night
 
