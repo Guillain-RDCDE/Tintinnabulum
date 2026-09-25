@@ -59,6 +59,9 @@ const body = document.body;
 // One panel of a wider wall, when the address says so: `wall=2&of=3` is the
 // middle screen of three. Each panel draws the whole composition and shows its
 // own share of it, so the picture crosses the seam instead of stopping at it.
+// Told what to hang -- a work, or a programme -- rather than following a
+// console. See the hello below.
+const selfDirected = Boolean(params.get('work') || params.get('show'));
 const across = Math.max(1, Math.min(8, Number(params.get('of') || 1)));
 const panel = Math.max(1, Math.min(across, Number(params.get('wall') || 1)));
 
@@ -244,9 +247,13 @@ function applySettings(s) {
   }
   if (s.scene) sink.setScene(s.scene);
   // The label follows the wall: a work arriving from the console is announced
-  // here exactly as one named in the address is.
-  if (s.work && s.work !== labelled && WORKS[s.work]) showCartel(s.work);
-  else if (!s.work && labelled) { labelled = null; hideCartel(); }
+  // here exactly as one named in the address is -- unless this wall was told
+  // what to hang in its own address, in which case the console does not get
+  // to take the label down.
+  if (!selfDirected) {
+    if (s.work && s.work !== labelled && WORKS[s.work]) showCartel(s.work);
+    else if (!s.work && labelled) { labelled = null; hideCartel(); }
+  }
   if (s.shape) sink.setShape(s.shape);
   if (typeof s.richness === 'number') sink.setRichness(s.richness);
   if (typeof s.depth === 'boolean') sink.setDepth(s.depth);
@@ -410,7 +417,15 @@ if (params.get('full') === '1') addEventListener('pointerdown', goFullscreen, { 
 
 // Announce ourselves, so the sandbox sends its current settings rather than
 // leaving this window on defaults until somebody changes something.
-channel.postMessage({ type: 'hello' });
+//
+// Unless this wall was told what to hang. Saying hello asks for everything the
+// console has, and the console answers with the whole of its look -- which
+// arrives a moment after the address has been obeyed and quietly replaces it:
+// a wall opened on `?work=lanterns` ended up showing whatever the laptop in
+// the corner happened to be on. A console that CHANGES something still
+// reaches this window, because that message goes to everyone; it is only the
+// unasked-for opening statement that is refused.
+if (!selfDirected) channel.postMessage({ type: 'hello' });
 window.addEventListener('beforeunload', () => {
   channel.postMessage({ type: 'goodbye' });
   channel.close();

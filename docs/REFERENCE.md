@@ -1545,7 +1545,13 @@ project.html?work=lanterns&feed=wikipedia&full=1
 at a default; `feed` connects the window straight to the world, no console in
 the room; `full=1` takes fullscreen on the first touch, since no browser grants
 it unasked. A console opened later on the same machine still steers that
-window, because the channel is still listening. The Picture panel keeps this
+window, because the channel is still listening — but it does not get to
+overrule the address on the way in. A window that has been told what to hang
+does not ask the console what it thinks: asking meant the console answered
+with the whole of its look a moment after the address had been obeyed, and a
+wall opened on `?work=lanterns` ended up showing whatever the laptop in the
+corner happened to be on. Only that unasked-for opening statement is refused;
+a change made at the console still reaches it. The Picture panel keeps this
 address up to date with whatever is showing and offers to copy it — that is
 what a gallery bookmarks on the machine behind the screen.
 

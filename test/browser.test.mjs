@@ -3048,8 +3048,14 @@ const emptyGround = async () =>
     for (let i = 0; i < d.length; i += 4 * 13) sum += d[i] + d[i + 1] + d[i + 2];
     return sum;
   });
-const plainGround = await emptyGround();
+// On a ground of this section's own choosing. Stars are light, so on a pale
+// palette they are nearly invisible and the measurement says more about which
+// check ran last than about the sky: it failed at 0.38% against a threshold of
+// 0.4% purely because an earlier section had left a light palette up.
 await showTab('picture');
+await page.evaluate(() => document.querySelector('[data-palette="ink"]').click());
+await page.waitForTimeout(150);
+const plainGround = await emptyGround();
 await openMore('#more-look');
 await page.check('#starfield');
 const starryGround = await emptyGround();
