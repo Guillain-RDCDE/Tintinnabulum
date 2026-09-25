@@ -49,7 +49,10 @@ const son = new Sonifier({
 
 // The rate is stated in the top bar, so the canvas does not draw its own
 // counter under the dock by default.
-const canvas = new CanvasSink('#canvas', { showHud: false, palette: storedPalette });
+// The renderer may listen to the engine: two scenes draw the sound itself.
+const canvas = new CanvasSink('#canvas', {
+  showHud: false, palette: storedPalette, listen: () => son.engine.analyser,
+});
 son.use(canvas);
 
 const recorder = new Recorder(son.engine);

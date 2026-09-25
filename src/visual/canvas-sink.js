@@ -24,6 +24,10 @@ export const DEFAULT_PALETTE = resolvePalette(DEFAULT_PALETTE_NAME);
 
 export class CanvasSink {
   constructor(canvas, opts = {}) {
+    // Where to find the sound this picture is making, if anything wants to
+    // draw it: a function returning an AnalyserNode, or nothing.
+    this.listen = typeof opts.listen === 'function' ? opts.listen : null;
+    this._sound = null;
     this.canvas = typeof canvas === 'string' ? document.querySelector(canvas) : canvas;
     if (!this.canvas) throw new Error('CanvasSink: canvas not found');
     this.ctx = this.canvas.getContext('2d');
@@ -262,6 +266,11 @@ export class CanvasSink {
       // carry hard-coded caps of their own, so raising the limit governed the
       // marks and nothing else.
       budget: this.maxParticles,
+      // The sound this picture is making, if anything is listening: see
+      // _readSound. Null when there is no audio to read -- a preview, an
+      // export, a page with the sound off -- and the scenes that draw it fall
+      // back to what the events say instead.
+      sound: this._sound,
       // A scene's own dials. It declares them, the picker draws them, and this
       // hands back the current value -- so a scene never reads the DOM and the
       // interface never has to know what a scene is made of.
@@ -269,6 +278,45 @@ export class CanvasSink {
       // Scenes ask for a fill rather than reading p.color, so the gradient and
       // its caching stay here instead of being copied into every scene.
       fill: (ctx, p) => this.fillFor(ctx, p),
+    };
+  }
+
+  /**
+   * The spectrum and the waveform, read once a frame and shared.
+   *
+   * Once, because a scene may ask several times in one frame and each read is
+   * a transform; shared, because two scenes on two canvases looking at the
+   * same engine want the same picture of it.
+   */
+  _readSound() {
+    if (!this.listen) return;
+    let analyser = null;
+    try {
+      analyser = this.listen();
+    } catch (e) {
+      analyser = null;
+    }
+    if (!analyser || typeof analyser.getByteFrequencyData !== 'function') {
+      this._sound = null;
+      return;
+    }
+    const bins = analyser.frequencyBinCount;
+    if (!this._spectrum || this._spectrum.length !== bins) {
+      this._spectrum = new Uint8Array(bins);
+      this._wave = new Uint8Array(analyser.fftSize);
+    }
+    analyser.getByteFrequencyData(this._spectrum);
+    analyser.getByteTimeDomainData(this._wave);
+    let loud = 0;
+    for (let i = 0; i < this._wave.length; i += 4) {
+      const v = Math.abs(this._wave[i] - 128) / 128;
+      if (v > loud) loud = v;
+    }
+    this._sound = {
+      spectrum: this._spectrum,
+      wave: this._wave,
+      loudness: loud,
+      rate: analyser.context ? analyser.context.sampleRate : 44100,
     };
   }
 
@@ -738,6 +786,8 @@ export class CanvasSink {
     // every mark a minute old.
     this._sceneNow = this._sceneNow == null ? now : this._sceneNow + this._dt * this.pace;
     const clock = this._sceneNow;
+    // What the piece sounds like at this instant, for the scenes that draw it.
+    this._readSound();
 
     ctx.fillStyle = this.palette.background;
     ctx.fillRect(0, 0, this.w, this.h);

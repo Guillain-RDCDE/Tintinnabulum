@@ -98,6 +98,8 @@ export const CATALOGUE = {
   zengarden: S('Materials', 'Raked gravel, straight lines and rings drawn round each stone.'),
   bubbles: S('Materials', 'Soap bubbles drifting on a soft light, their skins swirling with colour.'),
   paperforest: S('Materials', 'A forest cut from paper in layers, like a toy theatre.'),
+  spectrogram: S('Materials', 'The sound of the piece written down as it happens, one column of spectrum per instant, scrolling.'),
+  groove: S('Materials', 'The sound cut as a spiral from the outside in, the way it was written before anybody could play it back.'),
   chladni: S('Materials', 'Sand on a singing metal plate, gathering on the lines where it is still.'),
   substrate: S('Materials', 'Cracks spreading across drying clay until they draw the plan of a city.'),
   reaction: S('Materials', "Two colours feeding on each other, making the spots and stripes of an animal's coat."),

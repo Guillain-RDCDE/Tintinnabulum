@@ -233,6 +233,15 @@ export const WORKS = {
     cartel: 'Tiles that may only sit beside tiles they join up with, settling one at a time into a pattern that is continuous everywhere. Every event drops a crossing into the grid and the solver finds its way round it.',
   }),
 
+  written: work('Night', 'lively', 'The sound, written down', {
+    scene: 'spectrogram', palette: 'abyss', kit: 'glassy', space: 'plate',
+    cartel: 'Not a picture of the events but of what they were turned into: every column is one instant of the sound coming out of the speakers, low frequencies at the foot and high at the head, scrolling. A bell is a bright line with a comb of quieter ones above it; the attack of each note is the stroke that crosses them all.',
+  }),
+  phonautograph: work('Daylight', 'calm', 'Phonautograph', {
+    scene: 'groove', palette: 'bone', kit: 'musicbox', space: 'room', ground: 'aged', mat: 'thin', pace: UNHURRIED,
+    cartel: 'The sound cut as a spiral from the outside in, the way it was written down before anybody could play it back. The stylus travels at its own steady rate and the waveform pushes it sideways, so a loud passage is a wide band and a quiet one a hairline: after a few minutes the whole piece is a disc you can read at a glance.',
+  }),
+
   // --- grown on paper ------------------------------------------------------------------
   currents: work('Daylight', 'lively', 'Gouache currents', {
     scene: 'ribbons', palette: 'linen', kit: 'marimba', space: 'room', ground: 'cotton',

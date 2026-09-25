@@ -173,6 +173,36 @@ export class AudioEngine {
     return this._bus;
   }
 
+  /**
+   * What is actually going to the speakers, for anything that wants to draw
+   * it: a spectrum and a waveform, read from a tap after the limiter and the
+   * ceiling, which is where the sound is finished.
+   *
+   * Made only when something asks. An analyser is a fast Fourier transform
+   * every frame whether or not anybody reads it, so a page that never draws
+   * the sound never pays for one.
+   */
+  get analyser() {
+    const ctx = this.ctx;
+    if (!this._analyser) {
+      if (typeof ctx.createAnalyser !== 'function') return null;
+      this._analyser = ctx.createAnalyser();
+      this._analyser.fftSize = 1024;
+      // Enough smoothing that a picture of it is a shape rather than a
+      // flicker, little enough that a struck note still arrives as a strike.
+      this._analyser.smoothingTimeConstant = 0.72;
+      // A wider window than the default, because the default one clips.
+      // Between -100 and -30 dB, anything actually playing pins the low bins
+      // at the top of the byte scale and a picture of the spectrum comes out
+      // as a solid block with the structure -- the partials, the attack, the
+      // decay -- invisible inside it.
+      this._analyser.minDecibels = -96;
+      this._analyser.maxDecibels = -6;
+      this._ceiling.connect(this._analyser);
+    }
+    return this._analyser;
+  }
+
   get locked() {
     return this.ctx.state !== 'running';
   }

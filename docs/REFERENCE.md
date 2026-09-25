@@ -1003,6 +1003,35 @@ place has one, and still takes every colour from the palette.
 | **Frost** | Diffusion-limited aggregation. A particle wanders until it touches what is already frozen, and stays. Nothing decides the shape: a wanderer is likelier to meet a tip than to find a hollow, so what sticks out gathers more — which is why frost on a window is feathered. Walkers are released on a ring just outside the frozen edge, because a walk from the corner of a large picture almost never arrives, and in hundreds a frame: the first version released twenty-six and grew specks. |
 | **Fracture** | A pane struck, and struck again. Cracks leave each blow in every direction, wander, fork where the stress divides, and stop dead on a crack already there — which is why a broken window is a map of the order it was struck in, and why the second blow makes the smaller pattern. One sheet is one material, so each blow's colour is pulled most of the way to the palette's ink. |
 
+#### The sound itself
+
+Everything else draws the events. These two draw what the events were turned
+*into*, which closes the loop the project is built on: the data became a
+sound, and the sound becomes the picture.
+
+**Spectrogram** writes the sound down as it happens — one column of spectrum
+per instant, scrolling, so a minute of listening is a minute of paper. The
+axis is octaves rather than hertz: an analyser's spectrum is linear in
+frequency and music is not, so on a linear axis everything anybody plays is
+crushed into the bottom tenth of the picture. There is a floor under it too,
+because an analyser's low bins sit near the top of the byte scale whenever
+anything at all is playing, and without one the lower third is a solid block
+with the structure invisible inside it.
+
+**Groove** is a phonautograph: the sound cut as a spiral from the outside in,
+the way it was written down before anybody could play it back. The stylus
+travels at its own rate and the waveform pushes it sideways, so a loud passage
+is a wide band and a quiet one a hairline. One disc is one cut, in one ink.
+
+The renderer reads the engine once a frame — `new CanvasSink(el, { listen: ()
+=> son.engine.analyser })` — and hands the scene a spectrum, a waveform and a
+loudness. The analyser is made only when something asks for one, since it is a
+transform every frame whether or not anybody looks, and it is given a wider
+decibel window than the default, which clips. Where there is nothing to listen
+to — a preview, an export, the sound switched off — both scenes fall back to a
+spectrum imagined from the events, each a partial at the pitch it would have
+sounded, so a card is never a blank rectangle.
+
 #### Documents
 
 Two that are objects before they are pictures.

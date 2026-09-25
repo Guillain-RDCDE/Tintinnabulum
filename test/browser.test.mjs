@@ -474,6 +474,60 @@ ok('one event swings the clapper through several rods, each softer and later',
 ok('a chime only ever strikes its own rods, and they ring on',
    chimeSwing.onRods && chimeSwing.peak > 0.05 && chimeSwing.long > 3,
    JSON.stringify(chimeSwing));
+// --- the picture can hear the piece ----------------------------------------
+// Two scenes draw the sound rather than the events, which only works if the
+// renderer is actually reading the engine. That wiring is one option deep and
+// silent when it is missing -- the scenes fall back to an imagined spectrum
+// and look plausible -- so it is checked rather than assumed.
+const hearing = await page.evaluate(async () => {
+  const sink = window.son.sinks.find((s) => s.particles);
+  const before = sink._sound;
+  // Something to hear.
+  for (let i = 0; i < 12; i++) window.son.emit({ magnitude: 300 * (i + 1), id: 'hear-' + i });
+  await new Promise((r) => setTimeout(r, 500));
+  const analyser = window.son.engine.analyser;
+  const sound = sink._sound;
+  let loudest = 0;
+  if (sound) for (let i = 0; i < sound.spectrum.length; i++) loudest = Math.max(loudest, sound.spectrum[i]);
+  return {
+    wired: typeof sink.listen === 'function',
+    had: Boolean(before),
+    reads: Boolean(sound && sound.spectrum && sound.wave),
+    bins: sound ? sound.spectrum.length : 0,
+    loudest,
+    db: analyser ? [analyser.minDecibels, analyser.maxDecibels] : null,
+  };
+});
+ok('the renderer listens to the engine, and hears something',
+   hearing.wired && hearing.reads && hearing.bins >= 256 && hearing.loudest > 0,
+   JSON.stringify(hearing));
+ok('the analyser is given a window wide enough not to clip',
+   hearing.db && hearing.db[0] <= -90 && hearing.db[1] <= -5, JSON.stringify(hearing.db));
+
+// And with nothing to listen to -- a preview, an export -- they still draw.
+const imagined = await page.evaluate(async () => {
+  const { playScene, PALETTES } = await import('../src/index.js');
+  const out = {};
+  for (const name of ['spectrogram', 'groove']) {
+    const cv = document.createElement('canvas');
+    cv.width = 420;
+    cv.height = 300;
+    const ctx = cv.getContext('2d');
+    const player = playScene(ctx, name, { w: 420, h: 300, palette: PALETTES.abyss.colors, seed: 99, every: 90 });
+    while (!player.develop(40)) { /* the whole picture */ }
+    const d = ctx.getImageData(0, 0, 420, 300).data;
+    const g = [d[0], d[1], d[2]];
+    let ink = 0;
+    for (let i = 0; i < d.length; i += 4) {
+      if (Math.abs(d[i] - g[0]) + Math.abs(d[i + 1] - g[1]) + Math.abs(d[i + 2] - g[2]) > 24) ink++;
+    }
+    out[name] = Number(((ink / (420 * 300)) * 100).toFixed(2));
+  }
+  return out;
+});
+ok('with nothing to listen to they draw the music the events would make',
+   imagined.spectrogram > 1 && imagined.groove > 0.3, JSON.stringify(imagined));
+
 // --- a note comes from where its mark is -----------------------------------
 // An event's mark is placed by its identity; its note is placed the same way.
 // Measured as energy in each channel of an offline render, with events chosen
