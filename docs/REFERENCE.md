@@ -1180,6 +1180,32 @@ uses, so importing it would cost about a megabyte and the offline guarantee
 while buying no capability. What was missing was not a library but this
 extension point.
 
+### Two pictures at once
+
+A second scene, laid over the first as a double exposure. It is the one
+control here that multiplies rather than adds: every scene against every
+other, seven ways of mixing them, from what is already written.
+
+Both layers are **whole pictures of the same events** — they share the marks,
+each drawing them its own way — and they are combined by a blend rather than
+by one drawing into the other's gaps. That is the only arrangement that works
+with the whole catalogue: most scenes fill their own ground opaquely, so a
+second scene drawn underneath would simply be hidden, and one drawn on a
+transparent ground would never fade its own trails, since fading is done by
+washing the ground over them.
+
+The second picture is drawn on a canvas of its own at the size of the first
+and composited: `multiply` keeps whatever is dark in either, `screen` whatever
+is light, `overlay` and `soft-light` bend one towards the other, `darken` and
+`lighten` take the extreme at every point, and `difference` makes colours
+neither picture had. Each layer keeps its own scene state, its own buffers and
+its own dials, so the two never cross; the cost is a second render a frame,
+which is what it sounds like.
+
+```js
+sink.setSecond('topo', { blend: 'multiply', mix: 0.7 });
+```
+
 ### Finishes, frames and pace
 
 A scene decides where the marks go. A **finish** decides what they are made of,

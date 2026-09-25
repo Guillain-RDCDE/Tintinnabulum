@@ -246,6 +246,8 @@ function applySettings(s) {
     body.style.background = PALETTES[s.palette].colors.background;
   }
   if (s.scene) sink.setScene(s.scene);
+  // Two pictures at once, if the console is showing two.
+  if (typeof s.second === 'string') sink.setSecond(s.second, { blend: s.blend, mix: s.mix });
   // The label follows the wall: a work arriving from the console is announced
   // here exactly as one named in the address is -- unless this wall was told
   // what to hang in its own address, in which case the console does not get

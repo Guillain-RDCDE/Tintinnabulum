@@ -54,7 +54,7 @@ export { GROUNDS, GROUND_ORDER, applyGround, groundTone, prepareGround, groundRe
 export { inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, isViolet, rngOf } from './visual/inks.js';
 export { LIVING, LIVING_ORDER, driftNeighbours, driftColours, daylightColours, moodColours, lightOfHour, busyness } from './visual/living.js';
 
-export { CanvasSink, DEFAULT_PALETTE } from './visual/canvas-sink.js';
+export { CanvasSink, DEFAULT_PALETTE, BLENDS } from './visual/canvas-sink.js';
 export {
   SHAPES,
   SHAPE_NAMES,

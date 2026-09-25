@@ -22,6 +22,16 @@ export { SCENES, SCENE_NAMES, DEFAULT_SCENE, registerScene } from './scenes/inde
 /** The default colours, kept as a named export for convenience. */
 export const DEFAULT_PALETTE = resolvePalette(DEFAULT_PALETTE_NAME);
 
+/**
+ * How a second picture is mixed into the first.
+ *
+ * Only the modes that mean something for two pictures of the same events:
+ * multiply keeps whatever is dark in either, screen whatever is light,
+ * overlay and soft light bend one towards the other, and difference is the
+ * one that produces colours neither picture had.
+ */
+export const BLENDS = ['multiply', 'screen', 'overlay', 'soft-light', 'darken', 'lighten', 'difference'];
+
 export class CanvasSink {
   constructor(canvas, opts = {}) {
     // Where to find the sound this picture is making, if anything wants to
@@ -84,6 +94,17 @@ export class CanvasSink {
     // and coming back finds it as you left it.
     this._params = { ...(opts.params || {}) };
     this._scene = {}; // scratch space owned by the active scene
+    // A second scene, drawn over the first as a double exposure. Both are
+    // full pictures of the same events -- they share the marks -- and they are
+    // combined by a blend rather than by drawing one into the other's gaps,
+    // which is the only way this works with every scene in the catalogue: a
+    // scene that fills its own ground opaquely, and most do, would otherwise
+    // simply hide whatever was under it.
+    this.secondName = SCENES[opts.second] ? opts.second : 'none';
+    this.blend = BLENDS.includes(opts.blend) ? opts.blend : 'multiply';
+    this.mix = Number.isFinite(opts.mix) ? Math.max(0, Math.min(1, opts.mix)) : 0.65;
+    this._second = {};
+    this._secondBuffers = {};
     // Offscreen canvases, which outlive the scene that asked for one. They
     // are several megabytes each and a scene change must not buy a new set:
     // see the note in scenes/paint.js for what that cost.
@@ -189,6 +210,21 @@ export class CanvasSink {
     this._initScene(); // scenes size their own structures to the canvas
   }
 
+  /** The canvas the second picture is drawn on, at the size of this one. */
+  _secondLayer() {
+    const w = this.canvas.width;
+    const h = this.canvas.height;
+    if (!w || !h) return null;
+    if (!this._layer || this._layer.width !== w || this._layer.height !== h) {
+      this._layer = typeof OffscreenCanvas === 'function'
+        ? new OffscreenCanvas(w, h)
+        : Object.assign(document.createElement('canvas'), { width: w, height: h });
+      this._secondBuffers = {};
+      this._initSecond();
+    }
+    return this._layer;
+  }
+
   _place(p) {
     const pad = p.r + this.margin;
     p.x = pad + p.u * Math.max(1, this.w - pad * 2);
@@ -244,8 +280,11 @@ export class CanvasSink {
   }
 
   /** The surface handed to the active scene each frame. */
-  _sceneApi(now = 0) {
+  _sceneApi(now = 0, second = false) {
     return {
+      // Which of the two this is, so a scene that wants to know can ask --
+      // and so the state and the buffers are never crossed.
+      second,
       w: this.w,
       h: this.h,
       palette: this.palette,
@@ -254,10 +293,10 @@ export class CanvasSink {
       ringLife: this.ringLife,
       now,
       dt: (this._dt || 16) * this.pace,
-      scene: this._scene,
+      scene: second ? this._second : this._scene,
       // Offscreen canvases, pooled per renderer rather than per scene: see
       // the note in scenes/paint.js.
-      buffers: this._buffers,
+      buffers: second ? this._secondBuffers : this._buffers,
       depth: this.depth,
       richness: this.richness,
       darkGround: this._darkGround,
@@ -274,7 +313,7 @@ export class CanvasSink {
       // A scene's own dials. It declares them, the picker draws them, and this
       // hands back the current value -- so a scene never reads the DOM and the
       // interface never has to know what a scene is made of.
-      param: (name) => this.param(name),
+      param: (name) => this.param(name, second ? this.secondName : this.sceneName),
       // Scenes ask for a fill rather than reading p.color, so the gradient and
       // its caching stay here instead of being copied into every scene.
       fill: (ctx, p) => this.fillFor(ctx, p),
@@ -330,6 +369,45 @@ export class CanvasSink {
         console.error('scene "' + this.sceneName + '" failed to start', e);
       }
     }
+    this._initSecond();
+  }
+
+  _initSecond() {
+    this._second = {};
+    const scene = SCENES[this.secondName];
+    if (scene && scene.init) {
+      try {
+        scene.init(this._sceneApi(this._clockNow(), true));
+      } catch (e) {
+        console.error('scene "' + this.secondName + '" failed to start', e);
+      }
+    }
+  }
+
+  /**
+   * Show two scenes at once, the second laid over the first.
+   *
+   * @param {string} name   a scene, or 'none'
+   * @param {object} [o]    { blend, mix }
+   */
+  setSecond(name, o = {}) {
+    this.secondName = SCENES[name] ? name : 'none';
+    if (BLENDS.includes(o.blend)) this.blend = o.blend;
+    if (Number.isFinite(o.mix)) this.mix = Math.max(0, Math.min(1, o.mix));
+    this._initSecond();
+    return this;
+  }
+
+  /** How the second scene is mixed into the first. */
+  setBlend(mode) {
+    if (BLENDS.includes(mode)) this.blend = mode;
+    return this;
+  }
+
+  /** How much of it: 0 is none at all, 1 is the whole of it. */
+  setMix(amount) {
+    this.mix = Math.max(0, Math.min(1, Number(amount) || 0));
+    return this;
   }
 
   /**
@@ -720,6 +798,14 @@ export class CanvasSink {
       this.particles.splice(0, this.particles.length - this.maxParticles);
     }
 
+    const second = SCENES[this.secondName];
+    if (second && second.event) {
+      try {
+        second.event(p, this._sceneApi(this._clockNow(), true));
+      } catch (e) {
+        console.error('scene "' + this.secondName + '" failed on an event', e);
+      }
+    }
     const scene = SCENES[this.sceneName];
     if (scene && scene.event) {
       try {
@@ -832,6 +918,31 @@ export class CanvasSink {
     }
     ctx.restore();
     ctx.globalAlpha = 1;
+
+    // The second picture, over the first. Drawn whole, on a canvas of its
+    // own, and then blended in: two exposures on one plate rather than one
+    // picture with another scattered through its gaps.
+    if (this.secondName !== 'none' && this.mix > 0.002) {
+      const other = SCENES[this.secondName];
+      const layer = this._secondLayer();
+      if (other && layer) {
+        const lg = layer.getContext('2d');
+        lg.save();
+        lg.setTransform(this._dpr || 1, 0, 0, this._dpr || 1, -(this._shift || 0) * (this._dpr || 1), 0);
+        try {
+          other.frame(lg, this._sceneApi(clock, true));
+        } catch (e) {
+          console.error('scene "' + this.secondName + '" failed', e);
+        }
+        lg.restore();
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.globalAlpha = this.mix;
+        ctx.globalCompositeOperation = this.blend;
+        ctx.drawImage(layer, 0, 0);
+        ctx.restore();
+      }
+    }
 
     // The finish goes on the picture and nothing else: before the labels and
     // the readout, which are the interface and must stay legible whatever the

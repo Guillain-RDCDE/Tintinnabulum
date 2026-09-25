@@ -31,6 +31,8 @@ import {
   MATS,
   applyFinish,
   LIVING,
+  SCENE_NAMES,
+  BLENDS,
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { store } from './store.js';
@@ -57,8 +59,107 @@ const SHAPE_LABELS = {
  * @param {Function} io.updateSummaries refresh the folded panel headers
  * @param {Function} io.paintKitArts    the Sound panel's cards follow the palette
  */
+/**
+ * Two pictures at once, the second over the first.
+ *
+ * It is offered here rather than in the scene picker because it is not a
+ * choice of scene: it is a choice about the picture as a whole, and it is the
+ * one control in the project that multiplies rather than adds -- every scene
+ * against every other, and seven ways of mixing them.
+ */
+function setupSecond({ canvas, store, $, SCENES, SCENE_NAMES, BLENDS, shelfOf, onChange }) {
+  const select = $('#second');
+  const blend = $('#blend');
+  const mix = $('#mix');
+  if (!select || !blend || !mix) return { refresh: () => {} };
+
+  select.innerHTML = '<option value="none">None: one picture</option>';
+  const shelves = new Map();
+  for (const name of SCENE_NAMES) {
+    const shelf = shelfOf ? shelfOf(name) : (SCENES[name] || {}).shelf || 'Other';
+    if (!shelves.has(shelf)) shelves.set(shelf, []);
+    shelves.get(shelf).push(name);
+  }
+  for (const [shelf, names] of shelves) {
+    const group = document.createElement('optgroup');
+    group.label = shelf;
+    for (const name of names) {
+      const o = document.createElement('option');
+      o.value = name;
+      o.textContent = SCENES[name].label;
+      group.append(o);
+    }
+    select.append(group);
+  }
+  const WORDS = {
+    multiply: 'Multiply: whatever is dark in either picture stays dark. The one for pale grounds.',
+    screen: 'Screen: whatever is light in either stays light. The one for night pictures.',
+    overlay: 'Overlay: the first picture decides, and the second deepens or lifts it.',
+    'soft-light': 'Soft light: the second is a wash over the first rather than a picture in its own right.',
+    darken: 'Darken: at every point, the darker of the two.',
+    lighten: 'Lighten: at every point, the lighter of the two.',
+    difference: 'Difference: what the two disagree about, which makes colours neither of them had.',
+  };
+  blend.innerHTML = '';
+  for (const mode of BLENDS) {
+    const o = document.createElement('option');
+    o.value = mode;
+    o.textContent = mode === 'soft-light' ? 'Soft light' : mode[0].toUpperCase() + mode.slice(1);
+    blend.append(o);
+  }
+
+  // `quiet` for the first call, which happens while the page is still being
+  // built: the summary it would otherwise ask for reads things that do not
+  // exist yet, and a `let` read before its declaration throws rather than
+  // coming back undefined.
+  function refresh(quiet = false) {
+    const on = canvas.secondName !== 'none';
+    select.value = canvas.secondName;
+    blend.value = canvas.blend;
+    blend.disabled = !on;
+    mix.disabled = !on;
+    mix.value = String(Math.round(canvas.mix * 100));
+    $('#mix-val').textContent = `${Math.round(canvas.mix * 100)}%`;
+    $('#second-note').textContent = on
+      ? `${SCENES[canvas.secondName].label} over ${SCENES[canvas.sceneName] ? SCENES[canvas.sceneName].label : 'the picture'}. ${WORDS[canvas.blend] || ''}`
+      : 'One picture. Choose a second and the same events are drawn twice, two ways at once.';
+    if (!quiet) onChange();
+  }
+
+  select.addEventListener('change', () => {
+    canvas.setSecond(select.value);
+    store.set('second', select.value);
+    refresh();
+  });
+  blend.addEventListener('change', () => {
+    canvas.setBlend(blend.value);
+    store.set('blend', blend.value);
+    refresh();
+  });
+  mix.addEventListener('input', () => {
+    canvas.setMix(Number(mix.value) / 100);
+    store.set('mix', mix.value);
+    refresh();
+  });
+
+  canvas.setSecond(store.get('second') || 'none', {
+    blend: store.get('blend') || 'multiply',
+    mix: store.get('mix') == null ? 0.65 : Number(store.get('mix')) / 100,
+  });
+  refresh(true);
+  return { refresh };
+}
+
 export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange = () => {} }) {
   let richnessWord = 'balanced';
+
+  const second = setupSecond({
+    canvas, store, $, SCENES, SCENE_NAMES, BLENDS, shelfOf,
+    onChange: () => {
+      updateSummaries();
+      onLookChange();
+    },
+  });
 
   /**
    * Draw the dials the current scene declares.
@@ -676,6 +777,12 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     stepPalette,
     stepScene: sceneRotation.step,
     repaintScenePreviews, repaintShapeSwatches, repaintPendingPreviews, drawParams,
+    // Two pictures at once: the panel, and a way to put it back where it was.
+    selectSecond: (name, blend, mix) => {
+      canvas.setSecond(name, { blend, mix });
+      second.refresh();
+    },
+    refreshSecond: second.refresh,
     SHAPE_LABELS,
     get richnessWord() {
       return richnessWord;

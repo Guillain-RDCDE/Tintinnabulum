@@ -948,6 +948,17 @@
       <p class="sub-label" id="params-label">This visualisation</p>
       <div id="scene-params"></div>
 
+      <p class="sub-label">Two at once</p>
+      <p class="note">A second picture of the same events, laid over the first as a double
+        exposure. Both are whole pictures — they share the marks — and the blend decides
+        which of them wins where.</p>
+      <label class="field" style="margin-top:.4rem"><span>Second visualisation</span>
+        <select id="second"></select></label>
+      <label class="field"><span>How they mix</span><select id="blend"></select></label>
+      <label class="field"><span>How much of it <span id="mix-val">65%</span></span>
+        <input type="range" id="mix" min="0" max="100" step="5" value="65"></label>
+      <p class="note" id="second-note"></p>
+
       <p class="sub-label">Projection</p>
       <p class="note">Open the work in its own window and put it on the projector or the
         second screen. It draws at whatever size and shape that screen is — not a

@@ -474,6 +474,71 @@ ok('one event swings the clapper through several rods, each softer and later',
 ok('a chime only ever strikes its own rods, and they ring on',
    chimeSwing.onRods && chimeSwing.peak > 0.05 && chimeSwing.long > 3,
    JSON.stringify(chimeSwing));
+// --- two pictures at once ---------------------------------------------------
+// A second scene over the first, as a double exposure. Both are whole
+// pictures of the same events and a blend decides which wins where -- which
+// is the only arrangement that works with every scene in the catalogue,
+// since most of them fill their own ground and would simply hide the other.
+const doubled = await page.evaluate(async () => {
+  const sink = window.son.sinks.find((s) => s.particles);
+  const shot = () => {
+    const c = document.querySelector('#canvas');
+    const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    let sum = 0;
+    const seen = new Set();
+    for (let i = 0; i < d.length; i += 4 * 17) {
+      sum += d[i] + d[i + 1] + d[i + 2];
+      if (seen.size < 4000) seen.add((d[i] >> 3 << 10) | (d[i + 1] >> 3 << 5) | (d[i + 2] >> 3));
+    }
+    return { sum, colours: seen.size };
+  };
+  const settle = () => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
+  sink.setPalette('linen');
+  sink.setScene('ribbons');
+  sink.setSecond('none');
+  for (let i = 0; i < 40; i++) window.son.emit({ id: 'two-' + i, magnitude: 200 + i * 143 });
+  await settle();
+  await new Promise((r) => setTimeout(r, 400));
+  const alone = shot();
+  sink.setSecond('topo', { blend: 'multiply', mix: 0.8 });
+  for (let i = 0; i < 40; i++) window.son.emit({ id: 'two-b-' + i, magnitude: 200 + i * 143 });
+  await new Promise((r) => setTimeout(r, 500));
+  const together = shot();
+  // Both scenes are told about the events, or the second would draw nothing.
+  const secondSaw = Boolean(sink._second && Object.keys(sink._second).length);
+  sink.setSecond('none');
+  await settle();
+  return { alone, together, secondSaw, layer: Boolean(sink._layer) };
+});
+ok('a second picture changes the first rather than replacing it',
+   doubled.together.sum !== doubled.alone.sum && doubled.secondSaw && doubled.layer,
+   JSON.stringify({ alone: doubled.alone.sum, together: doubled.together.sum }));
+ok('and it is drawn on a plate of its own, at the size of the picture',
+   doubled.together.colours > 4 && doubled.layer, JSON.stringify(doubled.together));
+
+const twoPanel = await page.evaluate(async () => {
+  const sel = document.querySelector('#second');
+  const blend = document.querySelector('#blend');
+  const mix = document.querySelector('#mix');
+  const scenes = sel.querySelectorAll('option').length;
+  sel.value = 'girih';
+  sel.dispatchEvent(new Event('change'));
+  blend.value = 'difference';
+  blend.dispatchEvent(new Event('change'));
+  mix.value = '35';
+  mix.dispatchEvent(new Event('input'));
+  await new Promise((r) => setTimeout(r, 200));
+  const sink = window.son.sinks.find((s) => s.particles);
+  const state = { second: sink.secondName, blend: sink.blend, mix: sink.mix, scenes, note: document.querySelector('#second-note').textContent };
+  sel.value = 'none';
+  sel.dispatchEvent(new Event('change'));
+  return state;
+});
+ok('the panel offers every scene as a second, and seven ways to mix them',
+   twoPanel.scenes > 100 && twoPanel.second === 'girih' && twoPanel.blend === 'difference' &&
+   Math.abs(twoPanel.mix - 0.35) < 0.01 && /Difference/.test(twoPanel.note),
+   JSON.stringify({ scenes: twoPanel.scenes, second: twoPanel.second, blend: twoPanel.blend, mix: twoPanel.mix }));
+
 // --- the picture can hear the piece ----------------------------------------
 // Two scenes draw the sound rather than the events, which only works if the
 // renderer is actually reading the engine. That wiring is one option deep and
