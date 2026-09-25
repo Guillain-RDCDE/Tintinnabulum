@@ -371,8 +371,14 @@ const unspread = await new Promise((resolve) => {
     resolve(stamps);
   }, 400);
 });
-ok('spreading can still be turned off', unspread.length === 20 && new Set(unspread).size <= 2,
-   `${unspread.length} events across ${new Set(unspread).size} moments`);
+// Not "at most two distinct milliseconds": that is a claim about the machine's
+// load, not about the source, and a busy machine failed it. What "not spread"
+// means is that the batch arrives together -- the whole of it inside a moment
+// rather than paced across the interval, which the paced case above spans more
+// than three hundred milliseconds of.
+ok('spreading can still be turned off',
+   unspread.length === 20 && unspread[unspread.length - 1] - unspread[0] < 60,
+   `${unspread.length} events within ${unspread[unspread.length - 1] - unspread[0]}ms`);
 
 // Events that carry real times must keep their own rhythm. Spacing a batch
 // evenly discards exactly what is interesting about a feed like seismicity,
