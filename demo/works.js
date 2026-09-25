@@ -507,8 +507,12 @@ export function setupWorks({
   }
 
   function refresh() {
-    const name = current();
-    const on = name ? null : pieceOn();
+    // Yours first. A piece hung from Create can be the exact look of a work
+    // in the catalogue -- the bench starts from those looks -- and when it is,
+    // the title somebody gave their own piece is the one that belongs on the
+    // wall, not the name of the work it resembles.
+    const on = pieceOn();
+    const name = on ? null : current();
     // The header is set here as well as by the page's once-a-second summary,
     // so it is right the moment a work is chosen rather than up to a second on.
     $('#sum-works').textContent = name ? WORKS[name].title : on ? on.title : 'Your own';
@@ -584,10 +588,10 @@ export function setupWorks({
       return picker.busy;
     },
     get title() {
-      const name = current();
-      if (name) return WORKS[name].title;
       const on = pieceOn();
-      return on ? on.title : '';
+      if (on) return on.title;
+      const name = current();
+      return name ? WORKS[name].title : '';
     },
     renderYours,
     reveal,

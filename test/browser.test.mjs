@@ -481,6 +481,10 @@ ok('a chime only ever strikes its own rods, and they ring on',
 // since most of them fill their own ground and would simply hide the other.
 const doubled = await page.evaluate(async () => {
   const sink = window.son.sinks.find((s) => s.particles);
+  // What was up before, so this check leaves the picture as it found it: the
+  // sections after it measure the canvas and a scene left behind is a
+  // measurement of this check rather than of them.
+  const was = { scene: sink.sceneName, palette: sink.paletteName };
   const shot = () => {
     const c = document.querySelector('#canvas');
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
@@ -508,7 +512,7 @@ const doubled = await page.evaluate(async () => {
   const secondSaw = Boolean(sink._second && Object.keys(sink._second).length);
   sink.setSecond('none');
   await settle();
-  return { alone, together, secondSaw, layer: Boolean(sink._layer) };
+  return { alone, together, secondSaw, layer: Boolean(sink._layer), was };
 });
 ok('a second picture changes the first rather than replacing it',
    doubled.together.sum !== doubled.alone.sum && doubled.secondSaw && doubled.layer,
@@ -534,6 +538,12 @@ const twoPanel = await page.evaluate(async () => {
   sel.dispatchEvent(new Event('change'));
   return state;
 });
+await page.evaluate((was) => {
+  const sink = window.son.sinks.find((s) => s.particles);
+  sink.setScene(was.scene);
+  sink.setPalette(was.palette);
+}, doubled.was);
+
 ok('the panel offers every scene as a second, and seven ways to mix them',
    twoPanel.scenes > 100 && twoPanel.second === 'girih' && twoPanel.blend === 'difference' &&
    Math.abs(twoPanel.mix - 0.35) < 0.01 && /Difference/.test(twoPanel.note),
