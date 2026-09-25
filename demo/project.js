@@ -27,8 +27,10 @@
 // slow pulse rather than freezing on whatever was last drawn, which is the
 // difference between an artwork and a crashed screen.
 
+import { parseColor, lightnessOf } from '../src/visual/color.js';
 import {
-  CanvasSink, PALETTES, WORKS, SCENES, Mapper, normalize,
+  CanvasSink, PALETTES, WORKS, SCENES, Mapper, normalize, mediumOf, drawQr,
+  FINISHES, GROUNDS, MATS, KITS, LIVING,
   wikipedia, bitcoin, coinbase, earthquakes, bluesky, github, noaaAlerts, hackerNews, randomSource,
 } from '../src/index.js';
 
@@ -79,6 +81,73 @@ window.addEventListener('resize', fit);
 if (screen.orientation) screen.orientation.addEventListener?.('change', fit);
 document.addEventListener('fullscreenchange', () => setTimeout(fit, 60));
 
+// --- the wall label -----------------------------------------------------
+//
+// A gallery tells you what you are looking at. It does so on a card beside the
+// work, in small type, and then leaves you alone -- so the label appears when
+// the work changes, holds long enough to be read twice, and fades. The code on
+// it opens the same work in a phone, where it can also be heard, which is the
+// half of the piece a projection cannot carry.
+const cartel = document.getElementById('cartel');
+let cartelTimer = 0;
+let labelled = null;
+
+/** Where a visitor's phone should land: this work, in the sandbox. */
+function addressOf(name) {
+  return new URL('index.html#work=' + encodeURIComponent(name), location.href).href;
+}
+
+function showCartel(name, { hold = 15000 } = {}) {
+  const w = WORKS[name];
+  if (!w) return false;
+  document.getElementById('cartel-title').textContent = w.title;
+  document.getElementById('cartel-medium').textContent =
+    mediumOf(w, { SCENES, PALETTES, FINISHES, GROUNDS, MATS, KITS, LIVING });
+  const qr = document.getElementById('cartel-qr');
+  const ctx = qr.getContext('2d');
+  ctx.clearRect(0, 0, qr.width, qr.height);
+  try {
+    // Ink on paper, always, whatever the picture is doing behind it: a code
+    // drawn in the palette's colours is a code a phone gives up on.
+    drawQr(ctx, addressOf(name), { size: qr.width, ink: '#000', paper: '#fff', quiet: 2 });
+  } catch (e) {
+    qr.hidden = true;
+  }
+  cartel.hidden = false;
+  // Two frames, so the transition has something to move from.
+  requestAnimationFrame(() => cartel.classList.add('show'));
+  clearTimeout(cartelTimer);
+  if (hold) cartelTimer = setTimeout(hideCartel, hold);
+  labelled = name;
+  return true;
+}
+
+/**
+ * The label wears the work's own colours: its ink, and a plate of its ground.
+ *
+ * Which way round matters. A pale label on a pale painting is unreadable, and
+ * so is the reverse, so both the type and the card it sits on come from the
+ * palette that is showing rather than from a fixed pair of greys.
+ */
+function dressCartel(colors) {
+  const { r, g, b } = parseColor(colors.background);
+  const light = lightnessOf(colors.background) > 0.55;
+  cartel.style.color = colors.text || (light ? '#1b1b1b' : '#eee');
+  cartel.style.setProperty('--plate', `rgba(${r}, ${g}, ${b}, .72)`);
+  cartel.style.setProperty('--edge', light ? 'rgba(40,34,26,.16)' : 'rgba(255,255,255,.12)');
+}
+
+function hideCartel() {
+  clearTimeout(cartelTimer);
+  cartel.classList.remove('show');
+  setTimeout(() => { if (!cartel.classList.contains('show')) cartel.hidden = true; }, 900);
+}
+
+const toggleCartel = () => {
+  if (cartel.classList.contains('show')) hideCartel();
+  else if (labelled) showCartel(labelled, { hold: 0 });
+};
+
 /**
  * Dress the wall as a work: scene, palette and every layer of the finish.
  *
@@ -89,6 +158,7 @@ document.addEventListener('fullscreenchange', () => setTimeout(fit, 60));
 function showWork(name) {
   const w = WORKS[name];
   if (!w || !SCENES[w.scene]) return false;
+  if (PALETTES[w.palette]) dressCartel(PALETTES[w.palette].colors);
   applySettings({
     scene: w.scene, palette: w.palette, finish: w.finish, ground: w.ground,
     mat: w.mat, grain: Boolean(w.grain), living: w.living,
@@ -129,11 +199,13 @@ document.getElementById('full').addEventListener('click', async () => {
   else await goFullscreen();
 });
 document.getElementById('clear').addEventListener('click', () => sink.clear());
+document.getElementById('label').addEventListener('click', toggleCartel);
 
-// f for fullscreen, c to clear, and Escape is the browser's own.
+// f for fullscreen, c to clear, i for the label, and Escape is the browser's.
 window.addEventListener('keydown', (e) => {
   if (e.key === 'f' || e.key === 'F') document.getElementById('full').click();
   if (e.key === 'c' || e.key === 'C') sink.clear();
+  if (e.key === 'i' || e.key === 'I') toggleCartel();
 });
 
 // --- listening ----------------------------------------------------------
@@ -160,6 +232,10 @@ function applySettings(s) {
     body.style.background = PALETTES[s.palette].colors.background;
   }
   if (s.scene) sink.setScene(s.scene);
+  // The label follows the wall: a work arriving from the console is announced
+  // here exactly as one named in the address is.
+  if (s.work && s.work !== labelled && WORKS[s.work]) showCartel(s.work);
+  else if (!s.work && labelled) { labelled = null; hideCartel(); }
   if (s.shape) sink.setShape(s.shape);
   if (typeof s.richness === 'number') sink.setRichness(s.richness);
   if (typeof s.depth === 'boolean') sink.setDepth(s.depth);
@@ -172,6 +248,7 @@ function applySettings(s) {
   if (typeof s.grain === 'boolean') sink.setGrain(s.grain);
   if (typeof s.pace === 'number') sink.setPace(s.pace);
   if (typeof s.living === 'string' && s.living !== sink.living) sink.setLiving(s.living);
+  if (s.palette && PALETTES[s.palette]) dressCartel(PALETTES[s.palette].colors);
   if (s.params) {
     for (const [scene, dials] of Object.entries(s.params)) {
       for (const [name, value] of Object.entries(dials)) sink.setParam(name, value, scene);
@@ -254,7 +331,10 @@ if (keepAlive) {
 
 // The address is the installation: a work to show, a feed to listen to.
 const wanted = params.get('work');
-if (wanted) showWork(wanted);
+if (wanted) {
+  showWork(wanted);
+  if (params.get('label') !== 'off') showCartel(wanted);
+}
 const feed = params.get('feed');
 if (feed) listenAlone(feed);
 if (params.get('full') === '1') addEventListener('pointerdown', goFullscreen, { once: true });
@@ -269,7 +349,8 @@ window.addEventListener('beforeunload', () => {
 
 // Exposed for the test suite, which needs to see what arrived.
 window.projection = {
-  sink, channel, showWork, goFullscreen,
+  sink, channel, showWork, goFullscreen, showCartel, hideCartel, addressOf,
+  get labelled() { return cartel.classList.contains('show') ? labelled : null; },
   get seen() { return seen; },
   get standalone() { return Boolean(source); },
   get quietFor() { return performance.now() - last; },

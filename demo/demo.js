@@ -16,6 +16,7 @@ import {
   DEFAULT_SHAPE,
   drawShape,
   SCENES,
+  WORKS,
   DEFAULT_SCENE,
   FINISHES,
   LIVING,
@@ -394,6 +395,9 @@ $('#record').onclick = async (ev) => {
 // than the pixels. Everything visual is gathered here in one place.
 const projector = createProjector({
   settings: () => ({
+    // Which work, so the wall can write its label. Nothing is meaningful too:
+    // it says the picture is no longer a work, and the label comes down.
+    work: worksPanel ? worksPanel.current() : null,
     palette: canvas.paletteName,
     scene: canvas.sceneName,
     shape: canvas.shape,
@@ -732,6 +736,11 @@ shell = setupShell({
 });
 // An address for the bench opens the bench.
 if (location.hash.startsWith('#create')) shell.show('create');
+// And an address that names a work hangs it: this is where the code on a wall
+// label lands, so a visitor's phone opens the piece they were standing in
+// front of, with its sound.
+const wantedWork = /^#work=(.+)$/.exec(decodeURIComponent(location.hash));
+if (wantedWork && WORKS[wantedWork[1]]) worksPanel.apply(wantedWork[1]);
 // =========================================================================
 // Filter
 // =========================================================================

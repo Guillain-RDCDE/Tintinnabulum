@@ -1924,6 +1924,81 @@ ok('a wall with nothing to listen to keeps its own pulse rather than freezing',
 await patient.close();
 ok('a wall on its own logged no errors', aloneErrors.length === 0, aloneErrors.join(' | '));
 
+// --- the wall label --------------------------------------------------------
+// A gallery tells you what you are looking at. The wall writes its own card --
+// the title, the medium, and a code a visitor can point a phone at to open the
+// same work and hear it, which is the half a projection cannot carry.
+const labelled = await context.newPage();
+const labelErrors = [];
+labelled.on('pageerror', (e) => labelErrors.push(String(e.message)));
+await labelled.goto(BASE + '/demo/project.html?work=currents&feed=demo', { waitUntil: 'domcontentloaded' });
+await labelled.bringToFront();
+await labelled.waitForFunction(() => window.projection && window.projection.labelled, null, { timeout: 25000 });
+const card = await labelled.evaluate(async () => {
+  const { WORKS, SCENES, PALETTES, FINISHES, GROUNDS, MATS, KITS, LIVING, mediumOf, qrMatrix } = await import('../src/index.js');
+  const qr = document.querySelector('#cartel-qr');
+  const d = qr.getContext('2d').getImageData(0, 0, qr.width, qr.height).data;
+  let dark = 0;
+  let light = 0;
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i] < 60) dark++;
+    else if (d[i] > 200) light++;
+  }
+  const style = getComputedStyle(document.querySelector('#cartel'));
+  return {
+    title: document.querySelector('#cartel-title').textContent,
+    wantTitle: WORKS.currents.title,
+    medium: document.querySelector('#cartel-medium').textContent,
+    wantMedium: mediumOf(WORKS.currents, { SCENES, PALETTES, FINISHES, GROUNDS, MATS, KITS, LIVING }),
+    address: window.projection.addressOf('currents'),
+    dark, light,
+    // The code is a code: the same modules the encoder makes for that address.
+    modules: qrMatrix(window.projection.addressOf('currents')).length,
+    ink: style.color,
+    plate: style.backgroundColor,
+  };
+});
+ok('the wall writes its own label: the title and what the work is made of',
+   card.title === card.wantTitle && card.medium === card.wantMedium && card.medium.length > 20,
+   JSON.stringify({ title: card.title, medium: card.medium }));
+ok('the label carries a drawn code, in ink on paper',
+   card.dark > 400 && card.light > 400 && card.modules >= 21,
+   `${card.dark} dark, ${card.light} light, ${card.modules} modules`);
+ok('and that code opens the same work, where it can be heard',
+   /#work=currents$/.test(card.address), card.address);
+ok('the label wears the work it stands on: its ink, on a plate of its ground',
+   card.ink === 'rgb(58, 47, 36)' && /^rgba\(239, 230, 213/.test(card.plate),
+   `${card.ink} on ${card.plate}`);
+
+// It is a label, not furniture: it goes away, and comes back when asked.
+const labelToggle = await labelled.evaluate(async () => {
+  const shown = () => document.querySelector('#cartel').classList.contains('show');
+  window.projection.hideCartel();
+  await new Promise((r) => setTimeout(r, 1100));
+  const gone = !shown();
+  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'i' }));
+  await new Promise((r) => setTimeout(r, 100));
+  return { gone, back: shown() };
+});
+ok('the label fades away, and i brings it back', labelToggle.gone && labelToggle.back, JSON.stringify(labelToggle));
+await labelled.close();
+ok('the labelled wall logged no errors', labelErrors.length === 0, labelErrors.join(' | '));
+
+// An address that names a work hangs it in the sandbox: that is where a
+// visitor's phone lands when it reads the code off the wall.
+const scanned = await context.newPage();
+await scanned.goto(BASE + '/demo/#work=mould', { waitUntil: 'domcontentloaded' });
+await scanned.bringToFront();
+await scanned.waitForFunction(() => window.son && window.son.works, null, { timeout: 20000 });
+await scanned.waitForFunction(() => window.son.works.current() === 'mould', null, { timeout: 25000 }).catch(() => {});
+const arrived = await scanned.evaluate(() => ({
+  work: window.son.works.current(),
+  title: document.querySelector('#now-title').textContent,
+}));
+ok('a code read off the wall opens that work in the sandbox',
+   arrived.work === 'mould' && /mould/i.test(arrived.title), JSON.stringify(arrived));
+await scanned.close();
+
 // The console offers that address, kept on the work and the feed that are on
 // now, and the dock carries the way to a second screen.
 await drive(page);

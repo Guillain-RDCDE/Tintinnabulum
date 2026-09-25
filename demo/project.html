@@ -9,7 +9,9 @@
      every pixel that is not the work is a pixel of wall it is competing with. */
   :root { color-scheme: dark; }
   html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-  canvas { display: block; width: 100vw; height: 100vh; }
+  /* The picture, and only the picture: the label's code is a canvas too, and
+     a rule that sized every canvas to the window made it a quarter of the wall. */
+  #stage { display: block; width: 100vw; height: 100vh; }
 
   /* The controls fade out and stay out. A cursor that has not moved for three
      seconds is somebody watching, not somebody adjusting. */
@@ -35,14 +37,50 @@
   }
   #note b { color: #ddd; font-weight: 600; display: block; margin-bottom: .4rem; }
   #note[hidden] { display: none; }
+
+  /* The wall label. A gallery tells you what you are looking at, discreetly,
+     in the corner, and then gets out of the way -- so it shows itself when the
+     work changes, holds long enough to be read twice, and fades. The code is
+     for a visitor's phone: it opens the same work, where it can also be heard. */
+  #cartel {
+    position: fixed; left: 4.5vmin; bottom: 4.5vmin; max-width: min(46ch, 52vw);
+    display: flex; gap: 1.1rem; align-items: center; color: #eee;
+    /* A card, not text floating on the picture. A label over a busy painting
+       is unreadable however it is shadowed, and a gallery does not shadow its
+       labels -- it puts them on paper. The plate takes the work's own ground
+       colour, so it belongs to the picture rather than sitting on top of it. */
+    background: var(--plate, rgba(12,12,14,.58));
+    -webkit-backdrop-filter: blur(7px); backdrop-filter: blur(7px);
+    border: 1px solid var(--edge, rgba(255,255,255,.1));
+    border-radius: 3px; padding: 1rem 1.2rem;
+    opacity: 0; transform: translateY(6px); transition: opacity .9s ease, transform .9s ease;
+    font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  #cartel.show { opacity: 1; transform: none; }
+  #cartel .text { border-left: 2px solid currentColor; padding-left: .9rem; }
+  #cartel b { display: block; font-size: 1.32em; font-weight: 650; letter-spacing: -.01em; }
+  #cartel i { display: block; font-size: .86em; opacity: .74; margin-top: .25rem; }
+  #cartel p { margin: .5rem 0 0; font-size: .82em; opacity: .62; }
+  #cartel canvas { display: block; width: 132px; height: 132px; flex: none; border-radius: 2px; }
+  #cartel { margin: 0; }
+  #cartel[hidden] { display: none; }
 </style>
 </head>
 <body>
   <canvas id="stage"></canvas>
   <p id="note"><b>Waiting for the sandbox</b>Leave the main window open and press Start there.<br>This window draws what it is listening to.</p>
+  <figure id="cartel" hidden>
+    <canvas id="cartel-qr" width="132" height="132"></canvas>
+    <div class="text">
+      <b id="cartel-title"></b>
+      <i id="cartel-medium"></i>
+      <p id="cartel-note">Point a phone at the code to hear this work.</p>
+    </div>
+  </figure>
   <div id="bar">
     <button type="button" id="full">Fullscreen</button>
     <button type="button" id="clear">Clear</button>
+    <button type="button" id="label">Label</button>
   </div>
   <script type="module" src="project.js"></script>
 </body>

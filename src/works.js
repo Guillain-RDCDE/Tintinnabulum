@@ -246,3 +246,32 @@ export const WORKS = {
 
 /** The works in a room, in the order they are hung. */
 export const worksIn = (room) => Object.entries(WORKS).filter(([, w]) => w.room === room);
+
+/** How fast a work runs, as a multiplier and as a word. */
+export const WORK_PACE = [0.25, 0.5, 0.75, 1, 1.3, 1.7];
+const PACE_WORDS = ['very slow', 'slow', 'unhurried', 'real time', 'lively', 'brisk'];
+
+/**
+ * The line under a title, the way a museum label gives the medium.
+ *
+ * It lives here rather than in the panel that first needed it, because the
+ * wall needs the same sentence: a label on a projection and a label in the
+ * Gallery that disagreed about what a work is made of would be worse than no
+ * label at all.
+ */
+export function mediumOf(work, catalogues) {
+  const w = typeof work === 'string' ? WORKS[work] : work;
+  if (!w) return '';
+  const { SCENES, PALETTES, FINISHES, GROUNDS, MATS, KITS, SPACES, LIVING } = catalogues;
+  return [
+    SCENES[w.scene].label,
+    `${PALETTES[w.palette].label} palette`,
+    w.finish === 'none' ? '' : FINISHES[w.finish].label,
+    w.ground === 'none' ? '' : `on ${GROUNDS[w.ground].label.toLowerCase()}`,
+    w.mat === 'none' ? '' : MATS[w.mat].label.toLowerCase(),
+    KITS[w.kit].label,
+    !SPACES || w.space === 'none' ? '' : SPACES[w.space].label.toLowerCase(),
+    PACE_WORDS[w.pace],
+    w.living === 'still' ? '' : LIVING[w.living].label.toLowerCase(),
+  ].filter(Boolean).join(' · ');
+}

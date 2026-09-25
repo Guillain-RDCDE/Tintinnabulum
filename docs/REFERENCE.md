@@ -1411,6 +1411,34 @@ JSON per event and is of no use to a picture. Settings cross it too, so choosing
 a palette on the laptop changes the wall, and a window that has just opened asks
 for them rather than sitting on defaults.
 
+#### The wall label
+
+A gallery tells you what you are looking at. So does the wall: when the work
+changes, a card appears in the corner -- the title, the medium in the same
+words the Gallery uses, and a code. It holds long enough to be read twice and
+fades; **i** brings it back.
+
+The card is a card rather than text floating on the picture, because a label
+over a busy painting is unreadable however it is shadowed and a gallery does
+not shadow its labels, it puts them on paper. The plate takes the work's own
+ground and the type its own ink, so the label belongs to the picture instead of
+sitting on top of it.
+
+The code opens `#work=<id>` in the sandbox, which hangs that work: a visitor
+points a phone at the wall and walks away with the piece, *with its sound* --
+the half a projection cannot carry. It is drawn rather than fetched, in
+`src/visual/qr.js`: byte mode, correction level M, versions 1 to 10. Every
+hosted code service is a request to somebody else's server at the moment
+somebody is standing in front of the picture, and an image that fails to load
+is a square of nothing under a title.
+
+That encoder is checked against an encoder that is not itself. "It looks like a
+QR code" is not a check -- a transposed format word and a mask chosen by the
+wrong rule both leave something square and black and unreadable, and both were
+in the first version. Every matrix it makes is compared, module for module,
+with Python's `qrcode` package: all eight masks of each, over versions 1 to 10,
+ASCII and UTF-8. See `test/qr.test.mjs`.
+
 #### A wall of its own
 
 A gallery will not leave a laptop it must not touch standing next to the

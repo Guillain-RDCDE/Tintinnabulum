@@ -31,6 +31,7 @@ import {
   previewScene,
   animateScene,
   paletteFromInks,
+  mediumOf,
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { store } from './store.js';
@@ -393,20 +394,8 @@ export function setupWorks({
     b.addEventListener('click', () => selectEnergy(b.dataset.energy));
   }
 
-  /** The line under a title, the way a museum label gives the medium. */
-  function medium(w) {
-    return [
-      SCENES[w.scene].label,
-      `${PALETTES[w.palette].label} palette`,
-      w.finish === 'none' ? '' : FINISHES[w.finish].label,
-      w.ground === 'none' ? '' : `on ${GROUNDS[w.ground].label.toLowerCase()}`,
-      w.mat === 'none' ? '' : MATS[w.mat].label.toLowerCase(),
-      KITS[w.kit].label,
-      w.space === 'none' ? '' : SPACES[w.space].label.toLowerCase(),
-      PACE_WORDS[w.pace],
-      w.living === 'still' ? '' : LIVING[w.living].label.toLowerCase(),
-    ].filter(Boolean).join(' · ');
-  }
+  /** The line under a title, as the wall writes it too: see mediumOf. */
+  const medium = (w) => mediumOf(w, { SCENES, PALETTES, FINISHES, GROUNDS, MATS, KITS, SPACES, LIVING });
 
   async function apply(name) {
     const w = WORKS[name];
