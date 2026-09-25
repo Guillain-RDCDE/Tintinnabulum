@@ -215,6 +215,15 @@ export const WORKS = {
     cartel: 'A slime mould spreading its veins across black card, rewiring itself towards every event as a mould reaches for food. A synthesiser note for each one it finds.',
   }),
 
+  window: work('Night', 'calm', 'Frost on the window', {
+    scene: 'frost', palette: 'prussian', kit: 'glassy', space: 'hall', pace: UNHURRIED,
+    cartel: 'A cold window, taking the night. Each event is a speck for the ice to start from, and every wandering particle that touches what is already frozen stays there for good -- which is the whole reason frost is feathered. Glass, held long, for each one that settles.',
+  }),
+  struck: work('Daylight', 'lively', 'The struck pane', {
+    scene: 'fracture', palette: 'bone', kit: 'clay', space: 'plate', ground: 'cotton',
+    cartel: 'A sheet of glass, struck wherever an event lands. The cracks run out until they meet a crack already there and stop dead, so the pane keeps the order it was broken in: the first blow is the wide pattern, and every one after it is smaller.',
+  }),
+
   // --- grown on paper ------------------------------------------------------------------
   currents: work('Daylight', 'lively', 'Gouache currents', {
     scene: 'ribbons', palette: 'linen', kit: 'marimba', space: 'room', ground: 'cotton',

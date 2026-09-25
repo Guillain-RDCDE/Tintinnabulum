@@ -46,6 +46,7 @@ import { AIR_SCENES } from './air.js';
 import { TERMINAL_SCENES } from './terminal.js';
 import { GRAPHIC_SCENES } from './graphic.js';
 import { GROWN_SCENES } from './grown.js';
+import { SPREAD_SCENES } from './spread.js';
 import { applyCatalogue, SCENE_SHELVES, shelfOf as shelfIn } from './catalogue.js';
 
 export { noise2 } from './noise.js';
@@ -70,6 +71,7 @@ export const SCENES = {
   ...TERMINAL_SCENES,
   ...GRAPHIC_SCENES,
   ...GROWN_SCENES,
+  ...SPREAD_SCENES,
 };
 
 // Presentation is applied once, here, across every family at once. See

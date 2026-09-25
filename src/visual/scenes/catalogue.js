@@ -103,6 +103,8 @@ export const CATALOGUE = {
   sandpile: S('Materials', 'Sand poured on a table, holding and holding, then sliding all at once.'),
   burin: S('Materials', 'The picture cut as an old engraving, its lines swelling where things are busy.'),
   metaballs: S('Materials', 'Blobs of liquid light that merge before they touch.'),
+  frost: S('Materials', 'Ice spreading across a cold window, feathering out from every speck it started at.'),
+  fracture: S('Materials', 'A pane struck once, then again: cracks running out and stopping dead on the ones already there.'),
   stipple: S('Materials', 'Light and shade made of nothing but dots, placed as an engraver would, drifting as the light moves.'),
 
   // --- pattern -----------------------------------------------------------
