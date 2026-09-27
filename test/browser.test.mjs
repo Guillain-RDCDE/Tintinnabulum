@@ -3111,6 +3111,18 @@ const inkOf = () =>
     return ink;
   });
 
+/** How much ink there is, once there is some, or after `ms` of trying. */
+const until = async (ms) => {
+  const deadline = Date.now() + ms;
+  let ink = 0;
+  while (Date.now() < deadline) {
+    await page.waitForTimeout(150);
+    ink = await inkOf();
+    if (ink >= 8) return ink;
+  }
+  return ink;
+};
+
 for (const name of sceneNames) {
   const before = consoleErrors.length;
   await page.evaluate((n) => {
@@ -3121,20 +3133,23 @@ for (const name of sceneNames) {
       window.son.emit({ magnitude: Math.round(Math.exp(Math.random() * 9)), id: `scene-${n}-${i}` });
     }
   }, name);
-  // Several frames: the moving scenes need time to travel before they mark.
-  await page.waitForTimeout(450);
-  let ink = await inkOf();
-  // A second chance for a scene whose picture is drawn by chance. The
-  // attractor takes its shape from its events, and one run in twenty lands on
-  // a shape that is still fine dust at this moment -- measured at 4 to 1128
-  // across twenty runs of the same check, before and after any change of ours.
-  // A scene that is genuinely broken stays blank however long it is given.
+  // Waited for, not timed. The moving scenes need frames before they mark,
+  // and how many frames a fixed wait buys depends on how busy the page is --
+  // which is not a property of the scene under test. A fixed 450 ms passed
+  // for a long time and then began to fail on the slowest-starting scene
+  // about one run in three, for no better reason than that the catalogue had
+  // grown and there were more preview cards sharing the same main thread.
+  // A scene that is genuinely broken stays blank however long it is given, so
+  // waiting costs only the time the broken case takes to prove itself.
+  let ink = await until(2500);
+  // A second chance for a scene whose picture is drawn by chance: the
+  // attractor takes its shape from its events, and a run can land on a shape
+  // that is still fine dust.
   if (ink < 8) {
     await page.evaluate((n) => {
       for (let i = 0; i < 45; i++) window.son.emit({ magnitude: Math.round(Math.exp(Math.random() * 9)), id: `scene-${n}-again-${i}` });
     }, name);
-    await page.waitForTimeout(700);
-    ink = await inkOf();
+    ink = await until(2000);
   }
   if (ink < 8) blank.push(`${name}(${ink})`);
   if (consoleErrors.length > before) sceneErrors.push(name);

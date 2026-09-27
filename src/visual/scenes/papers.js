@@ -26,7 +26,7 @@ const ROLES = ['user', 'anon', 'bot', 'alert', 'default'];
  * ground. A collage of this kind is mostly those two, with the colours used
  * sparingly, and getting that ratio right is most of the look.
  */
-function papers(api) {
+export function papers(api) {
   const bg = api.palette.background;
   const pale = lightnessOf(bg) > 0.5;
   const sheets = [];

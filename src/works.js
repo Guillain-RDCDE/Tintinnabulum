@@ -294,6 +294,22 @@ export const WORKS = {
     cartel: 'A handful of very large forms laid over one another on a sheet, each one transparent, so that most of the colours in the picture are in none of its shapes.',
   }),
 
+  seismograph: work('Daylight', 'lively', 'Ninety pens, one bad minute', {
+    scene: 'comb', palette: 'newsprint', kit: 'clay', space: 'room',
+    ground: 'hotpress', mat: 'gallery', pace: UNHURRIED,
+    cartel: 'Ninety pens drawn down the page together, all at the same rate, so that a busy minute lands as a band straight across the sheet and a quiet one as clear air. Nothing on it was drawn as a mark.',
+  }),
+  fieldwork: work('Daylight', 'calm', 'Filled in by hand', {
+    scene: 'hatched', palette: 'bone', kit: 'marimba', space: 'room',
+    mat: 'thin', pace: SLOW,
+    cartel: 'Fields of colour that are not flat: every one of them ruled, crossed or scribbled in with a pencil until it is nearly solid, so the work that went in is the first thing the eye reads.',
+  }),
+  nest: work('Dawn', 'calm', 'Winding down', {
+    scene: 'skein', palette: 'porcelain', kit: 'strings', space: 'hall',
+    ground: 'coldpress', mat: 'gallery', pace: SLOW,
+    cartel: 'One line that never leaves the paper, going round a loop that is slowly closing: a hundred turns almost on top of one another, then a hundred more that have begun to wander, then a knot. What the events do is not open it again but throw it off true.',
+  }),
+
   arrival: work('Night', 'lively', 'Arrival by night', {
     scene: 'nightflight', palette: 'amber', kit: 'airports', space: 'hall',
     mat: 'gallery', pace: UNHURRIED,

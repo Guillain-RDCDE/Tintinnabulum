@@ -168,6 +168,9 @@ export const CATALOGUE = {
   nodes: S('Paper and print', 'Plotter plates: fat dots of ink joined by level runs, stems and long arcs, each drawing made twice about its own axis.'),
   cutpaper: S('Paper and print', 'Shapes cut out of coloured paper and butted edge to edge until no ground is left, flat and without a shadow anywhere.'),
   planes: S('Paper and print', 'A few very large transparent forms laid over one another, and colours at the crossings that are in none of them.'),
+  comb: S('Paper and print', 'Ninety pens drawn down the page together, and a band straight across where they all lost their composure at once.'),
+  hatched: S('Paper and print', 'Fields of colour filled in by hand -- rules, crossed hatching, graphite scribbled nearly solid -- with thin coloured rails crossing the sheet.'),
+  skein: S('Paper and print', 'One line that never leaves the paper, winding down to a tight knot and pulled open again by every event.'),
   ulam: S('Forms and numbers', 'Whole numbers laid on a spiral, and the prime ones lining up on diagonals nobody can explain.'),
   collatz: S('Forms and numbers', 'A strange tree grown from one simple rule about numbers.'),
 };
