@@ -28,7 +28,7 @@ export const TABS = {
 const ORDER = ['gallery', 'sound', 'picture', 'data', 'create'];
 
 /** The shelves a surprise is drawn from: pictures, not demonstrations. */
-const ART_SHELVES = new Set(['Painting', 'Nature', 'Water', 'Night', 'Materials']);
+const ART_SHELVES = new Set(['Painting', 'Paper and print', 'Nature', 'Water', 'Night', 'Materials']);
 
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
 

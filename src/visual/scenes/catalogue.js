@@ -16,6 +16,7 @@
 
 export const SCENE_SHELVES = [
   'Painting',
+  'Paper and print',
   'Nature',
   'Water',
   'Night',
@@ -48,7 +49,7 @@ export const CATALOGUE = {
   whorl: S('Painting', 'Parallel stripes pulled into whirlpools around each event, a flat wall that seems to turn.'),
   ribbons: S('Painting', 'Thick ribbons of colour following an unseen current, packed close and never crossing.'),
   aura: S('Painting', 'Wide soft clouds of colour drifting into one another, like light through frosted glass.'),
-  asemic: S('Painting', 'A page written in a hand nobody can read, one letter for every event.'),
+  asemic: S('Paper and print', 'A page written in a hand nobody can read, one letter for every event.'),
   rise: S('Painting', 'Rings and rays in two colours trading places where they cross, and each event running out through them.'),
 
   // --- nature ------------------------------------------------------------
@@ -162,6 +163,11 @@ export const CATALOGUE = {
   pursuit: S('Forms and numbers', 'Dancers each chasing the next, spiralling in towards the middle.'),
   julia: S('Forms and numbers', 'The coastline of an imaginary island, endlessly detailed.'),
   collapse: S('Forms and numbers', 'Tiles that may only sit beside tiles they join up with, settling into a pattern that is continuous everywhere.'),
+  sorts: S('Paper and print', 'A plate of type set solid -- letters, ideographs and ornaments packed line upon line, with one red heart in the whole page.'),
+  emergence: S('Paper and print', 'A sentence repeated line after line, coming apart into pure sign across a band that drifts down the page.'),
+  nodes: S('Paper and print', 'Plotter plates: fat dots of ink joined by level runs, stems and long arcs, each drawing made twice about its own axis.'),
+  cutpaper: S('Paper and print', 'Shapes cut out of coloured paper and butted edge to edge until no ground is left, flat and without a shadow anywhere.'),
+  planes: S('Paper and print', 'A few very large transparent forms laid over one another, and colours at the crossings that are in none of them.'),
   ulam: S('Forms and numbers', 'Whole numbers laid on a spiral, and the prime ones lining up on diagonals nobody can explain.'),
   collatz: S('Forms and numbers', 'A strange tree grown from one simple rule about numbers.'),
 };

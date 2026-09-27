@@ -264,6 +264,36 @@ export const WORKS = {
     cartel: 'A survey map on an old sheet, the contours and hachures redrawn as every event raises a hill or sinks a hollow. Clay and wood for the surveyor\'s pegs.',
   }),
 
+  // --- the printed room ------------------------------------------------------------
+  //
+  // Five pieces that are documents before they are pictures: a plate of type,
+  // a sentence losing its sense, a sheet of plotter drawings, a collage and a
+  // set of transparent planes.
+  specimen: work('Daylight', 'calm', 'Specimen sheet', {
+    scene: 'sorts', palette: 'newsprint', kit: 'musicbox', space: 'room',
+    ground: 'hotpress', mat: 'gallery', finish: 'lino', pace: UNHURRIED,
+    cartel: 'A plate of type set solid, line upon line, with the right edge left ragged because the pieces are not all the same width. One sort in the whole page is red, and it is a heart, and it is the one event of the day that anybody called out.',
+  }),
+  signification: work('Night', 'lively', 'Emergence and signification', {
+    scene: 'emergence', palette: 'nocturne', kit: 'synth', space: 'plate', pace: REAL_TIME,
+    cartel: 'A sentence repeated line after line until a band drifting down the page takes the sense out of it, and below the band it finds itself again. Two colours and no more.',
+  }),
+  plates: work('Dawn', 'calm', 'Four plates', {
+    scene: 'nodes', palette: 'bone', kit: 'clay', space: 'room',
+    ground: 'aged', mat: 'gallery', pace: SLOW,
+    cartel: 'Fat dots of ink joined by level runs, stems and long arcs swung about the middle of each plate. Every drawing is made twice about its own axis, which is where its symmetry comes from and the only reason it has any.',
+  }),
+  atelier: work('Daylight', 'lively', 'Cut paper, no shadow', {
+    scene: 'cutpaper', palette: 'newsprint', kit: 'marimba', space: 'room',
+    mat: 'thin', pace: LIVELY,
+    cartel: 'Shapes cut with a blade and butted edge to edge until no ground is left showing, everything flat and nothing in front of anything. A face appears now and then out of a half disc landing above two dots.',
+  }),
+  transparency: work('Dawn', 'calm', 'Planes, transparent', {
+    scene: 'planes', palette: 'chalk', kit: 'glassy', space: 'hall',
+    ground: 'coldpress', mat: 'gallery', pace: VERY_SLOW,
+    cartel: 'A handful of very large forms laid over one another on a sheet, each one transparent, so that most of the colours in the picture are in none of its shapes.',
+  }),
+
   arrival: work('Night', 'lively', 'Arrival by night', {
     scene: 'nightflight', palette: 'amber', kit: 'airports', space: 'hall',
     mat: 'gallery', pace: UNHURRIED,

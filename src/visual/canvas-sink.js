@@ -789,6 +789,10 @@ export class CanvasSink {
       alpha0: ev.dimmed ? this.dimOpacity : this.fillOpacity,
       label: ev.label || '',
       url: ev.url || '',
+      // Whether the feed called this one out. The banner has always known; a
+      // scene never did, so a picture had no way to say "this one mattered"
+      // except by the colour the category already gave it.
+      accent: !!ev.accent && !ev.dimmed,
       ring: !ev.dimmed,
     };
     this._shade(p);

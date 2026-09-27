@@ -2479,6 +2479,20 @@ ok('this screen keeps the same hours, and a click wakes it for a while',
 await page.evaluate((was) => {
   document.querySelector('[data-palette="neon"]').click();
   document.querySelector('[data-scene="truchet"]').click();
+  // A work sets more than a scene and a palette, and this put back only those
+  // two for a long time. "Lanterns on the lake" also carries a grain and a
+  // slow pace, and both survived into the sections below: the grain is a film
+  // over the whole canvas, so a measurement that counts how much of the canvas
+  // is not ground counted it and never dipped; the pace halves every fade, so
+  // a check that gave a palette change 120 ms to land read the old ground. One
+  // missing line here failed three checks hundreds of lines apart.
+  const look = window.son.look;
+  look.selectGrain(false);
+  look.selectPace(3);
+  look.selectFinish('none');
+  look.selectMat('none');
+  look.selectGround('none');
+  look.selectLiving('still');
   // Listening as it was: the programme starts the feed when a room has hours,
   // and a feed left running paints marks over the corner of the canvas that
   // the palette checks below read the ground from.
@@ -3166,16 +3180,25 @@ ok('the registered scene really draws', (await inkOf()) > 50);
 await page.evaluate(() => window.son.sinks.find((s) => s.particles).setScene('bloom'));
 
 // --- starry sky ----------------------------------------------------------
-const emptyGround = async () =>
+// What the empty canvas reads, sample by sample rather than as one total.
+//
+// The total was the wrong measurement and said so three times. A hundred and
+// forty stars put a fixed amount of light on the canvas, but the threshold was
+// a percentage of everything the canvas already reads, so the same working sky
+// measured 1.6% on a small dark canvas and 0.35% on a large one and failed --
+// on a canvas the suite had merely made bigger by opening an inspector. What
+// the check is named for is whether there are bright points where there were
+// none, so that is now what it counts.
+const emptySky = async () =>
   page.evaluate(async () => {
     const sink = window.son.sinks.find((s) => s.particles);
     sink.clear();
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
     const c = document.querySelector('#canvas');
     const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-    let sum = 0;
-    for (let i = 0; i < d.length; i += 4 * 13) sum += d[i] + d[i + 1] + d[i + 2];
-    return sum;
+    const out = [];
+    for (let i = 0; i < d.length; i += 4 * 13) out.push(d[i] + d[i + 1] + d[i + 2]);
+    return out;
   });
 // On a ground of this section's own choosing. Stars are light, so on a pale
 // palette they are nearly invisible and the measurement says more about which
@@ -3193,15 +3216,16 @@ await page.evaluate(() => {
   window.son.sinks.find((s) => s.particles).setScene('bloom');
 });
 await page.waitForTimeout(150);
-const plainGround = await emptyGround();
+const plainSky = await emptySky();
 await openMore('#more-look');
 await page.check('#starfield');
-const starryGround = await emptyGround();
-// Not merely "different": the sky has to be visible, so require a real change
-// on an otherwise empty canvas rather than a few stray pixels.
-const starDelta = Math.abs(starryGround - plainGround) / plainGround;
-ok('the starry sky is plainly visible on an empty canvas', starDelta > 0.004,
-   `${(starDelta * 100).toFixed(2)}% change`);
+const starrySky = await emptySky();
+// Not merely "different": the sky has to be visible, so count the samples that
+// plainly got brighter rather than a few stray pixels of noise.
+let lit = 0;
+for (let i = 0; i < plainSky.length; i++) if (starrySky[i] - plainSky[i] > 12) lit++;
+ok('the starry sky is plainly visible on an empty canvas', lit > 40,
+   `${lit} samples lit of ${plainSky.length}`);
 ok('the sink records the starfield setting',
    (await page.evaluate(() => window.son.sinks.find((s) => s.particles).starfield)) === true);
 await page.uncheck('#starfield');
@@ -3622,7 +3646,7 @@ const dock = await page.evaluate(async () => {
   return out;
 });
 ok('Surprise me puts up a different picture, from the art shelves',
-   dock.surprise.after !== dock.surprise.before && ['Painting', 'Nature', 'Water', 'Night', 'Materials'].includes(dock.surprise.shelf),
+   dock.surprise.after !== dock.surprise.before && ['Painting', 'Paper and print', 'Nature', 'Water', 'Night', 'Materials'].includes(dock.surprise.shelf),
    JSON.stringify(dock.surprise));
 ok('next and previous move through the works and put them up',
    dock.next.now === dock.next.chosen && dock.prev.now === dock.prev.expected, JSON.stringify({ next: dock.next, prev: dock.prev }));
