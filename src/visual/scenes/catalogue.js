@@ -144,6 +144,7 @@ export const CATALOGUE = {
   spindles: S('Paper and print', 'A sheet of cells filled with lines that swell and thin like thread on a spindle, some struck solid, some only grain, on the ruled grid they were laid out on.'),
   lattice: S('Paper and print', 'A fine screen of thousands of small black bars whose size runs in waves along the rows and down the columns, so the wall seems to move as you look.'),
   desordres: S('Paper and print', 'A plotter drawing the same square over and over on a grid of nine, each pass a little turned and a little moved, so a busy cell becomes a scribble with a square in it.'),
+  scanlines: S('Paper and print', 'A landscape drawn with nothing but level lines: where the ground rises the line is lifted and hides what lies behind, so every event stands up as a cube, a faceted crystal or a rounded mass.'),
   harmonograph: S('Forms and numbers', 'A pendulum pen that draws while it slows, and stops when the drawing is finished.'),
   ulam: S('Forms and numbers', 'Whole numbers laid on a spiral, and the prime ones lining up on diagonals nobody can explain.'),
 };

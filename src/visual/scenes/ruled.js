@@ -1,4 +1,4 @@
-// Three pictures ruled onto a sheet.
+// Four pictures ruled onto a sheet.
 //
 //   spindles   a sheet divided into cells, each filled with lines that swell
 //              and thin along their length, or struck solid, or left bare
@@ -6,6 +6,8 @@
 //              along the rows and down the columns, so the wall seems to move
 //   desordres  a plotter drawing one square many times, never quite in the
 //              same place, on a grid of nine
+//   scanlines  a relief drawn with nothing but level lines: where the ground
+//              rises the line is lifted and hides the lines behind it
 //
 // What they have in common is the ruler. Every other family in the catalogue
 // lets an event land where it lands; here the sheet is divided before anything
@@ -481,7 +483,252 @@ export const RULED_SCENES = {
       ctx.drawImage(buf, 0, 0);
     },
   },
+
+  // --- scanlines --------------------------------------------------------------------------
+  scanlines: {
+    label: 'Ruled relief',
+    note: 'A landscape drawn with nothing but level lines, a hundred of them ruled across the sheet. Where the ground rises the line is lifted with it, and a lifted line hides whatever lies behind, so a block reads as a block and its near face -- the lines climbing its side -- comes out as a dark wall of hatching. Every event raises something: a small one a cube, a middling one a crystal with faceted sides, a large one a rounded mass. They stand until the sheet is crowded, then the oldest sink back into the plain.',
+    how: 'A height field on a grid, the maximum of every form standing on it: a box, a pyramid cut by a few random facet planes, a dome. Each row is a polyline whose y is the row\'s level minus the height under it, drawn from the front row to the back with a running skyline per column -- a point is drawn only where it stands above everything already drawn in front of it, which is hidden-line removal in one pass and one array. The steep sides are not drawn separately: they are the rows themselves stepping up, stacked. A form rises over half a second and sinks over four when its turn comes, and the field is re-taken from scratch only when something has gone.',
+    positional: true,
+    preview: { frames: 160, dt: 50 },
+    params: {
+      lines: { label: 'How many lines', min: 50, max: 240, step: 5, default: 160, rebuild: true },
+      height: { label: 'How high the relief', min: 0.3, max: 2, step: 0.05, default: 1 },
+      keep: { label: 'How many forms before the oldest sink', min: 8, max: 150, step: 1, default: 45 },
+      lean: { label: 'How sharp the facets', min: 0, max: 1, step: 0.02, default: 0.5 },
+      colour: { label: 'How much colour in the lines', min: 0, max: 1, step: 0.02, default: 0 },
+    },
+    init(api) {
+      const s = api.scene;
+      const m = Math.min(api.w, api.h);
+      const rows = Math.max(20, Math.min(240, Math.round(api.param('lines'))));
+      const margin = m * 0.08;
+      s.margin = margin;
+      s.rows = rows;
+      // Columns fine enough that a facet edge is a clean step and not a
+      // staircase, coarse enough that a frame is a few tens of thousands of
+      // points and no more.
+      s.cols = Math.max(60, Math.min(260, Math.round((api.w - margin * 2) / (m * 0.0045))));
+      s.top = margin + m * 0.12;
+      s.foot = api.h - margin;
+      s.left = margin;
+      s.right = api.w - margin;
+      s.field = new Float32Array(s.cols * rows);
+      s.skyline = new Float32Array(s.cols);
+      s.forms = [];
+      s.dirty = false;
+      s.lastAt = 0;
+      s.ambient = 0;
+      s.cleanAt = 0;
+    },
+    event(p, api) {
+      const s = api.scene;
+      if (!s.field) return;
+      raise(s, api, p.x, p.y, sizeOf(p, api), p);
+      s.lastAt = api.now;
+    },
+    frame(ctx, api) {
+      const s = api.scene;
+      if (!s.field) return;
+      const m = Math.min(api.w, api.h);
+      // The plain grows a small cube now and then when nothing arrives, and
+      // never while the feed is working.
+      if (api.now - s.lastAt > 2500) {
+        s.ambient += api.dt;
+        if (s.ambient > 1800) {
+          s.ambient = 0;
+          raise(s, api, s.left + Math.random() * (s.right - s.left), s.top + Math.random() * (s.foot - s.top), 0.08 + Math.random() * 0.1, null);
+        }
+      } else {
+        s.ambient = 0;
+      }
+
+      // Forms rise, stand and sink. Rising is stamped into the field as it
+      // goes (a maximum only ever grows); a sinking form means the field has
+      // to be re-taken from what is left, which is done once per frame for
+      // as long as anything is sinking, and not otherwise.
+      let sinking = false;
+      const keep = Math.round(api.param('keep'));
+      const cap = Math.max(8, Math.min(keep, Math.floor((api.budget || 800) / 3)));
+      let standing = 0;
+      for (const f of s.forms) if (!f.sinkAt) standing++;
+      // Too many standing: the oldest begin to sink.
+      for (let i = 0; i < s.forms.length && standing > cap; i++) {
+        const f = s.forms[i];
+        if (f.sinkAt) continue;
+        f.sinkAt = api.now;
+        standing--;
+      }
+      for (let i = s.forms.length - 1; i >= 0; i--) {
+        const f = s.forms[i];
+        const rise = Math.min(1, (api.now - f.born) / 550);
+        let level = rise;
+        if (f.sinkAt) {
+          level = rise * Math.max(0, 1 - (api.now - f.sinkAt) / 4000);
+          sinking = true;
+          if (level <= 0) {
+            s.forms.splice(i, 1);
+            continue;
+          }
+        }
+        if (level !== f.level) {
+          f.level = level;
+          if (!f.sinkAt) stamp(s, f);
+        }
+      }
+      if (sinking) retake(s);
+
+      // The rows, front to back, with a running skyline per column.
+      const ink = inkOf(api);
+      const scale = m * 0.15 * api.param('height');
+      const dx = (s.right - s.left) / (s.cols - 1);
+      const pitch = (s.foot - s.top) / (s.rows - 1);
+      const sky = s.skyline;
+      sky.fill(Infinity);
+      ctx.lineWidth = Math.max(0.5, m * 0.0011);
+      ctx.lineCap = 'butt';
+      ctx.lineJoin = 'miter';
+      ctx.strokeStyle = ink;
+      for (let r = s.rows - 1; r >= 0; r--) {
+        const base = s.top + r * pitch;
+        const row = r * s.cols;
+        let tinted = null;
+        for (const f of s.forms) {
+          if (f.color && f.row === r) tinted = f.color;
+        }
+        ctx.strokeStyle = tinted || ink;
+        ctx.beginPath();
+        let open = false;
+        let px = 0;
+        let py = 0;
+        for (let c = 0; c < s.cols; c++) {
+          const x = s.left + c * dx;
+          const y = base - s.field[row + c] * scale;
+          // Above everything in front of it: seen. A hair of slack, or the
+          // level plain in front hides the level plain behind by a rounding
+          // error and the whole picture is one line.
+          const seen = y < sky[c] - 0.35;
+          if (seen) {
+            if (!open) {
+              // Begin at the last hidden point rather than here, so a line
+              // emerging from behind a block starts at the block's edge.
+              ctx.moveTo(c ? px : x, c ? py : y);
+              open = true;
+            }
+            ctx.lineTo(x, y);
+            sky[c] = y;
+          } else if (open) {
+            // Run into the hidden point, so a line going behind a block
+            // reaches the edge; then close the run.
+            ctx.lineTo(x, Math.min(y, sky[c]));
+            open = false;
+          }
+          px = x;
+          py = seen ? y : Math.min(y, sky[c]);
+        }
+        ctx.stroke();
+      }
+    },
+  },
 };
+
+// --- the relief --------------------------------------------------------------------------
+
+/** Raise a form where an event fell: a cube, a crystal or a mass, by size. */
+function raise(s, api, x, y, q, p) {
+  if (x < s.left || x > s.right || y < s.top || y > s.foot) {
+    x = clampTo(x, s.left, s.right);
+    y = clampTo(y, s.top, s.foot);
+  }
+  const dx = (s.right - s.left) / (s.cols - 1);
+  const pitch = (s.foot - s.top) / (s.rows - 1);
+  const cx = (x - s.left) / dx;
+  const cy = (y - s.top) / pitch;
+  const m = Math.min(api.w, api.h);
+  const kind = q < 0.3 ? 'cube' : q < 0.72 ? 'crystal' : 'mass';
+  // Footprint in columns and rows, and height as a share of the full
+  // relief. A cube is small and sheer, a crystal middling and pointed, a
+  // mass wide and low-shouldered.
+  const reach = (kind === 'cube' ? 0.03 + q * 0.08 : kind === 'crystal' ? 0.06 + q * 0.12 : 0.12 + q * 0.14) * m;
+  const peak = kind === 'cube' ? 0.18 + q * 0.4 : kind === 'crystal' ? 0.35 + q * 0.5 : 0.5 + q * 0.5;
+  const f = {
+    kind, cx, cy,
+    rx: reach / dx,
+    ry: reach / pitch,
+    peak,
+    turn: Math.random() * TAU,
+    // The facet planes of a crystal: a few directions, each cutting the
+    // cone at its own slope, which is what makes one crystal unlike another.
+    facets: [],
+    tiers: kind === 'cube' ? (Math.random() < 0.5 ? 2 : 1) : kind === 'crystal' ? 3 + Math.floor(Math.random() * 4) : 4 + Math.floor(Math.random() * 5),
+    level: 0,
+    born: api.now,
+    sinkAt: 0,
+    color: p && Math.random() < api.param('colour') ? p.color : null,
+    row: Math.round(cy),
+  };
+  const n = 4 + Math.floor(Math.random() * 4);
+  const lean = api.param('lean');
+  for (let i = 0; i < n; i++) {
+    const a = f.turn + (i / n) * TAU + (Math.random() - 0.5) * 0.6;
+    f.facets.push({ nx: Math.cos(a), ny: Math.sin(a), slope: 0.7 + Math.random() * 0.8 * (0.5 + lean) });
+  }
+  s.forms.push(f);
+  if (s.forms.length > 400) s.forms.splice(0, s.forms.length - 400);
+}
+
+/** The height of one form over one cell, in shares of the full relief. */
+function heightAt(f, c, r) {
+  const u = (c - f.cx) / f.rx;
+  const v = (r - f.cy) / f.ry;
+  if (f.kind === 'cube') {
+    const ct = Math.cos(f.turn);
+    const st = Math.sin(f.turn);
+    const a = u * ct + v * st;
+    const b = -u * st + v * ct;
+    if (Math.abs(a) > 1 || Math.abs(b) > 1) return 0;
+    // A smaller block stacked on the first, off centre, one time in two.
+    if (f.tiers > 1 && Math.abs(a - 0.2) <= 0.5 && Math.abs(b + 0.15) <= 0.5) return f.peak;
+    return f.peak * (f.tiers > 1 ? 0.62 : 1);
+  }
+  if (f.kind === 'mass') {
+    const d = u * u + v * v;
+    if (d >= 1) return 0;
+    // In terraces, so the round mass has the stepped sides the drawing has
+    // -- a smooth dome comes out as a hill, and this is not a hill.
+    return f.peak * (Math.ceil(Math.sqrt(1 - d) * f.tiers) / f.tiers);
+  }
+  // A crystal: a cone cut by facet planes, the lowest plane wins, and the
+  // result cut into a few flat steps with sheer faces between them.
+  let h = 1;
+  for (const k of f.facets) {
+    const d = (u * k.nx + v * k.ny) * k.slope;
+    if (d > 0 && 1 - d < h) h = 1 - d;
+  }
+  if (h <= 0) return 0;
+  return f.peak * (Math.ceil(h * f.tiers) / f.tiers);
+}
+
+/** Stamp a form into the field, as a maximum, over its own footprint only. */
+function stamp(s, f) {
+  const c0 = Math.max(0, Math.floor(f.cx - f.rx - 1));
+  const c1 = Math.min(s.cols - 1, Math.ceil(f.cx + f.rx + 1));
+  const r0 = Math.max(0, Math.floor(f.cy - f.ry - 1));
+  const r1 = Math.min(s.rows - 1, Math.ceil(f.cy + f.ry + 1));
+  for (let r = r0; r <= r1; r++) {
+    for (let c = c0; c <= c1; c++) {
+      const h = heightAt(f, c, r) * f.level;
+      const i = r * s.cols + c;
+      if (h > s.field[i]) s.field[i] = h;
+    }
+  }
+}
+
+/** The field again from scratch, from every form still standing or sinking. */
+function retake(s) {
+  s.field.fill(0);
+  for (const f of s.forms) stamp(s, f);
+}
 
 // --- the ruled sheet ---------------------------------------------------------------------
 

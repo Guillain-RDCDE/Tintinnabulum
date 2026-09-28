@@ -340,6 +340,12 @@ export const WORKS = {
     cartel: 'A plotter drawing the same square over and over on a grid of nine, each pass turned a few degrees and moved a hair. A small event draws it neatly and a large one wildly, so by evening the sheet is a record of how disorderly the day was, cell by cell. A music box, one note a pass.',
   }),
 
+  relief: work('Daylight', 'calm', 'Relief in level lines', {
+    scene: 'scanlines', palette: 'bone', kit: 'clay', space: 'room',
+    ground: 'hotpress', mat: 'gallery', pace: UNHURRIED,
+    cartel: 'A landscape drawn with a hundred level lines and nothing else. Where the ground rises the line is lifted with it and hides the lines behind, so a block is a block and its near face is a dark wall of the lines climbing it. Every event raises something -- a cube, a faceted crystal, a rounded mass -- and when the sheet is crowded the oldest sink back into the plain. Clay and wood, for the pen setting down.',
+  }),
+
   arrival: work('Night', 'lively', 'Arrival by night', {
     scene: 'nightflight', palette: 'amber', kit: 'airports', space: 'hall',
     mat: 'gallery', pace: UNHURRIED,
