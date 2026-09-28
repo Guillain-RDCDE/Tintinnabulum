@@ -310,10 +310,34 @@ export const WORKS = {
     cartel: 'One line that never leaves the paper, going round a loop that is slowly closing: a hundred turns almost on top of one another, then a hundred more that have begun to wander, then a knot. What the events do is not open it again but throw it off true.',
   }),
 
-  bauhaus: work('Daylight', 'lively', 'Small worlds', {
+  // Not `bauhaus`: that key is the workshop above, and a second entry under
+  // the same name silently replaced it -- the Gallery lost a work and no
+  // test noticed, because an object literal takes the last of two keys
+  // without a word.
+  smallworlds: work('Daylight', 'lively', 'Small worlds', {
     scene: 'worlds', palette: 'newsprint', kit: 'glassy', space: 'room',
     ground: 'hotpress', mat: 'gallery', pace: REAL_TIME,
     cartel: 'A sheet composed the way the Bauhaus printers composed one: one heavy diagonal with everything hung on it, a planet set apart in a corner, and ruled nets, sheared chequers and swelling arcs between them. What an event sounds like decides the form it takes -- low and it lands heavy, high and it lands fine -- so the sheet is a reading of the piece and not an accompaniment to it.',
+  }),
+
+  // --- ruled sheets ------------------------------------------------------------------
+  //
+  // Three plotter pieces: a sheet of cells, a screen, and a figure repeated
+  // with small errors.
+  spindles: work('Daylight', 'calm', 'Thread on the spindle', {
+    scene: 'spindles', palette: 'newsprint', kit: 'koto', space: 'room',
+    ground: 'hotpress', mat: 'gallery', pace: UNHURRIED,
+    cartel: 'A sheet ruled into cells and every cell filled with lines that swell and thin along their length, like thread wound unevenly on a spindle; some struck solid, some only grain, some left bare. When the piece is sounding the swell of a line is the waveform of the note that made it. A koto, one string per cell.',
+  }),
+  screen: work('Daylight', 'lively', 'Bar screen', {
+    scene: 'lattice', palette: 'bone', kit: 'marimba', space: 'room',
+    mat: 'gallery', pace: REAL_TIME,
+    cartel: 'Thousands of small black bars on a pale wall, their size running in waves along the rows and down the columns so the wall seems to move as you look. Every event widens the bars in its column and its row, a cross through the screen that fades in a few seconds; a busy minute is a wall that shudders. A marimba, dry and quick.',
+  }),
+  disorders: work('Dawn', 'calm', 'Nine squares, out of true', {
+    scene: 'desordres', palette: 'porcelain', kit: 'musicbox', space: 'hall',
+    ground: 'coldpress', mat: 'gallery', pace: SLOW,
+    cartel: 'A plotter drawing the same square over and over on a grid of nine, each pass turned a few degrees and moved a hair. A small event draws it neatly and a large one wildly, so by evening the sheet is a record of how disorderly the day was, cell by cell. A music box, one note a pass.',
   }),
 
   arrival: work('Night', 'lively', 'Arrival by night', {

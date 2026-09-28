@@ -141,6 +141,9 @@ export const CATALOGUE = {
   hatched: S('Paper and print', 'Fields of colour filled in by hand -- rules, crossed hatching, graphite scribbled nearly solid -- with thin coloured rails crossing the sheet.'),
   skein: S('Paper and print', 'One line that never leaves the paper, winding down to a tight knot and pulled open again by every event.'),
   worlds: S('Paper and print', 'One heavy diagonal with everything hung on it, a planet set apart in a corner, and a kit of ruled nets, sheared chequers and swelling arcs between them. What an event sounds like decides the form it takes.'),
+  spindles: S('Paper and print', 'A sheet of cells filled with lines that swell and thin like thread on a spindle, some struck solid, some only grain, on the ruled grid they were laid out on.'),
+  lattice: S('Paper and print', 'A fine screen of thousands of small black bars whose size runs in waves along the rows and down the columns, so the wall seems to move as you look.'),
+  desordres: S('Paper and print', 'A plotter drawing the same square over and over on a grid of nine, each pass a little turned and a little moved, so a busy cell becomes a scribble with a square in it.'),
   harmonograph: S('Forms and numbers', 'A pendulum pen that draws while it slows, and stops when the drawing is finished.'),
   ulam: S('Forms and numbers', 'Whole numbers laid on a spiral, and the prime ones lining up on diagonals nobody can explain.'),
 };
