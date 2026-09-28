@@ -171,6 +171,7 @@ export const CATALOGUE = {
   comb: S('Paper and print', 'Ninety pens drawn down the page together, and a band straight across where they all lost their composure at once.'),
   hatched: S('Paper and print', 'Fields of colour filled in by hand -- rules, crossed hatching, graphite scribbled nearly solid -- with thin coloured rails crossing the sheet.'),
   skein: S('Paper and print', 'One line that never leaves the paper, winding down to a tight knot and pulled open again by every event.'),
+  worlds: S('Paper and print', 'One heavy diagonal with everything hung on it, a planet set apart in a corner, and a kit of ruled nets, sheared chequers and swelling arcs between them. What an event sounds like decides the form it takes.'),
   ulam: S('Forms and numbers', 'Whole numbers laid on a spiral, and the prime ones lining up on diagonals nobody can explain.'),
   collatz: S('Forms and numbers', 'A strange tree grown from one simple rule about numbers.'),
 };

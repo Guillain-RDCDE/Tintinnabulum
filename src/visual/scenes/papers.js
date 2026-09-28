@@ -201,6 +201,7 @@ export const PAPER_SCENES = {
     event(p, api) {
       const s = api.scene;
       if (!s.forms) return;
+      s.quiet = Math.max(0, (s.quiet || 0) - 0.3);
       s.focus.x = s.focus.x * 0.7 + p.x * 0.3;
       s.focus.y = s.focus.y * 0.7 + p.y * 0.3;
       add(api, p.x, p.y, p.color, p.accent);
@@ -210,11 +211,22 @@ export const PAPER_SCENES = {
       if (!s.forms) return;
       const paper = papers(api);
       const cap = Math.max(2, Math.round(api.param('count')));
-      // The sheet works on its own, slowly: this is a picture of a few large
-      // decisions, not of a rate.
-      s.ambient += api.dt;
-      while (s.ambient > 900) {
-        s.ambient -= 900;
+      // The sheet works on its own only while nothing is arriving.
+      //
+      // It used to bring a plane in every nine hundred milliseconds whatever
+      // happened, and with a pool of ten that is the whole composition
+      // replaced every nine seconds by the clock alone -- so a silent minute
+      // and a busy one put down about the same amount of work, and the feed
+      // was not driving the picture so much as decorating it.
+      // Four seconds, not one. Every plane that arrives shifts the standing of
+      // all the others -- the pool is drawn oldest-faintest -- so one ambient
+      // plane repaints the whole sheet, and at one a second the sheet was
+      // never still for long enough for an arrival to be the thing that
+      // changed it.
+      s.quiet = Math.min(1, (s.quiet || 0) + api.dt / 3000);
+      s.ambient += api.dt * s.quiet;
+      while (s.ambient > 4000) {
+        s.ambient -= 4000;
         add(api, s.focus.x + (Math.random() - 0.5) * api.w * 0.5,
           s.focus.y + (Math.random() - 0.5) * api.h * 0.5, null, false);
       }

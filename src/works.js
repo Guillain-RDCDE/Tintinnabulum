@@ -310,6 +310,12 @@ export const WORKS = {
     cartel: 'One line that never leaves the paper, going round a loop that is slowly closing: a hundred turns almost on top of one another, then a hundred more that have begun to wander, then a knot. What the events do is not open it again but throw it off true.',
   }),
 
+  bauhaus: work('Daylight', 'lively', 'Small worlds', {
+    scene: 'worlds', palette: 'newsprint', kit: 'glassy', space: 'room',
+    ground: 'hotpress', mat: 'gallery', pace: REAL_TIME,
+    cartel: 'A sheet composed the way the Bauhaus printers composed one: one heavy diagonal with everything hung on it, a planet set apart in a corner, and ruled nets, sheared chequers and swelling arcs between them. What an event sounds like decides the form it takes -- low and it lands heavy, high and it lands fine -- so the sheet is a reading of the piece and not an accompaniment to it.',
+  }),
+
   arrival: work('Night', 'lively', 'Arrival by night', {
     scene: 'nightflight', palette: 'amber', kit: 'airports', space: 'hall',
     mat: 'gallery', pace: UNHURRIED,

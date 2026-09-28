@@ -579,6 +579,166 @@ ok('the renderer listens to the engine, and hears something',
 ok('the analyser is given a window wide enough not to clip',
    hearing.db && hearing.db[0] <= -90 && hearing.db[1] <= -5, JSON.stringify(hearing.db));
 
+// --- the sound chooses the form, not only the moment ----------------------
+//
+// An event makes a note and a mark at the same instant, so every scene in the
+// catalogue is in step with the sound whether it knows it or not. "Small
+// worlds" claims more than that: that what an event SOUNDS like decides what
+// it looks like -- low and it lands as a bar or a planet, high as ruled lines
+// or a chequer. That claim cannot be read off the pixels, because a net of
+// thin lines covers as much of the sheet as a solid bar does, so the scene is
+// driven with two analysers of its own and asked what it laid.
+const chose = await page.evaluate(async () => {
+  const { CanvasSink } = await import('../src/index.js');
+  const { Mapper } = await import('../src/core/mapper.js');
+  const { normalize } = await import('../src/core/event.js');
+  // A stub in the shape the renderer reads: all the energy at the bottom of
+  // the range, or all of it in the middle.
+  const analyserFor = (low) => {
+    const bins = 512;
+    const spectrum = new Uint8Array(bins);
+    for (let i = 0; i < bins; i++) {
+      const t = i / bins;
+      spectrum[i] = low
+        ? Math.round(230 * Math.exp(-t * 60))
+        : Math.round(210 * Math.exp(-Math.abs(t - 0.55) * 9));
+    }
+    const wave = new Uint8Array(1024);
+    for (let i = 0; i < wave.length; i++) wave[i] = 128 + Math.round(70 * Math.sin(i / 6));
+    return {
+      frequencyBinCount: bins,
+      fftSize: 1024,
+      context: { sampleRate: 48000 },
+      getByteFrequencyData: (a) => a.set(spectrum),
+      getByteTimeDomainData: (a) => a.set(wave),
+    };
+  };
+  const run = async (low) => {
+    const cv = document.createElement('canvas');
+    cv.style.cssText = 'position:fixed;left:-9999px;width:420px;height:420px';
+    document.body.append(cv);
+    const analyser = analyserFor(low);
+    const sink = new CanvasSink(cv, {
+      palette: 'newsprint', scene: 'worlds', showHud: false, showLabels: false,
+      listen: () => analyser,
+    });
+    sink.start();
+    const mapper = new Mapper({ mode: 'adaptive' });
+    for (let i = 0; i < 70; i++) {
+      const magnitude = 40 + ((i * 617) % 3000);
+      const ev = normalize({ id: 'voice-' + i, magnitude, category: 'user', label: 'v', ts: Date.now() });
+      ev.map = mapper.map(magnitude);
+      sink.handle(ev);
+      if (i % 10 === 9) await new Promise((r) => setTimeout(r, 60));
+    }
+    await new Promise((r) => setTimeout(r, 300));
+    const laid = (sink._scene.recent || []).slice();
+    const heard = Boolean(sink._scene.heard);
+    sink.stop();
+    cv.remove();
+    return { laid, heard };
+  };
+  const HEAVY = ['bar', 'planet', 'mass', 'wedge'];
+  const FINE = ['bundle', 'net', 'chequer', 'beads', 'cell', 'tick'];
+  const share = (list, set) => (list.length ? list.filter((k) => set.includes(k)).length / list.length : 0);
+  const bass = await run(true);
+  const treble = await run(false);
+  return {
+    heard: bass.heard && treble.heard,
+    bassHeavy: share(bass.laid, HEAVY),
+    trebleFine: share(treble.laid, FINE),
+    counted: bass.laid.length + treble.laid.length,
+  };
+});
+ok('a bass spectrum lands heavy and a treble one lands fine, on the same events',
+   chose.heard && chose.counted >= 20 && chose.bassHeavy > 0.8 && chose.trebleFine > 0.8,
+   JSON.stringify({ ...chose, bassHeavy: chose.bassHeavy.toFixed(2), trebleFine: chose.trebleFine.toFixed(2) }));
+
+// --- a picture answers the feed rather than running on its own ------------
+//
+// Every scene is allowed motion of its own; none is allowed to put down as
+// much work in a silent second as in a busy one, because then the feed drives
+// nothing and the sound and the picture are two unrelated performances
+// sharing a window. Measured as a jolt: what a quarter second holds with
+// nothing arriving, against the same quarter second around a burst. A second
+// would not do -- a scene that simulates something continuously drowns its
+// own answer over that long. tools/follows-the-feed.mjs runs this over the
+// whole catalogue; the suite holds the newest to it so it cannot slip back.
+const answers = await page.evaluate(async () => {
+  const sink = window.son.sinks.find((s) => s.particles);
+  const was = sink.sceneName;
+  const cv = document.querySelector('#canvas');
+  const ctx = cv.getContext('2d');
+  const snap = () => ctx.getImageData(0, 0, cv.width, cv.height).data.slice();
+  const moved = (a, b) => {
+    let n = 0;
+    for (let i = 0; i < a.length; i += 4 * 11) {
+      if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 20) n++;
+    }
+    return n;
+  };
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const feed = (n, tag) => {
+    for (let i = 0; i < n; i++) {
+      window.son.emit({ magnitude: 40 + ((i * 991) % 4000), id: `${tag}-${i}`, label: 'answer' });
+    }
+  };
+  const out = {};
+  for (const name of ['worlds', 'sorts', 'nodes', 'skein', 'comb', 'emergence', 'cutpaper', 'planes', 'hatched']) {
+    sink.clear();
+    sink.setScene(name);
+    feed(30, name + '-settle');
+    // Long enough for the picture to come to rest. "Planes" brings a form up
+    // over more than a second, so measuring nine hundred milliseconds after
+    // feeding it is measuring a picture still being made -- and reading that
+    // as the scene running on its own is the opposite of the truth.
+    await wait(2000);
+    // The jolt, over a quarter second.
+    const d0 = snap();
+    await wait(250);
+    const drift = moved(d0, snap());
+    const j0 = snap();
+    feed(25, name + '-burst');
+    await wait(250);
+    const jolt = moved(j0, snap());
+    // And the share of a whole second, for the scenes that repaint their
+    // ground every frame: "Planes" redraws its entire pool each tick, so its
+    // own motion is most of any quarter second and swamps a burst -- and yet
+    // over a second it is one of the most feed-driven pictures in the
+    // catalogue, because what the burst did was replace the pool. Either
+    // reading may carry a scene; neither on its own is fair to all of them.
+    const q0 = snap();
+    await wait(800);
+    const quiet = moved(q0, snap());
+    const b0 = snap();
+    const since = performance.now();
+    while (performance.now() - since < 800) {
+      feed(2, name + '-run');
+      await wait(90);
+    }
+    const busy = moved(b0, snap());
+    out[name] = { drift, jolt, quiet, busy };
+  }
+  sink.setScene(was);
+  sink.clear();
+  return out;
+});
+const score = (r) => ({
+  answer: (r.jolt + 4) / (r.drift + 4),
+  share: (r.busy + 4) / (r.quiet + 4),
+});
+const deaf = Object.entries(answers).filter(([, r]) => {
+  const { answer, share } = score(r);
+  return answer < 1.4 && share < 2;
+});
+ok('the newest pictures answer a burst rather than running on',
+   deaf.length === 0,
+   deaf.map(([n, r]) => `${n} jolt ${r.drift}->${r.jolt}, share ${r.quiet}->${r.busy}`).join(' | ') ||
+   Object.entries(answers).map(([n, r]) => {
+     const { answer, share } = score(r);
+     return `${n} ${answer.toFixed(1)}/${share.toFixed(1)}`;
+   }).join(' '));
+
 // And with nothing to listen to -- a preview, an export -- they still draw.
 const imagined = await page.evaluate(async () => {
   const { playScene, PALETTES } = await import('../src/index.js');

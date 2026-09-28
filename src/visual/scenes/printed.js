@@ -270,7 +270,12 @@ export const PRINTED_SCENES = {
     event(p, api) {
       const s = api.scene;
       if (!s.em) return;
+      // A burst, not a piece: a compositor picks up a handful at a time, and
+      // one letter per event is invisible beside the ambient hand.
+      s.quiet = Math.max(0, (s.quiet || 0) - 0.22);
       compose(api, hashOf(p), p.accent ? (p.color || api.palette.alert) : null);
+      const more = 3 + ((Math.random() * 4) | 0);
+      for (let i = 0; i < more; i++) compose(api, (hashOf(p) + i * 2654435761) >>> 0, null);
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -283,8 +288,17 @@ export const PRINTED_SCENES = {
       }
       // A compositor works whether or not anything is arriving, and fast
       // enough that a still of this scene is a plate rather than a first line.
-      s.ambient += api.dt;
-      const every = 8;
+      // How much of the plate is the feed's doing.
+      //
+      // The ambient hand used to set a piece every eighth of a frame whatever
+      // happened, which is a hundred and twenty a second -- so a busy feed
+      // adding ten more changed almost nothing about the page. It now sets
+      // pieces only in proportion to how quiet the feed has been, and an
+      // event sets a short burst of its own, so a plate composed during a
+      // busy minute is visibly the feed's work.
+      s.quiet = Math.min(1, (s.quiet || 0) + api.dt / 2600);
+      s.ambient += api.dt * s.quiet;
+      const every = 26;
       while (s.ambient > every) {
         s.ambient -= every;
         compose(api, (Math.random() * 4294967295) >>> 0, null);
@@ -346,6 +360,7 @@ export const PRINTED_SCENES = {
       // A ceiling, as everywhere: a page that kept every stone ever thrown
       // would cost more to print with every event that arrived.
       if (s.blobs.length > 48) s.blobs.shift();
+      s.drive = Math.min(1.4, (s.drive || 0) + 0.16);
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -368,8 +383,14 @@ export const PRINTED_SCENES = {
       for (const blob of s.blobs) blob.life -= api.dt / 9000;
       while (s.blobs.length && s.blobs[0].life <= 0) s.blobs.shift();
 
+      // The head advances at the feed's rate, with a slow floor so a silent
+      // page still breathes. A fixed rate meant the page was re-set just as
+      // fast in a silent minute as in a busy one, and the only thing the feed
+      // changed was where the breakdown was -- which is too subtle to read as
+      // an answer at all.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 900);
       const total = s.cols * s.rows;
-      const cells = Math.max(60, Math.min(2400, Math.round(total * 0.06)));
+      const cells = Math.max(24, Math.min(2400, Math.round(total * (0.012 + 0.06 * Math.min(1, s.drive)))));
       const voice = api.param('voice');
       b.textBaseline = 'alphabetic';
       b.font = `${Math.max(5, Math.round(s.em))}px ${MONO}`;
@@ -467,7 +488,11 @@ export const PRINTED_SCENES = {
         const box = s.plates[i].box;
         if (p.x >= box.x && p.x < box.x + box.w && p.y >= box.y && p.y < box.y + box.h) at = i;
       }
-      strike(api, s.plates[at], p.color);
+      // Several strikes to an arrival. Slowing the ambient hand was right --
+      // the drawing should be the feed's -- but on its own it only made the
+      // sheet emptier; what the feed loses in the timer it has to gain here.
+      const runs = 2 + ((Math.random() * 3) | 0);
+      for (let i = 0; i < runs; i++) strike(api, s.plates[at], p.color);
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -482,7 +507,10 @@ export const PRINTED_SCENES = {
       // A plotter draws on its own, so a still is a sheet of plates rather
       // than a sheet with one dot on it.
       s.ambient += api.dt;
-      const every = 22;
+      // Slow: the plotter keeps working when nothing arrives so a wall is
+      // never frozen, but a working feed strikes ten times as often, and the
+      // drawing has to be plainly the feed's rather than the timer's.
+      const every = 90;
       while (s.ambient > every) {
         s.ambient -= every;
         strike(api, s.plates[(Math.random() * s.plates.length) | 0], null);
@@ -559,7 +587,17 @@ const latY = (plate, row) => plate.y + (row / (plate.rows - 1)) * plate.h;
 function strike(api, plate, color) {
   const s = api.scene;
   const b = s.bufCtx;
-  if (!plate || !b || plate.dots.length >= s.cap) return;
+  if (!plate || !b) return;
+  // A finished plate is wiped by the next arrival rather than on its own
+  // clock. It used to wait four seconds, and every event that landed on it in
+  // the meantime was dropped on the floor -- which measured, on the whole
+  // scene, as a feed that changed nothing at all for seconds at a time.
+  if (plate.dots.length >= s.cap) {
+    plate.full = 0;
+    plate.dots.length = 0;
+    b.fillStyle = api.palette.background;
+    b.fillRect(plate.box.x, plate.box.y, plate.box.w, plate.box.h);
+  }
   const ink = color && Math.random() < 0.25 ? color : pressInk(api);
   const cell = Math.min(plate.w / (plate.cols - 1), plate.h / (plate.rows - 1));
   const weight = api.param('weight');

@@ -87,7 +87,7 @@ export const DRAWN_SCENES = {
         if (pen.broken) continue;
         const away = Math.abs(pen.home - p.x) / reach;
         const share = Math.exp(-away * away);
-        pen.heat = Math.min(4, pen.heat + 0.55 * share);
+        pen.heat = Math.min(4, pen.heat + 0.62 * share);
         if (share > 0.6 && !pen.ink && Math.random() < api.param('tint')) pen.ink = p.color;
       }
     },
@@ -107,7 +107,11 @@ export const DRAWN_SCENES = {
       const step = Math.max(0.4, Math.min(6, (api.dt / 16) * 1.2 * api.param('speed')));
       b.lineCap = 'round';
       b.lineJoin = 'round';
-      b.lineWidth = Math.max(0.6, Math.min(2, s.gap * 0.1));
+      // The quiet line is as thin as it can be drawn and the disturbed one
+      // is three times it: the page has to read at a glance as mostly calm
+      // with something having happened, and an even weight throughout makes
+      // the descent -- which no event caused -- the loudest thing on it.
+      const hair = Math.max(0.5, Math.min(1.4, s.gap * 0.075));
 
       let running = 0;
       for (const pen of s.pens) {
@@ -120,6 +124,7 @@ export const DRAWN_SCENES = {
         const hot = pen.heat * unrest;
         if (hot < 0.85) pen.ink = null;
         b.strokeStyle = hot > 1.3 && pen.ink ? pen.ink : ink;
+        b.lineWidth = hot < 0.85 ? hair : hair * (1.3 + Math.min(1.1, hot));
         b.beginPath();
         b.moveTo(pen.x, pen.y);
         // A few sub-steps per frame, so a pen at speed still draws a line and
@@ -134,7 +139,7 @@ export const DRAWN_SCENES = {
           } else {
             // Disturbed: thrown sideways, sometimes backwards, and held near
             // its own column so the comb does not simply come apart.
-            const swing = Math.min(s.gap * 1.7, s.gap * 0.55 * hot);
+            const swing = Math.min(s.gap * 1.9, s.gap * 0.62 * hot);
             pen.x += (Math.random() - 0.5) * swing * 2;
             pen.x += (pen.home - pen.x) * 0.22;
             pen.y += (step / sub) * (Math.random() < 0.28 ? -0.7 : 0.55);
@@ -296,6 +301,7 @@ export const DRAWN_SCENES = {
       s.spin += (Math.random() - 0.5) * 0.0006 * api.param('wander');
       s.squash += (Math.random() - 0.5) * 0.3;
       s.squash = Math.max(0.4, Math.min(1.45, s.squash));
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       if (Math.random() < api.param('tint')) {
         s.ink = p.color;
         s.inkLife = 500;
@@ -344,8 +350,19 @@ export const DRAWN_SCENES = {
       s.vx = s.vx * 0.94 + (api.w / 2 - s.cx) * 0.0008;
       s.vy = s.vy * 0.94 + (restY - s.cy) * 0.0022;
 
+      // How much line goes down is the feed's doing.
+      //
+      // An arrival used to change only the tilt, the squash and the drift --
+      // all of them real, all of them invisible in the quarter second after a
+      // burst, so the drawing measured as one that ignored the feed entirely.
+      // The pen now advances at the rate things arrive, over a slow floor, so
+      // a busy minute is a long stretch of line and a silent one is a few
+      // inches. The shape of the collapse is untouched: it is still the only
+      // thing the radius answers to.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 700);
       const turn = 0.075 * api.param('speed');
-      const steps = Math.max(1, Math.min(90, Math.round((api.dt / 16) * 14 * api.param('speed'))));
+      const pace = 2 + 16 * Math.min(1, s.drive);
+      const steps = Math.max(1, Math.min(90, Math.round((api.dt / 16) * pace * api.param('speed'))));
       b.beginPath();
       if (s.px === null) {
         s.px = s.cx + Math.cos(s.t) * s.rx;
