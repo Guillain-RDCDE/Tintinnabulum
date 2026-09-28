@@ -99,6 +99,7 @@ export const HEARD_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       // Where the note sits, from the mark's own height: the renderer places a
       // big event low and a small one high, and so does the mapper's pitch.
       sound(s, 1 - Math.max(0, Math.min(1, p.y / api.h)), Math.min(1, (p.r || 6) / (Math.min(api.w, api.h) * 0.12)));
@@ -112,7 +113,20 @@ export const HEARD_SCENES = {
         b.fillRect(0, 0, api.w, api.h);
         s.cleared = true;
       }
-      const step = Math.max(1, Math.round(api.dt * 0.06 * api.param('scroll')));
+      // The paper travels under the stylus at the feed's rate: a chart
+      // recorder with nothing to record does not wind the roll.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.05 + Math.min(1, s.drive);
+      // Whole pixels, owed rather than forced: a floor of one pixel a frame is
+      // sixty a second, which is a roll winding on at a fair clip with nothing
+      // to record on it. Below a pixel the paper simply waits.
+      s.owedStep = (s.owedStep || 0) + api.dt * 0.06 * pace * api.param('scroll');
+      const step = Math.floor(s.owedStep);
+      s.owedStep -= step;
+      if (step < 1) {
+        ctx.drawImage(scratch(api, 'buf'), 0, 0);
+        return;
+      }
       s.carry += step;
       const move = Math.floor(s.carry);
       if (move >= 1) {

@@ -215,6 +215,7 @@ export const MATERIAL_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const i = Math.floor(Math.random() * Math.round(api.param('blobs')));
       s.boost[i] = Math.min(3, s.boost[i] + 1.2);
     },
@@ -224,7 +225,16 @@ export const MATERIAL_SCENES = {
       const W = api.w;
       const H = api.h;
       const n = Math.round(api.param('blobs'));
-      const dt = Math.min(50, api.dt);
+      // The world runs at the rate things arrive.
+      //
+      // Its own clock made it move exactly as much through a silent minute as
+      // through a busy one, so the feed decided what happened in the picture
+      // but never how much. Now it idles, and a burst sets it going; ages and
+      // lifetimes stay on the real clock, so nothing that was timed in
+      // seconds is disturbed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.05 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
       const heat = api.param('heat');
       // Each blob rises and sinks on its own slow cycle -- a lamp is far more
       // regular than it looks -- and the heat of an event hurries one along.

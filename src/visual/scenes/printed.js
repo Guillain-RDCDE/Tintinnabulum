@@ -491,7 +491,7 @@ export const PRINTED_SCENES = {
       // Several strikes to an arrival. Slowing the ambient hand was right --
       // the drawing should be the feed's -- but on its own it only made the
       // sheet emptier; what the feed loses in the timer it has to gain here.
-      const runs = 2 + ((Math.random() * 3) | 0);
+      const runs = 3 + ((Math.random() * 4) | 0);
       for (let i = 0; i < runs; i++) strike(api, s.plates[at], p.color);
     },
     frame(ctx, api) {

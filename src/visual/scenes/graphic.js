@@ -182,6 +182,7 @@ export const GRAPHIC_SCENES = {
       api.scene.waves = [];
     },
     event(p, api) {
+      api.scene.drive = Math.min(1.6, (api.scene.drive || 0) + 0.3);
       const waves = api.scene.waves || (api.scene.waves = []);
       waves.push({ born: api.now, color: p.color, speed: 0.25 + p.pick * 0.35 });
       if (waves.length > 12) waves.shift();
@@ -193,7 +194,11 @@ export const GRAPHIC_SCENES = {
       const rays = Math.round(api.param('rays'));
       const cx = W / 2;
       const cy = H * api.param('centre');
-      const t = api.now / 1000;
+      const s = api.scene;
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.04 + Math.min(1, s.drive);
+      s.clock = (s.clock || 0) + api.dt * pace;
+      const t = s.clock / 1000;
       const Rmax = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy));
       const ring = Rmax / rings;
       const grow = (t * ring * 0.12) % (ring * 2);

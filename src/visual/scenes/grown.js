@@ -61,6 +61,7 @@ export const GROWN_SCENES = {
     event(p, api) {
       const s = api.scene;
       if (!s.grid) return;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       s.whirls.push({ x: p.x, y: p.y, k: (p.pick < 0.5 ? -1 : 1) * (0.6 + p.pick), r: Math.min(api.w, api.h) * (0.12 + p.pick * 0.2) });
       if (s.whirls.length > 6) s.whirls.shift();
       plan(api, p.x, p.y, p.color, 0.6 + (p.r / (Math.min(api.w, api.h) * 0.34)) * 1.4);
@@ -75,7 +76,10 @@ export const GROWN_SCENES = {
         s.cleared = true;
       }
       // Ribbons of its own between events, so the sheet keeps filling.
-      s.ambient += api.dt;
+      // Laid at the feed's rate.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.05 + Math.min(1, s.drive);
+      s.ambient += api.dt * pace;
       if (s.ambient > 50 && !s.fade) {
         s.ambient = 0;
         // Several tries a turn: most starting points are already taken once the
@@ -89,7 +93,7 @@ export const GROWN_SCENES = {
       b.lineJoin = 'round';
       for (let k = s.active.length - 1; k >= 0; k--) {
         const r = s.active[k];
-        const upto = Math.min(r.n - 1, r.shown + 4 + Math.round(api.dt / 8));
+        const upto = Math.min(r.n - 1, r.shown + 1 + Math.round((api.dt * pace) / 8));
         for (let i = r.shown; i < upto; i++) {
           const u = i / Math.max(1, r.n - 1);
           const taper = Math.pow(Math.sin(Math.PI * Math.min(1, Math.max(0, u))), 0.4);
@@ -146,6 +150,7 @@ export const GROWN_SCENES = {
     event(p, api) {
       const s = api.scene;
       if (!s.x || s.n < 3) return;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       // Grow where the event landed: split the edges nearest it.
       let best = 0;
       let bd = Infinity;
@@ -169,13 +174,18 @@ export const GROWN_SCENES = {
       }
       const R = Math.min(api.w, api.h) * 0.015 * api.param('spacing');
       const speed = api.param('speed');
-      const iterations = Math.max(1, Math.round(speed * 2));
+      // It grows and relaxes at the feed's rate. A curve that lengthens on its
+      // own reaches the same place whether anything happened or not, and the
+      // three edges an arrival splits are lost in it.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.03 + Math.min(1, s.drive);
+      const iterations = Math.max(1, Math.round(speed * 2 * pace));
       for (let it = 0; it < iterations; it++) relax(s, R, api.w, api.h);
       // Grow: split the longest edges, a few a frame.
       // Grow: every edge that has stretched is split, up to a few a frame.
       // From a different place each frame: always starting at the first node
       // grew the loop on one side only.
-      let splits = Math.max(2, Math.round(speed * 16));
+      let splits = Math.max(0, Math.round(speed * 16 * pace));
       const from = Math.floor(Math.random() * s.n);
       for (let k = 0; k < s.n && splits > 0 && s.n < s.max; k++) {
         const i = (from + k) % s.n;
@@ -266,6 +276,7 @@ export const GROWN_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       if (!s.food) return;
       // Food: a small source that keeps giving for a while, as an oat flake
       // does in a dish. A large flood of trail at once only drew every agent
@@ -275,11 +286,20 @@ export const GROWN_SCENES = {
     },
     frame(ctx, api) {
       const s = api.scene;
-      // Two steps a frame: the network takes a few hundred to form.
-      feed(s);
-      stepMould(api, s);
-      feed(s);
-      stepMould(api, s);
+      // How fast the mould lives is the feed's doing.
+      //
+      // Two steps a frame whatever happened meant the network formed, wandered
+      // and thickened at the same rate in a silent hour as in a busy one, and
+      // the only thing an arrival changed was where a little food landed --
+      // which a network already covered in trails swallows whole. It now
+      // creeps when nothing is arriving and runs when the feed does.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      s.steps = (s.steps || 0) + 0.06 + 2.1 * Math.min(1, s.drive);
+      while (s.steps >= 1) {
+        s.steps -= 1;
+        feed(s);
+        stepMould(api, s);
+      }
       drawMould(ctx, api, s);
     },
   },
@@ -325,6 +345,8 @@ export const GROWN_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
+      s.held = 0;
       if (!s.spots) return;
       s.spots.push({ x: p.x, y: p.y, r: Math.min(api.w, api.h) * (0.06 + p.pick * 0.14), born: api.now });
       if (s.spots.length > 9) s.spots.shift();
@@ -332,6 +354,20 @@ export const GROWN_SCENES = {
     },
     frame(ctx, api) {
       const s = api.scene;
+      // The engraver stops when there is nothing left to engrave.
+      //
+      // Every dot is placed by relaxation and drawn as a hard disc, so any
+      // dot that shifts repaints its whole footprint, and relaxing even a few
+      // in a thousand every frame kept the plate quietly rewriting itself
+      // through a silent minute. It now holds -- completely, not on a long
+      // timer, which only made the plate jump every few seconds -- and an
+      // arrival sets it working again. It is also the cheapest frame in the
+      // catalogue while it holds.
+      if (s.held-- > 0 && s.buf) {
+        ctx.drawImage(s.buf, 0, 0, api.w, api.h);
+        return;
+      }
+      s.held = (s.drive || 0) > 0.02 ? 0 : 1e9;
       const { n, x, y, sx, sy, cnt, head, next, cols, rows, cell } = s;
       // The grid of dots, for finding the nearest one to a sample.
       head.fill(-1);
@@ -345,8 +381,11 @@ export const GROWN_SCENES = {
       cnt.fill(0);
       refreshTone(api, s);
       // Fewer samples than dots: each frame relaxes the part of the picture
-      // the samples fell in, and over a few frames all of it.
-      const samples = Math.round(n * 0.9);
+      // the samples fell in, and over a few frames all of it -- at the rate
+      // the feed is arriving. Relaxing at full speed in silence meant the
+      // dots went on crawling towards a tone nothing had changed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const samples = Math.round(n * (0.004 + 0.9 * Math.min(1, s.drive)));
       for (let k = 0; k < samples; k++) {
         const q = sampleDark(api, s);
         const cx = (q[0] / cell) | 0;
@@ -374,9 +413,12 @@ export const GROWN_SCENES = {
         if (cnt[i]) {
           x[i] += (sx[i] / cnt[i] - x[i]) * 0.5;
           y[i] += (sy[i] / cnt[i] - y[i]) * 0.5;
-        } else if (Math.random() < 0.004) {
+        } else if (Math.random() < 0.004 * (0.05 + Math.min(1, s.drive))) {
           // Now and then a dot nobody sampled -- one in the light -- is sent to
-          // where the picture needs it, so the dots follow the light as it moves.
+          // where the picture needs it, so the dots follow the light as it
+          // moves. At the feed's rate: four in a thousand of them jumping
+          // every frame whatever happened was most of what this picture did,
+          // and it did it just as busily with nothing arriving at all.
           const q = sampleDark(api, s);
           x[i] = q[0];
           y[i] = q[1];
@@ -439,6 +481,7 @@ export const GROWN_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.34);
       if (!s.hills) return;
       s.hills.push({ x: p.x, y: p.y, r: Math.min(api.w, api.h) * (0.08 + p.pick * 0.16), a: (p.pick < 0.7 ? 1 : -0.7) * (0.25 + p.pick * 0.35), born: api.now });
       if (s.hills.length > 24) s.hills.shift();
@@ -455,7 +498,12 @@ export const GROWN_SCENES = {
       s.tick = 7;
       const { g, cols, rows, hgt } = s;
       const relief = api.param('relief');
-      const t = api.now / 20000;
+      // The land drifts at the feed's rate. It drifted on its own clock
+      // before, so a survey of a silent hour was redrawn as busily as one of
+      // a storm, and the hills an event raises were lost in the wandering.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1500);
+      s.clock = (s.clock || 0) + api.dt * (0.04 + Math.min(1, s.drive));
+      const t = s.clock / 20000;
       const sc = 1 / (Math.min(api.w, api.h) * 0.28);
       let lo = Infinity;
       let hi = -Infinity;
@@ -946,7 +994,12 @@ function refreshTone(api, s) {
   const gw = Math.ceil(api.w / cell) + 1;
   const gh = Math.ceil(api.h / cell) + 1;
   s.toneAge = (s.toneAge || 0) + 1;
-  if (s.tg && s.tgw === gw && s.tgh === gh && s.toneAge < 12) return;
+  // How often the tone is re-read is the feed's doing. Every dot takes its
+  // size from it, so a refresh moves the whole picture at once -- and doing
+  // that five times a second through a silent minute is the picture redrawing
+  // itself for nothing.
+  const gate = 12 + Math.round(200 * (1 - Math.min(1, s.drive || 0)));
+  if (s.tg && s.tgw === gw && s.tgh === gh && s.toneAge < gate) return;
   if (!s.tg || s.tgw !== gw || s.tgh !== gh) {
     s.tg = new Float32Array(gw * gh);
     s.tgw = gw;

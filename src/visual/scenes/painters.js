@@ -386,6 +386,7 @@ export const PAINTER_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const arm = Math.floor(Math.random() * 15);
       s.vel[arm] += (Math.random() - 0.5) * 0.0026 * api.param('sway');
       s.colour[s.next % 8] = p.color;
@@ -394,10 +395,20 @@ export const PAINTER_SCENES = {
     frame(ctx, api) {
       const s = api.scene;
       const pal = api.palette;
-      const dt = Math.min(50, api.dt);
+      // The world runs at the rate things arrive.
+      //
+      // Its own clock made it move exactly as much through a silent minute as
+      // through a busy one, so the feed decided what happened in the picture
+      // but never how much. Now it idles, and a burst sets it going; ages and
+      // lifetimes stay on the real clock, so nothing that was timed in
+      // seconds is disturbed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.05 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
+      s.clock = (s.clock || 0) + api.dt * pace;
       // A damped pendulum per arm, with a slow drift so it never stops dead.
       for (let i = 0; i < 15; i++) {
-        const drift = noise2(i * 3.1, api.now / 9000) * 0.0000045 * api.param('sway');
+        const drift = noise2(i * 3.1, s.clock / 9000) * 0.0000045 * api.param('sway');
         s.vel[i] += (-s.angle[i] * 0.0000018 + drift) * dt;
         s.vel[i] *= Math.exp(-dt / 6000);
         s.angle[i] += s.vel[i] * dt;
@@ -436,7 +447,7 @@ export const PAINTER_SCENES = {
             ctx.globalAlpha = 1;
             ctx.fillStyle = s.colour[i] || base[i % base.length];
             ctx.beginPath();
-            ctx.ellipse(ex, ey + drop, Math.max(9, len * 0.42), Math.max(9, len * 0.42) * (0.35 + 0.65 * Math.abs(Math.cos(api.now / 3000 + i))), 0, 0, TAU);
+            ctx.ellipse(ex, ey + drop, Math.max(9, len * 0.42), Math.max(9, len * 0.42) * (0.35 + 0.65 * Math.abs(Math.cos(s.clock / 3000 + i))), 0, 0, TAU);
             ctx.fill();
           }
         }
@@ -554,7 +565,9 @@ export const PAINTER_SCENES = {
       s.current = 0;
     },
     event(p, api) {
-      // Not every event changes the thread, or the cloth is confetti.
+      // Not every event changes the thread, or the cloth is confetti -- but
+      // every one of them works the loom.
+      api.scene.drive = Math.min(1.6, (api.scene.drive || 0) + 0.3);
       if (Math.random() < 0.35) api.scene.current = (api.scene.current + 1 + Math.floor(Math.random() * 3)) % 5;
     },
     frame(ctx, api) {
@@ -569,7 +582,11 @@ export const PAINTER_SCENES = {
         s.changeAt = api.now + 1400 + Math.random() * 1600;
         s.current = (s.current + 1 + Math.floor(Math.random() * 3)) % 5;
       }
-      s.acc += (api.param('speed') * api.dt) / 1000;
+      // The cloth grows at the rate things arrive. It grew in bands of its
+      // own colour through a silent hour before, which is a loom on a motor.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.04 + Math.min(1, s.drive);
+      s.acc += (api.param('speed') * api.dt * pace) / 1000;
       while (s.acc >= 1) {
         s.acc -= 1;
         s.head = (s.head + 1) % s.rows;

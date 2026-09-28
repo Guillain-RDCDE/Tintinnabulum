@@ -279,6 +279,11 @@ export const NATURE_SCENES = {
       const s = api.scene;
       const i = s.nh++ % 6;
       s.hx[i] = p.x; s.hy[i] = p.y; s.ht[i] = api.now;
+      // What the feed drives is the flock's own energy, not only the falcon.
+      // A murmuration that folds at the same rate all evening is a beautiful
+      // thing that owes the data nothing; one that hangs almost still and
+      // boils when the feed does is the data, seen.
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.28);
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -286,7 +291,15 @@ export const NATURE_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      const t = api.now / 1000;
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1400);
+      // A floor, so a silent wall is not a photograph -- but a low one.
+      // Sixteen hundred birds a pixel and a half across flip a great many
+      // pixels for very little movement, so a seventh of the working rate
+      // still read as a flock in full flight; a twentieth reads as one
+      // hanging in the air, which is what an evening flock does between
+      // alarms.
+      s.clock = (s.clock || 0) + api.dt * (0.015 + Math.min(1.2, s.drive));
+      const t = s.clock / 1000;
       const dusk = ctx.createLinearGradient(0, 0, 0, H);
       const top = mixColors(pal.background, '#1b2a3a', lightnessOf(pal.background) > 0.5 ? 0.35 : 0.2);
       dusk.addColorStop(0, top);
@@ -323,8 +336,23 @@ export const NATURE_SCENES = {
           const dx = px - s.hx[h];
           const dy = py - s.hy[h];
           const d = Math.hypot(dx, dy) || 1;
+          // The hole first, the wave after.
+          //
+          // A travelling front alone is a shove that takes a second to reach
+          // anybody, and a flock that is folding anyway swallows it: measured
+          // against the same flock with nothing arriving, a falcon changed
+          // nothing you could see. What you actually see when one goes
+          // through is the birds nearest it leaving at once, so that is drawn
+          // first -- a hole that opens on the frame the falcon arrives and
+          // closes over the next second and a half.
+          if (age < 1600) {
+            const near = Math.exp(-((d / (span * 0.3)) ** 2)) * (1 - age / 1600);
+            const push = near * span * 0.42;
+            px += (dx / d) * push;
+            py += (dy / d) * push;
+          }
           const front = (age / 3500) * span * 2;
-          const k = Math.exp(-((d - front) ** 2) / (span * span * 0.04)) * (1 - age / 3500) * span * 0.12;
+          const k = Math.exp(-((d - front) ** 2) / (span * span * 0.03)) * (1 - age / 3500) * span * 0.22;
           px += (dx / d) * k;
           py += (dy / d) * k;
         }
@@ -584,6 +612,7 @@ export const NATURE_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       for (let k = 0; k < 24; k++) {
         const i = s.next++ % 240;
         s.px[i] = p.x + (Math.random() - 0.5) * 30;
@@ -596,7 +625,16 @@ export const NATURE_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      const dt = Math.min(50, api.dt);
+      // The world runs at the rate things arrive.
+      //
+      // Its own clock made it move exactly as much through a silent minute as
+      // through a busy one, so the feed decided what happened in the picture
+      // but never how much. Now it idles, and a burst sets it going; ages and
+      // lifetimes stay on the real clock, so nothing that was timed in
+      // seconds is disturbed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.04 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
       const warm = mixColors(pal.alert, '#f0a860', 0.35);
       const sky = ctx.createLinearGradient(0, 0, 0, H * 0.6);
       sky.addColorStop(0, mixColors(pal.background, '#2b3446', lightnessOf(pal.background) > 0.5 ? 0.3 : 0.1));
@@ -610,7 +648,8 @@ export const NATURE_SCENES = {
       ctx.arc(W * 0.72, H * 0.36, Math.min(W, H) * 0.045, 0, TAU);
       ctx.fill();
       const n = Math.round(api.param('ridges'));
-      const t = api.now / 60000;
+      s.clock = (s.clock || 0) + api.dt * pace;
+      const t = s.clock / 60000;
       const lit0 = mixColors(warm, '#f3cf9c', 0.45);
       const shade0 = mixColors(pal.anon, '#5a4250', 0.6);
       const haze = mixColors('#f2d9b8', warm, 0.25);
@@ -688,6 +727,7 @@ export const NATURE_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const i = s.nc++ % 60;
       const step = Math.max(16, Math.min(api.w, api.h) / 18);
       s.horiz[i] = Math.random() < 0.5 ? 1 : 0;
@@ -701,7 +741,16 @@ export const NATURE_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      const dt = Math.min(50, api.dt);
+      // The world runs at the rate things arrive.
+      //
+      // Its own clock made it move exactly as much through a silent minute as
+      // through a busy one, so the feed decided what happened in the picture
+      // but never how much. Now it idles, and a burst sets it going; ages and
+      // lifetimes stay on the real clock, so nothing that was timed in
+      // seconds is disturbed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.05 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
       const cv = scratch(api, 'buf');
       const g = s.bufCtx;
       const key = `${cv.width}x${cv.height}:${pal.background}:${pal.alert}`;
@@ -764,7 +813,8 @@ export const NATURE_SCENES = {
       ctx.globalAlpha = 0.1;
       ctx.fillStyle = mixColors(nightOf(pal), '#8a8f99', 0.5);
       ctx.beginPath();
-      const t = api.now / 1000;
+      s.clock = (s.clock || 0) + api.dt * pace;
+      const t = s.clock / 1000;
       for (let i = 0; i < 12; i++) {
         const x = ((i * 0.37 * W - s.ox * 1.6) % (W * 1.4) + W * 1.4) % (W * 1.4) - W * 0.2;
         const y = H * (0.2 + ((i * 0.53) % 0.7));

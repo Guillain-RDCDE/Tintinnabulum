@@ -145,8 +145,9 @@ export const FANTASIA_SCENES = {
       const w = api.w;
       const h = api.h;
       const max = Math.hypot(w, h) * 0.8;
-      s.dx = (s.dx || 0) * 0.94;
-      s.dy = (s.dy || 0) * 0.94;
+      const ease = Math.exp(-api.dt / 260);
+      s.dx = (s.dx || 0) * ease;
+      s.dy = (s.dy || 0) * ease;
       ctx.lineWidth = api.param('weight');
       const rings = (cx, cy, colour) => {
         ctx.strokeStyle = colour;
@@ -396,6 +397,7 @@ export const FANTASIA_SCENES = {
       // A live cell dropped into the current row, where the event landed.
       const s = api.scene;
       if (!s.row) return;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       s.row[Math.min(s.cols - 1, Math.max(0, Math.round((p.x / api.w) * s.cols)))] = 1;
       s.tint = p.color;
     },
@@ -405,7 +407,9 @@ export const FANTASIA_SCENES = {
       const g = bufferFor(api);
       if (!g || !s.row) return;
       const rule = Math.round(api.param('rule')) & 255;
-      s.acc += (api.param('rate') * api.dt) / 1000;
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.03 + Math.min(1, s.drive);
+      s.acc += (api.param('rate') * api.dt * pace) / 1000;
       const rows = Math.min(30, Math.floor(s.acc));
       s.acc -= rows;
       const cell = s.cell;
@@ -460,6 +464,7 @@ export const FANTASIA_SCENES = {
     event(p, api) {
       const s = api.scene;
       if (!s.b || !s.b.length) return;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       // The oldest bird takes the event's colour and its position: the flock
       // stays the same size and the feed is a change of who is where.
       const b = s.b[(s.next = ((s.next || 0) + 1) % s.b.length)];
@@ -471,7 +476,13 @@ export const FANTASIA_SCENES = {
       if (!s.b) return;
       const sight = api.param('sight');
       const sight2 = sight * sight;
-      const speed = api.param('speed') * Math.min(2.5, api.dt / 16);
+      // The flock flies at the rate things arrive. Swapping which bird is
+      // where, which is what an arrival did, is invisible in a flock that
+      // is crossing the frame anyway; a flock that hangs and then goes is
+      // the feed itself.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.03 + Math.min(1, s.drive);
+      const speed = api.param('speed') * Math.min(2.5, api.dt / 16) * pace;
       const n = s.b.length;
       for (let i = 0; i < n; i++) {
         const a = s.b[i];

@@ -68,6 +68,7 @@ export const TERMINAL_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       if (!s.y) return;
       // The column under the event, or the next free one near it.
       let c = Math.max(0, Math.min(s.cols - 1, Math.floor((p.x / api.w) * s.cols)));
@@ -89,7 +90,16 @@ export const TERMINAL_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      const dt = Math.min(50, api.dt);
+      // The world runs at the rate things arrive.
+      //
+      // Its own clock made it move exactly as much through a silent minute as
+      // through a busy one, so the feed decided what happened in the picture
+      // but never how much. Now it idles, and a burst sets it going; ages and
+      // lifetimes stay on the real clock, so nothing that was timed in
+      // seconds is disturbed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.06 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
       const size = s.size;
       const colW = W / s.cols;
       const green = api.param('tint') < 0.5;

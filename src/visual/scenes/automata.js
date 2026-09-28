@@ -153,6 +153,7 @@ export const AUTOMATA_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       s.x = Math.min(s.cols - 1, Math.max(0, Math.round((p.x / api.w) * s.cols)));
       s.y = Math.min(s.rows - 1, Math.max(0, Math.round((p.y / api.h) * s.rows)));
       s.tint = p.color;
@@ -162,7 +163,9 @@ export const AUTOMATA_SCENES = {
       const cv = scratch(api);
       const g = bufferFor(api);
       if (!g || !s.grid) return;
-      s.acc += (api.param('rate') * api.dt) / 1000;
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.03 + Math.min(1, s.drive);
+      s.acc += (api.param('rate') * api.dt * pace) / 1000;
       let steps = Math.min(20000, Math.floor(s.acc));
       s.acc -= steps;
       const cell = s.cell;

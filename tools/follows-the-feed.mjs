@@ -51,7 +51,7 @@ try {
     // first frame, and the audit then reports that nothing moves for any
     // reason at all, which is the most convincing wrong answer available.
     const { Mapper } = await import('/src/core/mapper.js');
-    const { normalize } = await import('/src/core/event.js');
+    const { normalize, unitPosition } = await import('/src/core/event.js');
     const mapper = new Mapper({ mode: 'adaptive' });
     const cv = document.getElementById('c');
     cv.style.width = '900px';
@@ -59,13 +59,44 @@ try {
     const ctx = cv.getContext('2d', { willReadFrequently: true });
 
     const snap = () => ctx.getImageData(0, 0, cv.width, cv.height).data.slice();
-    /** How many sampled pixels differ, of those sampled. */
+    /**
+     * How much the picture differs, summed rather than counted.
+     *
+     * Counting pixels that crossed a threshold saturates at both ends for a
+     * scene made of thousands of small marks: a flock of sixteen hundred
+     * birds a pixel and a half across flips most of the canvas for a
+     * movement of a third of a pixel, so the count reads the same whether
+     * the flock is hanging almost still or boiling. The summed difference
+     * scales with how far things actually moved, which is the question.
+     */
     const moved = (a, b) => {
-      let n = 0;
+      let sum = 0;
       for (let i = 0; i < a.length; i += 4 * 11) {
-        if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 20) n++;
+        sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
       }
-      return n;
+      return Math.round(sum / 100);
+    };
+    /**
+     * The same count, but only inside one half of the canvas.
+     *
+     * Some scenes repaint everything every frame -- a flock of sixteen hundred
+     * birds, a reaction grid, a field of stripes -- and then a count over the
+     * whole canvas saturates: nearly every sampled pixel differs between any
+     * two frames whatever arrives, and an arrival cannot raise a number that
+     * is already at its ceiling. Landing a burst in one half and comparing
+     * that half against the other asks where the change is rather than how
+     * much, and a saturated scene can still answer it.
+     */
+    const movedIn = (a, b, left) => {
+      let n = 0;
+      const w = cv.width;
+      const half = w >> 1;
+      for (let i = 0; i < a.length; i += 4 * 11) {
+        const x = (i >> 2) % w;
+        if (left ? x >= half : x < half) continue;
+        n += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
+      }
+      return Math.round(n / 100);
     };
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -75,7 +106,7 @@ try {
       const sink = new CanvasSink(cv, { palette: 'marine', scene: name, showHud: false, showLabels: false });
       sink.start();
       let n = 0;
-      const feed = (count) => {
+      const feed = (count, side) => {
         for (let i = 0; i < count; i++) {
           const magnitude = Math.round(Math.exp(Math.random() * 8)) + 1;
           const ev = normalize({
@@ -89,10 +120,39 @@ try {
           sink.handle(ev);
         }
       };
-      // Something on the canvas to begin with, so the quiet reading is of a
-      // picture at rest rather than of a picture being born.
+      /**
+       * A burst that lands in one half, by choosing its identity.
+       *
+       * The renderer places a mark from the event's own id, so rather than
+       * move the mark after the scene has already seen it -- which would show
+       * the scene two events for one -- the id is drawn until it hashes to
+       * the half we want.
+       */
+      const feedSide = (count, left) => {
+        let tries = 0;
+        let placed = 0;
+        while (placed < count && tries < count * 200) {
+          tries++;
+          const id = `${name}-side-${n++}`;
+          const u = unitPosition(id).u;
+          if (left ? u > 0.44 : u < 0.56) continue;
+          const magnitude = Math.round(Math.exp(Math.random() * 8)) + 1;
+          const ev = normalize({ id, magnitude, category: 'user', label: 'audit', ts: Date.now() });
+          ev.map = mapper.map(magnitude);
+          sink.handle(ev);
+          placed++;
+        }
+        return placed;
+      };
+      // Something on the canvas to begin with, and then long enough for the
+      // picture to actually come to rest.
+      //
+      // Two seconds was not enough: a flock disturbed by a falcon is still
+      // settling three and a half seconds later, so the "quiet" reading was
+      // taken while the last burst was still working its way through and
+      // counted the feed's own aftermath as the scene running on its own.
       feed(40);
-      await wait(2200);
+      await wait(4200);
 
       // Quiet: a full second with nothing arriving.
       const q0 = snap();
@@ -125,8 +185,19 @@ try {
       feed(25);
       await wait(250);
       const jolt = moved(j0, snap());
+
+      // Where the change is, for the scenes whose own motion saturates the
+      // counts above: a burst into the left half only, then the change in
+      // that half against the change in the right.
+      await wait(700);
+      const s0 = snap();
+      const landed = feedSide(30, true);
+      await wait(260);
+      const s1 = snap();
+      const here = movedIn(s0, s1, true);
+      const away = movedIn(s0, s1, false);
       sink.stop();
-      out.push({ name, quiet, busy, drift, jolt });
+      out.push({ name, quiet, busy, drift, jolt, here, away, landed });
     }
     return out;
   }, { only });
@@ -138,16 +209,17 @@ try {
     // A floor, so a wholly still picture does not divide by nothing.
     share: (r.busy + 4) / (r.quiet + 4),
     answer: (r.jolt + 4) / (r.drift + 4),
+    where: (r.here + 4) / (r.away + 4),
   }));
-  scored.sort((a, b) => a.answer - b.answer);
+  scored.sort((a, b) => Math.max(a.answer, a.share, a.where) - Math.max(b.answer, b.share, b.where));
   const shown = WORST ? scored.slice(0, WORST) : scored;
-  console.log('scene             quiet     busy   share    drift     jolt   answer');
+  console.log('scene             share   answer    where    quiet/busy');
   for (const r of shown) {
-    const mark = r.answer < 1.3 ? '  <- deaf' : r.answer < 2 ? '  <- faint' : '';
+    const deaf = r.answer < 1.3 && r.share < 2 && r.where < 1.3;
+    const mark = deaf ? '  <- deaf' : (r.answer < 2 && r.share < 2 && r.where < 2) ? '  <- faint' : '';
     console.log(
-      `${r.name.padEnd(16)} ${String(r.quiet).padStart(6)} ${String(r.busy).padStart(8)}` +
-      `  ${r.share.toFixed(2).padStart(5)}  ${String(r.drift).padStart(7)} ${String(r.jolt).padStart(8)}` +
-      `  ${r.answer.toFixed(2).padStart(6)}${mark}`
+      `${r.name.padEnd(16)} ${r.share.toFixed(2).padStart(6)}  ${r.answer.toFixed(2).padStart(7)}` +
+      `  ${r.where.toFixed(2).padStart(7)}   ${String(r.quiet).padStart(6)}/${String(r.busy).padStart(6)}${mark}`
     );
   }
   // Deaf on both readings, not on either.
@@ -159,12 +231,13 @@ try {
   // scene that repaints its whole ground every frame buries its share and
   // still shows a burst at once. Only a scene that fails both is ignoring the
   // feed.
-  const deaf = scored.filter((r) => r.answer < 1.3 && r.share < 2);
+  const deaf = scored.filter((r) => r.answer < 1.3 && r.share < 2 && r.where < 1.3);
   console.log('');
   console.log(`${scored.length} scenes; ${deaf.length} answer the feed on neither reading`);
   if (deaf.length) console.log(deaf.map((r) => r.name).join(', '));
   console.log('share  = how much of a busy second is the feed rather than the scene running on');
   console.log('answer = how plainly a burst shows up at once, which a simulation can still do');
+  console.log('where  = a burst into the left half: the change there against the change opposite');
 } finally {
   await browser.close();
   srv.kill();

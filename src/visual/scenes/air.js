@@ -205,6 +205,7 @@ export const AIR_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       let best = 0;
       let bd = Infinity;
       for (let i = 0; i < s.n; i++) {
@@ -220,8 +221,18 @@ export const AIR_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      const dt = Math.min(50, api.dt);
-      const t = api.now / 1000;
+      // The world runs at the rate things arrive.
+      //
+      // Its own clock made it move exactly as much through a silent minute as
+      // through a busy one, so the feed decided what happened in the picture
+      // but never how much. Now it idles, and a burst sets it going; ages and
+      // lifetimes stay on the real clock, so nothing that was timed in
+      // seconds is disturbed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.06 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
+      s.clock = (s.clock || 0) + api.dt * pace;
+      const t = s.clock / 1000;
       const deep = mixColors(pal.background, '#04182a', lightnessOf(pal.background) > 0.5 ? 0.88 : 0.55);
       const sea = ctx.createLinearGradient(0, 0, 0, H);
       sea.addColorStop(0, lighten(deep, 0.07));
@@ -354,6 +365,7 @@ export const AIR_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const i = s.next++ % 36;
       s.x[i] = p.x;
       s.y[i] = p.y;
@@ -369,8 +381,13 @@ export const AIR_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      const dt = Math.min(50, api.dt);
-      const t = api.now / 1000;
+      // The film drifts and wobbles at the feed's rate; each bubble still
+      // lives out its own life in seconds, so none of them is held open.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.05 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
+      s.clock = (s.clock || 0) + api.dt * pace;
+      const t = s.clock / 1000;
       const light = lightnessOf(pal.background) > 0.5;
       const bg = ctx.createLinearGradient(0, 0, W, H);
       bg.addColorStop(0, light ? mixColors(pal.background, '#ffffff', 0.35) : mixColors(pal.background, '#1b2430', 0.3));
@@ -478,6 +495,7 @@ export const AIR_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       if (!s.nw) return;
       for (let tries = 0; tries < 12; tries++) {
         const i = Math.floor(Math.random() * s.nw);
@@ -493,8 +511,18 @@ export const AIR_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      const dt = Math.min(50, api.dt);
-      const t = api.now / 1000;
+      // The world runs at the rate things arrive.
+      //
+      // Its own clock made it move exactly as much through a silent minute as
+      // through a busy one, so the feed decided what happened in the picture
+      // but never how much. Now it idles, and a burst sets it going; ages and
+      // lifetimes stay on the real clock, so nothing that was timed in
+      // seconds is disturbed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.05 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
+      s.clock = (s.clock || 0) + api.dt * pace;
+      const t = s.clock / 1000;
       const night = nightOf(pal);
       const ground = H * 0.94;
       const layer = scratch(api, 'layer');
@@ -543,9 +571,18 @@ export const AIR_SCENES = {
       const snow = api.param('snow');
       s.wind *= Math.exp(-dt / 3000);
       const layerOf = (z) => (z < 0.33 ? 0 : z < 0.7 ? 1 : 2);
+      // How thick the snow is, is the feed's doing.
+      //
+      // Slowing the fall was not enough: a thousand flakes creeping still
+      // repaint most of the sky, because a flake moving a third of a pixel
+      // changes as much of itself as one crossing the window. What a feed
+      // plainly changes is how much snow there is -- a few flakes through a
+      // quiet minute, a blizzard through a busy one -- and that is also what
+      // anybody watching a window would say had changed.
+      const falling = Math.max(24, Math.round(s.N * (0.05 + 0.95 * Math.min(1, s.drive))));
       const flakes = (which) => {
         ctx.beginPath();
-        for (let i = 0; i < s.N; i++) {
+        for (let i = 0; i < falling; i++) {
           const z = s.fz[i];
           if (layerOf(z) !== which) continue;
           const sz = 0.8 + z * 2.6;
@@ -557,7 +594,7 @@ export const AIR_SCENES = {
         ctx.fill();
         ctx.globalAlpha = 1;
       };
-      for (let i = 0; i < s.N; i++) {
+      for (let i = 0; i < falling; i++) {
         const z = s.fz[i];
         s.fy[i] += ((0.00002 + 0.00007 * z) * snow * dt * 1000) / H;
         s.fx[i] += ((Math.sin(t * 0.8 + s.fp[i]) * 0.008 * z + s.wind) * dt) / W;
@@ -643,6 +680,7 @@ export const AIR_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const i = s.next++ % 6;
       const fromLeft = p.x > api.w / 2;
       s.bx[i] = fromLeft ? -20 : api.w + 20;
@@ -657,8 +695,18 @@ export const AIR_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      const dt = Math.min(50, api.dt);
-      const t = api.now / 1000;
+      // The world runs at the rate things arrive.
+      //
+      // Its own clock made it move exactly as much through a silent minute as
+      // through a busy one, so the feed decided what happened in the picture
+      // but never how much. Now it idles, and a burst sets it going; ages and
+      // lifetimes stay on the real clock, so nothing that was timed in
+      // seconds is disturbed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.05 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
+      s.clock = (s.clock || 0) + api.dt * pace;
+      const t = s.clock / 1000;
       const light = lightnessOf(pal.background) > 0.5;
       const sky = ctx.createLinearGradient(0, 0, 0, H * 0.7);
       sky.addColorStop(0, mixColors(pal.background, '#ffffff', light ? 0.4 : 0.12));

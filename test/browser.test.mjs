@@ -675,12 +675,22 @@ const answers = await page.evaluate(async () => {
   const cv = document.querySelector('#canvas');
   const ctx = cv.getContext('2d');
   const snap = () => ctx.getImageData(0, 0, cv.width, cv.height).data.slice();
-  const moved = (a, b) => {
-    let n = 0;
+  // Summed, not counted. A count of pixels over a threshold saturates for a
+  // scene made of thousands of small marks -- a flock of sixteen hundred birds
+  // a pixel and a half across flips most of the canvas for a third of a pixel
+  // of movement, and then reads the same hanging still as boiling.
+  const moved = (a, b, half) => {
+    let sum = 0;
+    const w = cv.width;
+    const mid = w >> 1;
     for (let i = 0; i < a.length; i += 4 * 11) {
-      if (Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]) > 20) n++;
+      if (half) {
+        const x = (i >> 2) % w;
+        if (half === 'left' ? x >= mid : x < mid) continue;
+      }
+      sum += Math.abs(a[i] - b[i]) + Math.abs(a[i + 1] - b[i + 1]) + Math.abs(a[i + 2] - b[i + 2]);
     }
-    return n;
+    return Math.round(sum / 100);
   };
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const feed = (n, tag) => {
@@ -688,16 +698,36 @@ const answers = await page.evaluate(async () => {
       window.son.emit({ magnitude: 40 + ((i * 991) % 4000), id: `${tag}-${i}`, label: 'answer' });
     }
   };
+  // A burst that lands in the left half, by choosing identities that hash
+  // there: the renderer places a mark from the event's own id.
+  const { unitPosition } = await import('../src/core/event.js');
+  const feedLeft = (n, tag) => {
+    let placed = 0;
+    for (let i = 0; placed < n && i < n * 200; i++) {
+      const id = `${tag}-left-${i}`;
+      if (unitPosition(id).u > 0.44) continue;
+      window.son.emit({ magnitude: 40 + ((i * 991) % 4000), id, label: 'answer' });
+      placed++;
+    }
+  };
   const out = {};
-  for (const name of ['worlds', 'sorts', 'nodes', 'skein', 'comb', 'emergence', 'cutpaper', 'planes', 'hatched']) {
+  // The nine newest, and the twenty-one that were repaired.
+  for (const name of [
+    'worlds', 'sorts', 'nodes', 'skein', 'comb', 'emergence', 'cutpaper', 'planes', 'hatched',
+    'reaction', 'dragon', 'quasicrystal', 'moire', 'rule30', 'langton', 'mobile', 'lavalamp',
+    'murmuration', 'dunes', 'nightflight', 'inkwater', 'jellyfish', 'snowfall', 'paperforest',
+    'digitalrain', 'rise', 'physarum', 'stipple', 'topo', 'groove',
+  ]) {
     sink.clear();
     sink.setScene(name);
     feed(30, name + '-settle');
-    // Long enough for the picture to come to rest. "Planes" brings a form up
-    // over more than a second, so measuring nine hundred milliseconds after
-    // feeding it is measuring a picture still being made -- and reading that
-    // as the scene running on its own is the opposite of the truth.
-    await wait(2000);
+    // Long enough for the picture to come to rest, which is longer than it
+    // sounds. "Planes" brings a form up over more than a second; and every
+    // scene that was put on the feed's clock keeps a drive that decays over
+    // one and a quarter seconds, so two seconds after a burst the "quiet"
+    // window is still being driven by it and reads exactly as busy as the
+    // busy one. Murmuration and the contour survey failed on that alone.
+    await wait(4200);
     // The jolt, over a quarter second.
     const d0 = snap();
     await wait(250);
@@ -722,7 +752,16 @@ const answers = await page.evaluate(async () => {
       await wait(90);
     }
     const busy = moved(b0, snap());
-    out[name] = { drift, jolt, quiet, busy };
+    // And where the change is, for the scenes whose own motion saturates both
+    // of the above: a burst into the left half only.
+    await wait(500);
+    const w0 = snap();
+    feedLeft(25, name + '-side');
+    await wait(260);
+    const w1 = snap();
+    const here = moved(w0, w1, 'left');
+    const away = moved(w0, w1, 'right');
+    out[name] = { drift, jolt, quiet, busy, here, away };
   }
   sink.setScene(was);
   sink.clear();
@@ -731,17 +770,25 @@ const answers = await page.evaluate(async () => {
 const score = (r) => ({
   answer: (r.jolt + 4) / (r.drift + 4),
   share: (r.busy + 4) / (r.quiet + 4),
+  where: (r.here + 4) / (r.away + 4),
 });
+// Deaf on all three readings, not on one. Each is unfair to some scene: a
+// picture that fades a form in over a second shows nothing in a quarter of
+// one; a picture that repaints its ground every frame buries its share; a
+// diagram redrawn whole from every event changes everywhere at once and has
+// no "where" to speak of.
 const deaf = Object.entries(answers).filter(([, r]) => {
-  const { answer, share } = score(r);
-  return answer < 1.4 && share < 2;
+  const { answer, share, where } = score(r);
+  return answer < 1.4 && share < 2 && where < 1.6;
 });
-ok('the newest pictures answer a burst rather than running on',
-   deaf.length === 0,
-   deaf.map(([n, r]) => `${n} jolt ${r.drift}->${r.jolt}, share ${r.quiet}->${r.busy}`).join(' | ') ||
+ok('the pictures answer a burst rather than running on', deaf.length === 0,
+   deaf.map(([n, r]) => {
+     const { answer, share, where } = score(r);
+     return `${n} ${answer.toFixed(2)}/${share.toFixed(2)}/${where.toFixed(2)}`;
+   }).join(' | ') ||
    Object.entries(answers).map(([n, r]) => {
-     const { answer, share } = score(r);
-     return `${n} ${answer.toFixed(1)}/${share.toFixed(1)}`;
+     const { answer, share, where } = score(r);
+     return `${n} ${Math.max(answer, share, where).toFixed(1)}`;
    }).join(' '));
 
 // And with nothing to listen to -- a preview, an export -- they still draw.
@@ -2702,7 +2749,16 @@ const groundOf = () =>
 
 const beforeGround = await groundOf();
 await page.click('#palettes .sw[data-palette="daylight"]');
-await page.waitForTimeout(120);
+// Waited for, not timed. A palette change is a walk from one set of inks to
+// the other and the scene under it may be holding a buffer it only repaints
+// when it has reason to, so how long the ground takes to arrive is not a
+// number this check can know. It polls for a second and a half, which is far
+// longer than the walk and costs nothing when the ground is already there.
+await page.waitForFunction(() => {
+  const c = document.querySelector('#canvas');
+  const d = c.getContext('2d').getImageData(2, 2, 1, 1).data;
+  return d[0] > 200;
+}, null, { timeout: 1500, polling: 100 }).catch(() => {});
 const afterGround = await groundOf();
 ok('choosing a palette repaints the canvas ground', beforeGround !== afterGround,
    `${beforeGround} -> ${afterGround}`);

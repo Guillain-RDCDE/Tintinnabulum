@@ -163,12 +163,18 @@ export const RECURSIVE_SCENES = {
       // An event pays out more of the strip. A quiet feed leaves the dragon
       // half unfolded, which is a true statement about the feed.
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       s.owed = (s.owed || 0) + 20 + Math.min(400, p.r * 5);
       s.color = p.color;
     },
     frame(ctx, api) {
       const s = api.scene;
       if (!s.turns) return;
+      // The breath and the turn belong to the feed too: they scale and
+      // rotate the whole sheet every frame, so on their own clock they
+      // repainted the picture in a silent minute as busily as in a storm.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.04 + Math.min(1, s.drive);
       const cv = scratch(api);
       const g = canvasFor(api);
       if (!g) return;
@@ -191,7 +197,7 @@ export const RECURSIVE_SCENES = {
       // still finishes what it started.
       const budget = Math.min(
         s.turns.length - s.pos.i,
-        Math.floor((s.owed || 0) + (api.dt / 1000) * api.param('speed') * s.turns.length * 0.08)
+        Math.floor((s.owed || 0) + (api.dt / 1000) * 0.06 * api.param('speed') * s.turns.length * 0.08)
       );
       s.owed = Math.max(0, (s.owed || 0) - budget);
 
@@ -220,7 +226,8 @@ export const RECURSIVE_SCENES = {
       // The finished dragon breathes: drawn very slightly larger and smaller
       // and turned a hair either way, so a creature that has stopped unfolding
       // is still a creature rather than a diagram.
-      const t = api.now / 1000;
+      s.clock = (s.clock || 0) + api.dt * pace;
+      const t = s.clock / 1000;
       const breath = 1 + 0.012 * Math.sin(t * 0.8);
       ctx.save();
       ctx.translate(api.w / 2, api.h / 2);

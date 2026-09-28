@@ -115,6 +115,7 @@ export const WATER_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const slot = s.nextInk++ % 24;
       s.inks[slot] = p.color;
       const x0 = p.x;
@@ -138,12 +139,22 @@ export const WATER_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      const dt = Math.min(50, api.dt);
+      // The world runs at the rate things arrive.
+      //
+      // Its own clock made it move exactly as much through a silent minute as
+      // through a busy one, so the feed decided what happened in the picture
+      // but never how much. Now it idles, and a burst sets it going; ages and
+      // lifetimes stay on the real clock, so nothing that was timed in
+      // seconds is disturbed.
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+      const pace = 0.05 + Math.min(1, s.drive);
+      const dt = Math.min(50, api.dt) * pace;
       const cv = scratch(api);
       const g = bufferFor(api);
       if (!g) return;
       fadeBuffer(g, cv, api.param('clear') * 0.25, dt);
-      const t = api.now / 1000;
+      s.clock = (s.clock || 0) + api.dt * pace;
+      const t = s.clock / 1000;
       const swirl = api.param('swirl');
       // Small curls rather than a wind: at a larger scale the whole glass
       // swept one way and the clouds read as brush strokes.
