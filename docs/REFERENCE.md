@@ -797,19 +797,19 @@ son.setKit('bells');            // and silences it again
 ### Visualisations
 
 A scene decides what a moment of data looks like. A hundred and fourteen ship.
-They sit on eight shelves named for what is on them -- *Painting*, *Nature*,
-*Water*, *Night*, *Materials*, *Pattern*, *Drawing machines* and *Forms and
+They sit on eight shelves named for what is on them -- *Painting*, *Paper and
+print*, *Nature*, *Water*, *Night*, *Materials*, *Pattern* and *Forms and
 numbers* -- each scene with one line saying what it feels like, and the
 construction behind it one click away under **How it's made**. The first
 arrangement had twelve shelves, several named for the mathematics ("Deep
 structures", "Pattern and tile"), which is how the code is organised and not
 how anybody looks; no shelf now holds more than twenty. The demonstrations
-that are more interesting than beautiful (Ulam, Collatz, Rule 30) are on the
+that are more interesting than beautiful (Ulam, Rule 30) are on the
 last shelf.
 
-Forty-nine of them are constructions anyone can look up: nodal figures, polar
-curves, space-filling curves, aperiodic tilings, recursive packings,
-attractors, automata, growths and physics. None of that is anyone's property
+Twenty-seven of them are constructions anyone can look up: nodal figures,
+space-filling curves, aperiodic tilings, recursive packings, attractors,
+automata, growths and physics. None of that is anyone's property
 and none of it is engineering, so what each scene actually has to decide is the
 part that belongs to this project -- which of the construction's parameters the
 live data turns.
@@ -838,32 +838,22 @@ The others:
 
 | Scene | What it draws |
 |---|---|
-| **Pile** | Events fall, bounce and settle into a heap, so sheer volume becomes visible |
-| **Threads** | Level threads pushed aside by each event, weaving a fabric |
-| **Lissajous** | Each event draws a figure whose two frequencies come from its size |
-| **Nebula** | Soft glows added on top of one another, so busy moments burn bright |
 
 
-#### Drawing machines
+#### One drawing machine
 
-Six figures that are a formula and a pen, and every one of them predates the
-computer. A spirograph is a toothed wheel inside a ring, sold as a toy in 1965
-and known as a hypotrochoid for a century before that. A harmonograph is two
-pendulums and a pen, a Victorian parlour instrument. Guilloche is the
-engine-turning on the back of a pocket watch and the border of a banknote.
-Times-table string art is a nail-and-thread exercise from a school hall.
+A figure that is a formula and a pen, and it predates the computer by a
+century: a harmonograph is two pendulums and a pen, a Victorian parlour
+instrument that draws while it slows and stops when the drawing is finished.
+It sits with the demonstrations now; the shelf it used to share with a dozen
+other polar curves was taken apart when those came off the wall.
 
 | | |
 |---|---|
-| **Supershape** | Gielis's superformula, 1997: one polar equation whose four numbers give circles, stars, petals and shards. Every event on screen gets a cell of a plate and draws its own. |
-| **Maurer rose** | Peter Maurer, 1987: walk a rose curve in fixed angular strides and join the stops with straight lines. The rose is the ghost; the web across it is what the walk leaves. |
-| **Spirograph** | A wheel rolling inside a ring with a pen through one of its holes. Each event sends a pen round, and each pen draws its whole closed figure. |
 | **Harmonograph** | Two pendulums per axis, swinging down. Most events push the pendulum; only one that has had time to develop is replaced. |
-| **Times table** | Mark N points round a circle and join each to its multiple. Two gives a cardioid, three a nephroid, and every whole number after that its own figure. |
-| **Guilloche** | A rosette cut by a machine whose two gears run at a fixed ratio. The moire between neighbouring passes is the whole effect. |
 
-The choice that matters in each is not the formula, which is anybody's, but
-which of its parameters the data turns.
+The choice that matters is not the formula, which is anybody's, but which of
+its parameters the data turns.
 
 #### Recursion, packing and tiling
 
@@ -879,27 +869,23 @@ they draw at minute ten is not what they drew at minute one.
 | **Quasicrystal** | Plane waves at angles that share no common measure, so the interference never repeats. Shechtman, 1982, and a Nobel eight years after the ridicule. |
 
 
-#### Twelve more, from the same shelf
+#### Eight more, from the same shelf
 
 Attractors, automata, packings and one op-art piece. Every one of them is
 something anyone can look up, which is the rule the whole section follows.
 
 | | |
 |---|---|
-| **Lorenz** | Edward Lorenz, 1963: convection reduced to three equations, and the first picture anybody had of deterministic chaos. Two starts a millionth apart end up on opposite wings. Events nudge the state and the butterfly absorbs them. |
 | **De Jong** | Peter de Jong's attractor. Four sines folded on themselves, and a hundredth of a change to any constant gives a different creature. |
-| **Rose curve** | Guido Grandi named these in 1723: r = cos(k.theta). One number decides how many petals and whether they overlap. One rose per event. |
-| **Koch snowflake** | Helge von Koch, 1904. Replace the middle third of every line with two sides of a triangle and repeat: infinite length around a finite area, which is what a coastline is. |
 | **Moire** | Two ring gratings with their centres apart. The fringes are in neither of them; the eye supplies them. Each event moves the second centre, and a few pixels swings the fringes across the card. |
 | **Metaballs** | Jim Blinn, 1982. Fields that add, so two blobs merge before they touch. The colour is the field-weighted average, so the merge is a colour merge too. |
 | **Apollonian gasket** | Circles packed into the gaps between circles. Apollonius posed it; Descartes gave the relation between four touching curvatures in 1643. An event fills the circle it landed in. |
 | **Maze** | Recursive division: cut the room in two, leave one door, repeat. The oldest maze algorithm there is, and the only one whose output looks built rather than grown. |
-| **Delaunay** | The triangulation dual to a Voronoi diagram. Delaunay proved in 1934 that it is the triangulation whose smallest angle is as large as possible. |
 | **Rule 30** | Wolfram's elementary automaton. Eight bits of rule, no randomness anywhere in it, and a column that passes randomness tests. Events flip cells in the live row. |
 | **Boids** | Craig Reynolds, 1986: keep your distance, match your neighbours, head for the middle of them. Nothing in the code mentions a flock. |
 | **Interruptions** | Vera Molnar, 1968. A field of identical strokes with some removed; she called the removals the piece. Here the feed decides what is missing, so the holes are the data. |
 
-#### Six that are run rather than drawn
+#### Five that are run rather than drawn
 
 These have a state and a rule, and the picture is wherever the rule has got to.
 
@@ -910,9 +896,8 @@ These have a state and a rule, and the picture is wherever the rule has got to.
 | **Random walk** | The drunkard's walk. Robert Brown watched pollen do this in 1827 and could not say why; Einstein explained it in 1905 and got the first good estimate of the size of an atom. |
 | **Blue noise** | Mitchell's best-candidate, 1991: try a handful of positions and keep the one furthest from everything already placed. No clumps and no lattice, which is how a retina arranges its cones. |
 | **Cellular noise** | Steven Worley, 1996. Distance to the nearest of a scatter of points, drawn as a height — a Voronoi diagram seen from the side, and the reason computer-generated stone and cracked mud look the way they do. |
-| **Pursuit** | The mice problem: four mice at the corners of a square, each running at the next. They spiral in, and the path each traces is a logarithmic spiral. |
 
-#### Nine tilings, fractals and figures
+#### Four tilings, fractals and figures
 
 Constructions with a closed form. What the feed turns is a parameter, and the
 figure follows within a frame.
@@ -921,12 +906,7 @@ figure follows within a frame.
 |---|---|
 | **Penrose tiling** | Roger Penrose, 1974: two rhombs that tile the plane and cannot do it periodically. The first proof that so few shapes could, and the reason quasicrystals were believed when Shechtman found them. |
 | **Girih** | The strapwork of Islamic architecture. The craftsmen cutting these in the fifteenth century were building quasiperiodic patterns five hundred years before anyone in Europe proved they existed. |
-| **Sierpinski carpet** | Cut the middle ninth from a square and repeat. Every curve in the plane can be embedded in what is left, which is the property Sierpiński was after and is not obvious from looking. |
-| **Barnsley fern** | Michael Barnsley, 1988. Four affine maps chosen at random with fixed probabilities: twenty-four numbers, and a plant. |
-| **Julia set** | Gaston Julia, 1918, sixty years before anyone could see one. Events move `c`, and a small move is a large change. |
-| **L-system** | Aristid Lindenmayer, 1968: a biologist wanting to describe how algae grow wrote a grammar rather than an equation. |
 | **Ulam spiral** | Stanisław Ulam, 1963, doodling through a dull lecture. The integers on a square spiral, and the primes fall on diagonals nobody has explained. |
-| **Collatz tree** | Halve it if even, treble and add one if odd. Every number tried reaches one and nobody can prove they all do. Grown backwards from one, it is a tree. |
 | **Optical waves** | The op-art wave paintings of the 1960s: bands whose curvature changes across the canvas, so a flat surface appears to turn. |
 
 #### Systems
@@ -938,8 +918,6 @@ disturbing something that then goes on by itself.
 | | |
 |---|---|
 | **Coral** | Diffusion-limited aggregation, after Witten and Sander, 1981. A particle wanders until it touches what is there, and sticks. It is how frost, soot, copper and coral all grow, and the branching is not in the rule — it emerges because the tips reach the wanderers first. |
-| **Sandpile** | Drop grains on a square; any square holding four gives one to each neighbour, which may push those over too. Bak, Tang and Wiesenfeld called it self-organised criticality in 1987: the next grain may do nothing, or set off an avalanche across the whole field. |
-| **Ripple tank** | The wave equation on a grid. Two events near each other interfere, and what is between them is what a ripple tank makes in a lecture theatre. |
 | **Attractor** | Clifford Pickover's map, iterated. Four numbers decide the whole of it, and events move them. |
 | **Voronoi** | Every point takes the colour of the nearest event. The boundary is where the first and second nearest are equally far, so it needs no edge detection — it falls out of the distance. |
 | **Burin** | The canvas engraved, with event density as the tone, cut by the burin engine. |
@@ -971,7 +949,6 @@ the notes. Nobody living is imitated.
 | **Memphis** | Squiggles, confetti and terrazzo chips with black outlines. |
 | **Quiet grid** | After Agnes Martin: hand-wavering pencil lines and bands of colour you feel more than see. |
 | **Drip painting** | After Pollock: flicks of paint that loop, thin and spatter, piling up. |
-| **Temperament** | A picture that reads the rate of events. Quiet, it is a pale grid; busy, the lines loosen; in a rush the paint flies. |
 
 #### Nature and night
 
@@ -1113,13 +1090,6 @@ The full set:
 | **Ripples** | Concentric wavefronts that cross and interfere |
 | **Grid** | An ordered grid that each event knocks out of true, settling back — after Vera Molnár |
 | **Truchet** | Quarter-arc tiles that flip as events land, so unbroken curves wander the field |
-| **Orbits** | Each event is captured into an orbit; small ones fast and close, large ones slow and wide |
-| **Rain** | Events fall, gather speed and break on a surface. The partner to the Water kit |
-| **Radar** | A sweep that lights each event as it passes, so the field is read once a turn |
-| **Spiral** | Events laid on a golden-angle spiral in arrival order, so the sequence becomes the form |
-| **Tree rings** | A clock face: arrival sets the angle, size the distance out |
-| **Terrain** | A ridgeline pushed up by each event and scrolling away, leaving a profile of what happened |
-| **Skyline** | A scrolling record: one bar per event, height by size |
 
 **Thumbnails are drawn, not stored.** Each card runs the real scene against
 synthetic events for a hundred frames, which is what stops a card from ever
@@ -1496,10 +1466,10 @@ finish: **Dither**.
 
 ```js
 import { playScene, inkSet, paletteFromInks, variedParams, SCENES } from './src/index.js';
-const player = playScene(ctx, 'whorl', {
+const player = playScene(ctx, 'hatched', {
   w: 800, h: 1000, seed: 4242,
   palette: paletteFromInks(inkSet(7, 4)),
-  params: variedParams(SCENES.whorl, 4242),
+  params: variedParams(SCENES.hatched, 4242),
   onArrive: (p) => { /* one event, to be heard */ },
 });
 while (!player.develop(20)) {}   // fast-forward, in chunks

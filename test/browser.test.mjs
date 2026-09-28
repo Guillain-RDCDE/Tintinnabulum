@@ -533,7 +533,8 @@ const twoPanel = await page.evaluate(async () => {
   mix.dispatchEvent(new Event('input'));
   await new Promise((r) => setTimeout(r, 200));
   const sink = window.son.sinks.find((s) => s.particles);
-  const state = { second: sink.secondName, blend: sink.blend, mix: sink.mix, scenes, note: document.querySelector('#second-note').textContent };
+  const { SCENE_NAMES } = await import('../src/index.js');
+  const state = { second: sink.secondName, blend: sink.blend, mix: sink.mix, scenes, catalogue: SCENE_NAMES.length, note: document.querySelector('#second-note').textContent };
   sel.value = 'none';
   sel.dispatchEvent(new Event('change'));
   return state;
@@ -544,10 +545,14 @@ await page.evaluate((was) => {
   sink.setPalette(was.palette);
 }, doubled.was);
 
+// Counted against the catalogue rather than against a number typed in when the
+// catalogue happened to be larger: the picker offers every scene plus "none",
+// and a threshold of "more than a hundred" silently became a test of how many
+// scenes there were on the day it was written.
 ok('the panel offers every scene as a second, and seven ways to mix them',
-   twoPanel.scenes > 100 && twoPanel.second === 'girih' && twoPanel.blend === 'difference' &&
+   twoPanel.scenes === twoPanel.catalogue + 1 && twoPanel.second === 'girih' && twoPanel.blend === 'difference' &&
    Math.abs(twoPanel.mix - 0.35) < 0.01 && /Difference/.test(twoPanel.note),
-   JSON.stringify({ scenes: twoPanel.scenes, second: twoPanel.second, blend: twoPanel.blend, mix: twoPanel.mix }));
+   JSON.stringify({ options: twoPanel.scenes, scenes: twoPanel.catalogue, second: twoPanel.second, blend: twoPanel.blend, mix: twoPanel.mix }));
 
 // --- the picture can hear the piece ----------------------------------------
 // Two scenes draw the sound rather than the events, which only works if the
@@ -2947,12 +2952,12 @@ const beatsDip = await page.evaluate(async () => {
   await new Promise((r) => setTimeout(r, 200));
   sink.fadeScene('hilbert', 6000);
   await new Promise((r) => setTimeout(r, 400));
-  sink.setScene('threads');
+  sink.setScene('truchet');
   await new Promise((r) => setTimeout(r, 900));
   return { scene: sink.sceneName, fading: sink.sceneFading };
 });
 ok('a chosen visualisation cancels a dip already under way',
-   beatsDip.scene === 'threads' && beatsDip.fading === false,
+   beatsDip.scene === 'truchet' && beatsDip.fading === false,
    `${beatsDip.scene}, fading=${beatsDip.fading}`);
 
 const sceneRotateUi = await page.evaluate(async () => {
@@ -3122,7 +3127,7 @@ ok('there is a visible source link too', srcHref === REPO, String(srcHref));
 // also why this block chooses its own scene instead of inheriting whatever the
 // previous one left behind -- a choice that survives a reload.
 const pickerOff = await page.evaluate(async () => {
-  document.querySelector('[data-scene="threads"]').click();
+  document.querySelector('[data-scene="truchet"]').click();
   await new Promise((r) => setTimeout(r, 100));
   return {
     pe: getComputedStyle(document.querySelector('#shapes')).pointerEvents,
@@ -4007,12 +4012,12 @@ ok('every scene is a tool', pgIndex.cards === pgIndex.scenes, `${pgIndex.cards} 
 ok('the new tools are marked as new', pgIndex.fresh === 'growth,physarum,ribbons,roots,stipple,topo', pgIndex.fresh);
 ok('the tools in view are painted', pgPainted >= 8, `${pgPainted} painted`);
 
-await pg.keyboard.type('whorl');
+await pg.keyboard.type('hatchwork');
 const pgFiltered = await pg.evaluate(() => [...document.querySelectorAll('.st-card')].filter((c) => !c.hidden).map((c) => c.dataset.tool));
-ok('typing filters the tools', pgFiltered.length === 1 && pgFiltered[0] === 'whorl', pgFiltered.join(','));
+ok('typing filters the tools', pgFiltered.length === 1 && pgFiltered[0] === 'hatched', pgFiltered.join(','));
 await pg.keyboard.press('Enter');
 await developed();
-ok('Enter opens the first tool', await pg.evaluate(() => location.hash.startsWith('#create/whorl/') && !document.querySelector('#st-bench').hidden));
+ok('Enter opens the first tool', await pg.evaluate(() => location.hash.startsWith('#create/hatched/') && !document.querySelector('#st-bench').hidden));
 
 // Still, so that pictures can be compared.
 await pg.keyboard.press('p');
@@ -4032,21 +4037,33 @@ const picBack = await picture();
 ok('stepping back finds the same picture',
    (await pg.evaluate(() => window.son.studio.state.seed)) === pgSeedA && apart(picBack, picA) < 1, `${apart(picBack, picA).toFixed(3)} apart`);
 
+// The tool on the bench, whatever it is, and its first dial by name rather
+// than a dial one particular scene happened to have. Naming one meant the
+// check stopped compiling the day that scene came off the wall.
 const pgDials = await pg.evaluate(async () => {
   const { SCENES } = await import('../src/index.js');
+  const tool = window.son.studio.state.tool;
   const inputs = [...document.querySelectorAll('#st-dials input[type="range"]')];
-  const twist = document.querySelector('#st-dial-twist');
-  twist.value = String(Number(twist.max));
-  twist.dispatchEvent(new Event('input', { bubbles: true }));
-  twist.dispatchEvent(new Event('change', { bubbles: true }));
-  return { count: inputs.length, expected: Object.keys(SCENES.whorl.params).length, value: window.son.studio.state.params.twist, max: Number(twist.max) };
+  const first = document.querySelector('#st-dials input[type="range"][id^="st-dial-"]');
+  const dial = first.id.replace('st-dial-', '');
+  first.value = String(Number(first.max));
+  first.dispatchEvent(new Event('input', { bubbles: true }));
+  first.dispatchEvent(new Event('change', { bubbles: true }));
+  return {
+    tool, dial,
+    count: inputs.length,
+    expected: Object.keys(SCENES[tool].params).length,
+    value: window.son.studio.state.params[dial],
+    max: Number(first.max),
+  };
 });
 await developed();
 const picTwist = await picture();
 ok('every dial of the tool is on the bench', pgDials.count === pgDials.expected, `${pgDials.count} of ${pgDials.expected}`);
 ok('a dial changes the picture and is written into the address',
    pgDials.value === pgDials.max && apart(picTwist, picA) > 2 &&
-   (await pg.evaluate(() => /[?&]d=[^&]*twist:/.test(decodeURIComponent(location.hash)))));
+   (await pg.evaluate((d) => new RegExp(`[?&]d=[^&]*${d}:`).test(decodeURIComponent(location.hash)), pgDials.dial)),
+   `${pgDials.tool}.${pgDials.dial} = ${pgDials.value}`);
 
 const pgInks = await pg.evaluate(async () => {
   const { isViolet, paletteIsViolet, inksOfPalette } = await import('../src/index.js');
@@ -4076,7 +4093,24 @@ ok('the palettes offered include none with violet in them', pgInks.offered > 20 
 ok('a palette sets the inks, and the address carries them', pgInks.marine && pgInks.address);
 
 // Dither prints with the palette's own inks and nothing else.
-await pg.evaluate(() => document.querySelector('#st-finishes [data-finish="dither"]').click());
+//
+// With the frame taken off first. A mat is a physical object around the
+// print, not part of it, so finish.js draws it after the finish and in its
+// own two greys -- correctly. This check reads the whole bench canvas, so
+// with a mat on it counted the frame's greys as ink the finish had invented,
+// and which mat the bench starts with depends on what the Picture panel was
+// last set to, several hundred checks earlier.
+// The frame is put back afterwards, because "no frame" is the one frame the
+// address does not carry: a link built while it was off opens somewhere else
+// with whatever frame that page had stored, and the check below that a link
+// draws the same picture then compares a matted print against a bare one.
+const pgMatWas = await pg.evaluate(() => {
+  const on = document.querySelector('#st-mat button[aria-pressed="true"]');
+  const none = document.querySelector('#st-mat button[data-mat="none"]');
+  if (none) none.click();
+  document.querySelector('#st-finishes [data-finish="dither"]').click();
+  return on ? on.dataset.mat : 'none';
+});
 await developed();
 const pgDither = await pg.evaluate(async () => {
   const { paletteFromInks } = await import('../src/index.js');
@@ -4094,7 +4128,12 @@ const pgDither = await pg.evaluate(async () => {
 });
 ok('the dither finish prints in the inks alone', pgDither.finish === 'dither' && pgDither.colours >= 2 && pgDither.stray === 0,
    JSON.stringify(pgDither));
-await pg.evaluate(() => document.querySelector('#st-finishes [data-finish="none"]').click());
+await pg.evaluate((mat) => {
+  document.querySelector('#st-finishes [data-finish="none"]').click();
+  const back = document.querySelector(`#st-mat button[data-mat="${mat}"]`);
+  if (back) back.click();
+}, pgMatWas);
+await developed();
 
 // A paper on the bench, and in the address, so a link keeps it.
 await pg.evaluate(() => document.querySelector('#st-grounds [data-ground="cotton"]').click());
@@ -4155,8 +4194,14 @@ await pg.selectOption('#st-png-size', '1080');
 const [pngDownload] = await Promise.all([pg.waitForEvent('download', { timeout: 60000 }), pg.click('#st-export-png')]);
 const { readFile } = await import('node:fs/promises');
 const pngBytes = await readFile(await pngDownload.path());
+// Named for whichever tool is on the bench, and checked without building a
+// pattern out of a template literal: `\d` inside one is just `d`, so the
+// expression reads as a regular expression and matches nothing.
+const pngName = pngDownload.suggestedFilename();
+const pngNamed = pngName.startsWith(`tintinnabulum-${pgDials.tool}-`) &&
+  /^\d+\.png$/.test(pngName.slice(`tintinnabulum-${pgDials.tool}-`.length));
 ok('the picture downloads as a PNG at the size asked for',
-   /^tintinnabulum-whorl-\d+\.png$/.test(pngDownload.suggestedFilename()) && pngBytes.slice(1, 4).toString() === 'PNG' &&
+   pngNamed && pngBytes.slice(1, 4).toString() === 'PNG' &&
    pngBytes.readUInt32BE(16) === 1080 && pngBytes.length > 5000,
    `${pngDownload.suggestedFilename()}, ${pngBytes.readUInt32BE(16)}x${pngBytes.readUInt32BE(20)}, ${pngBytes.length} bytes`);
 

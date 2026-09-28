@@ -700,7 +700,7 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   const mute = Object.entries(SCENES).filter(([, s]) => !s.note || !s.how).map(([n]) => n);
   ok('every scene says what it looks like, and how it is made', mute.length === 0, mute.join(', ') || 'all described');
   ok('the demonstrations sit together on the last shelf',
-     ['ulam', 'collatz', 'rule30'].every((n) => SCENES[n].shelf === 'Forms and numbers') &&
+     ['ulam', 'rule30'].every((n) => SCENES[n].shelf === 'Forms and numbers') &&
      SCENE_SHELVES[SCENE_SHELVES.length - 2] === 'Forms and numbers');
   const crowded = SCENE_SHELVES.filter((sh) => Object.values(SCENES).filter((x) => x.shelf === sh).length > 20);
   ok('no shelf is a wall of more than twenty', crowded.length === 0, crowded.join(', ') || `${SCENE_SHELVES.length - 1} shelves`);
@@ -861,7 +861,7 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('a variation never switches a dial off', switchedOff === 0, `switchedOff=${switchedOff}`);
   ok('the same number varies the dials the same way', unstable === 0);
 
-  for (const name of ['aura', 'whorl', 'benday', 'rise', 'frost', 'fracture', 'asemic', 'collapse', 'spectrogram', 'groove']) {
+  for (const name of ['aura', 'worlds', 'benday', 'rise', 'frost', 'fracture', 'asemic', 'collapse', 'spectrogram', 'groove']) {
     const s = m.SCENES[name];
     ok(`the new scene "${name}" is catalogued and has something to say`,
        s && s.shelf !== 'Other' && s.note.length > 30 && s.how.length > 60 && typeof s.frame === 'function', s ? s.shelf : 'missing');

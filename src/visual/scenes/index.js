@@ -29,8 +29,6 @@ import { rngOf } from '../inks.js';
 import { unitPosition } from '../../core/event.js';
 import { MARK_SCENES } from './marks.js';
 import { FIELD_SCENES } from './fields.js';
-import { STRUCTURE_SCENES } from './structures.js';
-import { PHYSICAL_SCENES } from './physical.js';
 import { GENERATIVE_SCENES } from './generative.js';
 import { GEOMETRY_SCENES } from './geometry.js';
 import { RECURSIVE_SCENES } from './recursive.js';
@@ -60,8 +58,6 @@ export { noise2 } from './noise.js';
 export const SCENES = {
   ...MARK_SCENES,
   ...FIELD_SCENES,
-  ...STRUCTURE_SCENES,
-  ...PHYSICAL_SCENES,
   ...GENERATIVE_SCENES,
   ...GEOMETRY_SCENES,
   ...RECURSIVE_SCENES,

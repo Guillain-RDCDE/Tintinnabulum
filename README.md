@@ -28,9 +28,9 @@ wall. Any work in the Gallery has a **Remix** that opens it there, and what you
 hang comes back to the Gallery, in a room of your own.
 
 <p align="center">
-  <img src=".github/create-whorl.png" width="100%" alt="The Create tab: Whorl, variation 777, striped bands twisted into a whirlpool, with its dials, inks, frame and export around it">
+  <img src=".github/create-opwaves.png" width="100%" alt="The Create tab: Optical waves, variation 777, bands of amber and blue swelling across a dark ground, with its dials, inks, frame and export around it">
 </p>
-<p align="center"><sub><i>Whorl</i>, variation 777, on the Create bench. Each whirlpool is one event.</sub></p>
+<p align="center"><sub><i>Optical waves</i>, variation 777, on the Create bench. Each event swells a band.</sub></p>
 
 > *tintinnabulum* — Latin, a small bell.
 

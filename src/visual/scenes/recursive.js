@@ -1,8 +1,7 @@
 // Things that build themselves: recursion, packing and tiling.
 //
-// The family the drawing machines are not. A spirograph traces one curve and
-// stops; these have no natural length, and what they draw at minute ten is not
-// what they drew at minute one. That is the property worth having when the pen
+// A pen that traces one curve and stops has a natural length; these have none,
+// and what they draw at minute ten is not what they drew at minute one. That is the property worth having when the pen
 // is a live feed rather than a hand, and it is the same reason Truchet is the
 // scene people stop on.
 //

@@ -8,7 +8,7 @@
 // bathroom-tile grey. All three passed their tests.
 //
 //   node tools/contact-sheet.mjs                     every scene
-//   node tools/contact-sheet.mjs maurer guilloche    only these
+//   node tools/contact-sheet.mjs frost voronoi       only these
 //   node tools/contact-sheet.mjs --palette ember --out sheet.png
 //
 // Each tile is a real CanvasSink fed the same seeded events, so two tiles

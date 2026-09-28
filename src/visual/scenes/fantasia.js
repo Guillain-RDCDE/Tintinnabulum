@@ -65,60 +65,6 @@ function seeded(seed) {
 }
 
 export const FANTASIA_SCENES = {
-  // --- attractors ---------------------------------------------------------
-  lorenz: {
-    label: 'Lorenz',
-    positional: false,
-    preview: { dt: 30, frames: 150 },
-    note: 'Edward Lorenz, 1963: convection reduced to three equations, and the first picture anybody had of deterministic chaos. Two starts a millionth apart end up on opposite wings. Each event nudges the state, and the butterfly absorbs it within a second.',
-    params: {
-      rho: { label: 'Rho', min: 14, max: 60, step: 0.5, default: 28 },
-      speed: { label: 'Speed', min: 0.2, max: 4, step: 0.1, default: 1.2 },
-      hold: { label: 'How long it holds', min: 0, max: 1, step: 0.02, default: 0.97 },
-    },
-    init(api) {
-      const s = api.scene;
-      s.x = 0.1; s.y = 0; s.z = 20;
-      s.bufClean = false;
-      s.tint = null;
-    },
-    event(p, api) {
-      const s = api.scene;
-      // A nudge, not a jump: the point stays on the attractor and the feed
-      // shows as a change of wing rather than as a mark.
-      s.x += (p.x / api.w - 0.5) * 4;
-      s.z += (p.y / api.h - 0.5) * 4;
-      s.tint = p.color;
-    },
-    frame(ctx, api) {
-      const s = api.scene;
-      const cv = scratch(api);
-      const g = bufferFor(api);
-      if (!g) return;
-      const rho = api.param('rho');
-      const sigma = 10;
-      const beta = 8 / 3;
-      const steps = Math.min(3000, Math.round(600 * api.param('speed')));
-      const h = 0.004;
-      const scale = Math.min(api.w, api.h) / 62;
-      const cx = api.w / 2;
-      const cy = api.h * 0.62;
-      g.fillStyle = s.tint || api.palette.user;
-      g.globalAlpha = 0.5;
-      for (let i = 0; i < steps; i++) {
-        const dx = sigma * (s.y - s.x);
-        const dy = s.x * (rho - s.z) - s.y;
-        const dz = s.x * s.y - beta * s.z;
-        s.x += dx * h; s.y += dy * h; s.z += dz * h;
-        // Seen from the front: x across, z up, which is the view the shape is
-        // always drawn in and the only one where both wings are open.
-        g.fillRect(cx + s.x * scale, cy - (s.z - 25) * scale, 1, 1);
-      }
-      g.globalAlpha = 1;
-      fade(g, cv, api.param('hold'), api.dt);
-      ctx.drawImage(cv, 0, 0, api.w, api.h);
-    },
-  },
 
   dejong: {
     label: 'De Jong',
@@ -167,113 +113,6 @@ export const FANTASIA_SCENES = {
       g.globalAlpha = 1;
       fade(g, cv, api.param('hold'), api.dt);
       ctx.drawImage(cv, 0, 0, api.w, api.h);
-    },
-  },
-
-  // --- curves -------------------------------------------------------------
-  rose: {
-    label: 'Rose curve',
-    note: 'Guido Grandi named these in 1723: r = cos(k.theta), one equation whose single number k decides how many petals there are and whether they overlap. An odd k gives k petals, an even one gives twice as many, and a fraction gives a figure that takes several turns to close.',
-    params: {
-      k: { label: 'Petals (k)', min: 1, max: 12, step: 0.25, default: 5 },
-      turns: { label: 'Turns', min: 1, max: 12, step: 1, default: 4 },
-      weight: { label: 'Line weight', min: 0.4, max: 4, step: 0.1, default: 1.3 },
-    },
-    frame(ctx, api) {
-      const k = api.param('k');
-      const turns = Math.round(api.param('turns'));
-      const cx = api.w / 2;
-      const cy = api.h / 2;
-      const R = Math.min(api.w, api.h) * 0.44;
-      ctx.lineWidth = api.param('weight');
-      ctx.lineCap = 'round';
-      const marks = api.particles.slice(-cap(api, 0.3));
-      // One rose per event, each a little further round and a little smaller,
-      // so a busy feed is a bouquet rather than one curve redrawn.
-      marks.forEach((p, i) => {
-        const age = (api.now - p.born) / Math.max(1, p.life);
-        if (age >= 1) return;
-        const scale = R * (0.25 + 0.75 * (p.r / Math.max(1, R)));
-        const spin = (i * 0.21) + api.now / 9000;
-        ctx.globalAlpha = (1 - age) * 0.75;
-        ctx.strokeStyle = p.color;
-        ctx.beginPath();
-        const steps = 220;
-        for (let j = 0; j <= steps; j++) {
-          const t = (j / steps) * TAU * turns;
-          const r = Math.cos(k * t) * scale;
-          const x = cx + Math.cos(t + spin) * r;
-          const y = cy + Math.sin(t + spin) * r;
-          if (j === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.stroke();
-      });
-      ctx.globalAlpha = 1;
-    },
-  },
-
-  koch: {
-    label: 'Koch snowflake',
-    positional: false,
-    note: 'Helge von Koch, 1904: replace the middle third of every line with two sides of a triangle, and repeat. The result has infinite length around a finite area, which is the property a coastline has and the reason this was drawn in the first place. Events raise the order.',
-    params: {
-      order: { label: 'Order', min: 1, max: 6, step: 1, default: 4 },
-      weight: { label: 'Line weight', min: 0.4, max: 4, step: 0.1, default: 1.2 },
-      spin: { label: 'Turn', min: 0, max: 40, step: 1, default: 6 },
-    },
-    frame(ctx, api) {
-      const order = Math.round(api.param('order'));
-      const cx = api.w / 2;
-      const cy = api.h / 2;
-      const R = Math.min(api.w, api.h) * 0.42;
-      const spin = (api.now / 100000) * api.param('spin');
-      // Three sides of an equilateral triangle, each replaced by a Koch curve.
-      let pts = [];
-      for (let i = 0; i < 3; i++) {
-        const a = spin + (i / 3) * TAU - Math.PI / 2;
-        pts.push([cx + Math.cos(a) * R, cy + Math.sin(a) * R]);
-      }
-      pts.push(pts[0]);
-      for (let step = 0; step < order; step++) {
-        const next = [pts[0]];
-        for (let i = 0; i < pts.length - 1; i++) {
-          const [x1, y1] = pts[i];
-          const [x2, y2] = pts[i + 1];
-          const dx = (x2 - x1) / 3;
-          const dy = (y2 - y1) / 3;
-          const ax = x1 + dx;
-          const ay = y1 + dy;
-          const bx = x1 + 2 * dx;
-          const by = y1 + 2 * dy;
-          // The apex: the middle third rotated sixty degrees outward.
-          const px = ax + dx * Math.cos(-Math.PI / 3) - dy * Math.sin(-Math.PI / 3);
-          const py = ay + dx * Math.sin(-Math.PI / 3) + dy * Math.cos(-Math.PI / 3);
-          next.push([ax, ay], [px, py], [bx, by], [x2, y2]);
-        }
-        pts = next;
-        if (pts.length > 12000) break;
-      }
-      ctx.lineWidth = api.param('weight');
-      ctx.strokeStyle = api.palette.default;
-      ctx.globalAlpha = 0.9;
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
-      ctx.stroke();
-
-      // Events sit on the edge, at the point of it nearest where they landed.
-      for (const p of api.particles.slice(-cap(api, 0.5))) {
-        const age = (api.now - p.born) / Math.max(1, p.life);
-        if (age >= 1) continue;
-        const idx = Math.abs(Math.round(p.x * 7919 + p.y * 104729)) % pts.length;
-        ctx.globalAlpha = (1 - age) * 0.85;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(pts[idx][0], pts[idx][1], Math.max(1.5, p.r * 0.16), 0, TAU);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
     },
   },
 
@@ -532,65 +371,6 @@ export const FANTASIA_SCENES = {
     },
   },
 
-  delaunay: {
-    label: 'Delaunay',
-    positional: false,
-    note: 'The triangulation dual to a Voronoi diagram: join two events when their territories share a border. Boris Delaunay proved in 1934 that the result is the triangulation whose smallest angle is as large as possible, which is why it is the one every mesh generator wants.',
-    params: {
-      weight: { label: 'Line weight', min: 0.3, max: 3, step: 0.1, default: 1 },
-      fill: { label: 'Fill', min: 0, max: 1, step: 0.02, default: 0.35 },
-      points: { label: 'How many events', min: 6, max: 90, step: 1, default: 36 },
-    },
-    frame(ctx, api) {
-      const marks = api.particles.slice(-Math.round(api.param('points')));
-      if (marks.length < 3) return;
-      // Each point drifts a little on its own, so the triangles keep flipping
-      // and re-forming between events instead of freezing into a diagram.
-      const t = api.now / 1000;
-      const pts = marks.map((p) => {
-        const k = p.pick !== undefined ? p.pick : ((p.x * 0.013 + p.y * 0.007) % 1);
-        return [p.x + Math.sin(t * 0.5 + k * 20) * 9, p.y + Math.cos(t * 0.43 + k * 31) * 9, p];
-      });
-      // The naive O(n^3) construction: a triangle is Delaunay when no other
-      // point is inside its circumcircle. At forty points that is sixty
-      // thousand tests a frame, which is nothing, and the alternative is
-      // several hundred lines of divide and conquer.
-      const n = pts.length;
-      const fillA = api.param('fill');
-      ctx.lineWidth = api.param('weight');
-      for (let i = 0; i < n; i++) {
-        for (let j = i + 1; j < n; j++) {
-          for (let k = j + 1; k < n; k++) {
-            const c = circumcircle(pts[i], pts[j], pts[k]);
-            if (!c) continue;
-            let empty = true;
-            for (let m = 0; m < n; m++) {
-              if (m === i || m === j || m === k) continue;
-              const dx = pts[m][0] - c.x;
-              const dy = pts[m][1] - c.y;
-              if (dx * dx + dy * dy < c.r2 - 0.01) { empty = false; break; }
-            }
-            if (!empty) continue;
-            ctx.beginPath();
-            ctx.moveTo(pts[i][0], pts[i][1]);
-            ctx.lineTo(pts[j][0], pts[j][1]);
-            ctx.lineTo(pts[k][0], pts[k][1]);
-            ctx.closePath();
-            if (fillA > 0.01) {
-              ctx.globalAlpha = fillA * 0.5;
-              ctx.fillStyle = pts[i][2].color;
-              ctx.fill();
-            }
-            ctx.globalAlpha = 0.7;
-            ctx.strokeStyle = api.palette.default;
-            ctx.stroke();
-          }
-        }
-      }
-      ctx.globalAlpha = 1;
-    },
-  },
-
   // --- rules --------------------------------------------------------------
   rule30: {
     label: 'Rule 30',
@@ -812,21 +592,6 @@ export const FANTASIA_SCENES = {
     },
   },
 };
-
-/** The circle through three points, or null if they are in a line. */
-function circumcircle(a, b, c) {
-  const ax = a[0], ay = a[1], bx = b[0], by = b[1], cx = c[0], cy = c[1];
-  const d = 2 * (ax * (by - cy) + bx * (cy - ay) + cx * (ay - by));
-  if (Math.abs(d) < 1e-6) return null;
-  const a2 = ax * ax + ay * ay;
-  const b2 = bx * bx + by * by;
-  const c2 = cx * cx + cy * cy;
-  const x = (a2 * (by - cy) + b2 * (cy - ay) + c2 * (ay - by)) / d;
-  const y = (a2 * (cx - bx) + b2 * (ax - cx) + c2 * (bx - ax)) / d;
-  const dx = ax - x;
-  const dy = ay - y;
-  return { x, y, r2: dx * dx + dy * dy };
-}
 
 /** `rgb(r, g, b)` or `#rrggbb` to a triple. */
 function parseRgb(c) {
