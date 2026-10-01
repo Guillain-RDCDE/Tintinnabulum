@@ -3993,11 +3993,25 @@ const picture = (p = pg) => p.evaluate(() => {
 });
 /** Mean difference per channel between two fingerprints, 0 to 255. */
 const apart = (a, b) => a.cells.reduce((s, v, i) => s + Math.abs(v - b.cells[i]), 0) / a.cells.length;
-/** Wait until the picture on the bench has finished developing. */
-const developed = (p = pg) => p.waitForFunction(() => {
-  const st = window.son.studio;
-  return st.open && st.player && st.player.developed && !document.querySelector('#st-frame').classList.contains('developing');
-}, null, { timeout: 30000 });
+/**
+ * Wait until the picture on the bench has finished developing.
+ *
+ * Two animation frames first: a change on the bench schedules its rebuild for
+ * the next frame, and until then the previous picture still reads as
+ * developed. On a loaded machine that frame comes late, and a check that
+ * looked at once was reading the old picture -- a 16:9 frame measured at 4:5.
+ */
+const developed = async (p = pg) => {
+  // Bounded: a page in the background gets no animation frames at all.
+  await p.evaluate(() => new Promise((r) => {
+    requestAnimationFrame(() => requestAnimationFrame(r));
+    setTimeout(r, 500);
+  }));
+  return p.waitForFunction(() => {
+    const st = window.son.studio;
+    return st.open && st.player && st.player.developed && !document.querySelector('#st-frame').classList.contains('developing');
+  }, null, { timeout: 30000 });
+};
 const bench = (p = pg) => p.evaluate(() => ({
   open: window.son.studio.open,
   creating: document.body.classList.contains('creating'),
@@ -4104,7 +4118,12 @@ const pgDials = await pg.evaluate(async () => {
   const inputs = [...document.querySelectorAll('#st-dials input[type="range"]')];
   const first = document.querySelector('#st-dials input[type="range"][id^="st-dial-"]');
   const dial = first.id.replace('st-dial-', '');
-  first.value = String(Number(first.max));
+  // To the far end from where the variation left it. A variation number
+  // turns the dials too, and one in six left this one already at its top,
+  // where "turn it to the top" changed nothing and the check failed on the
+  // seed rather than on the bench.
+  const to = Number(first.value) >= Number(first.max) ? Number(first.min) : Number(first.max);
+  first.value = String(to);
   first.dispatchEvent(new Event('input', { bubbles: true }));
   first.dispatchEvent(new Event('change', { bubbles: true }));
   return {
@@ -4112,7 +4131,7 @@ const pgDials = await pg.evaluate(async () => {
     count: inputs.length,
     expected: Object.keys(SCENES[tool].params).length,
     value: window.son.studio.state.params[dial],
-    max: Number(first.max),
+    max: to,
   };
 });
 await developed();
