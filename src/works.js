@@ -346,6 +346,23 @@ export const WORKS = {
     cartel: 'A landscape drawn with a hundred level lines and nothing else. Where the ground rises the line is lifted with it and hides the lines behind, so a block is a block and its near face is a dark wall of the lines climbing it. Every event raises something -- a cube, a faceted crystal, a rounded mass -- and when the sheet is crowded the oldest sink back into the plain. Clay and wood, for the pen setting down.',
   }),
 
+  // Three pieces for the pen: discs in two inks, a woven sheet, and bells
+  // struck in grain.
+  twopens: work('Daylight', 'calm', 'Two pens on a grid', {
+    scene: 'orbs', palette: 'newsprint', kit: 'glassy', space: 'room',
+    ground: 'hotpress', mat: 'gallery', pace: UNHURRIED,
+    cartel: 'A plotter with a black pen and a red one, and a few construction lines ruled across the sheet. Every event is a disc hung on a line or a crossing: small ones crossed into a red mesh, large ones ruled level in black, sometimes cut in half by the line they hang from. When the piece is sounding the pen trembles with the note.',
+  }),
+  woven: work('Daylight', 'lively', 'Woven sheet', {
+    scene: 'tartan', palette: 'bone', kit: 'marimba', space: 'room',
+    mat: 'gallery', pace: REAL_TIME,
+    cartel: 'Columns and rows of unequal width printed in one black, each cell the crossing of the two -- diagonal ruling over level lines comes out as a mesh, black over anything stays black -- and some cells punched through with a disc. A small event punches a disc, a large one re-dyes a whole column or row. A marimba, dry and quick.',
+  }),
+  peals: work('Dawn', 'calm', 'Peals in grain', {
+    scene: 'peals', palette: 'newsprint', kit: 'handbells', space: 'hall',
+    ground: 'coldpress', mat: 'gallery', pace: SLOW,
+    cartel: 'Every event a bell, and every bell a cloud of red grain: rings dense round a bright centre, thinning outwards to dust on the paper. A high note rings in close rings and a low one in wide ones; the sheet fades back a little with every peal, so the old ones are always under the new. Handbells in a hall.',
+  }),
   arrival: work('Night', 'lively', 'Arrival by night', {
     scene: 'nightflight', palette: 'amber', kit: 'airports', space: 'hall',
     mat: 'gallery', pace: UNHURRIED,

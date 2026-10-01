@@ -42,6 +42,14 @@ const SETTLE = Number(flag('settle', 4200));
 const COUNT = Number(flag('count', 110));
 // Small enough that every renderer in a batch gets its frames.
 const BATCH = Number(flag('batch', 6));
+// Dials to turn on every tile, as name=value pairs: `--set figure=1` shows a
+// scene's second sheet, which the defaults never would.
+const SET = Object.fromEntries(
+  String(flag('set', ''))
+    .split(',')
+    .filter((kv) => kv.includes('='))
+    .map((kv) => [kv.split('=')[0].trim(), Number(kv.split('=')[1])])
+);
 
 const port = Number(flag('port', 8894));
 const { srv, base } = await startServer(port);
@@ -101,6 +109,7 @@ try {
         // it was measuring look worse than it is.
         new CanvasSink(canvases.get(name), {
           palette: opt.palette, scene: name, showLabels: false, showHud: false,
+          params: { [name]: opt.set },
         }).start()
       );
       const mapper = new Mapper({ mode: 'adaptive' });
@@ -129,7 +138,7 @@ try {
       await run(chosen.slice(i, i + opt.batch));
     }
     return chosen;
-  }, { palette: PALETTE, only, count: COUNT, settle: SETTLE, batch: BATCH });
+  }, { palette: PALETTE, only, count: COUNT, settle: SETTLE, batch: BATCH, set: SET });
 
   const shot = await page.screenshot({ fullPage: true });
   await writeFile(OUT, shot);

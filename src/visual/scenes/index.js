@@ -52,6 +52,7 @@ import { PAPER_SCENES } from './papers.js';
 import { DRAWN_SCENES } from './drawn.js';
 import { WORLD_SCENES } from './worlds.js';
 import { RULED_SCENES } from './ruled.js';
+import { PLOTTED_SCENES } from './plotted.js';
 import { applyCatalogue, SCENE_SHELVES, shelfOf as shelfIn } from './catalogue.js';
 
 export { noise2 } from './noise.js';
@@ -82,6 +83,7 @@ export const SCENES = {
   ...DRAWN_SCENES,
   ...WORLD_SCENES,
   ...RULED_SCENES,
+  ...PLOTTED_SCENES,
 };
 
 // Presentation is applied once, here, across every family at once. See

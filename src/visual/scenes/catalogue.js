@@ -145,6 +145,9 @@ export const CATALOGUE = {
   lattice: S('Paper and print', 'A fine screen of thousands of small black bars whose size runs in waves along the rows and down the columns, so the wall seems to move as you look.'),
   desordres: S('Paper and print', 'A plotter drawing the same square over and over on a grid of nine, each pass a little turned and a little moved, so a busy cell becomes a scribble with a square in it.'),
   scanlines: S('Paper and print', 'A landscape drawn with nothing but level lines: where the ground rises the line is lifted and hides what lies behind, so every event stands up as a cube, a faceted crystal or a rounded mass.'),
+  orbs: S('Paper and print', 'Discs plotted in a black pen and a red one, ruled or crossed into a mesh, hung on a few construction lines or set over a horizon of reeds and water; where two overlap, a texture neither pen drew.'),
+  tartan: S('Paper and print', 'A sheet woven from columns and rows of unequal width, each cell the crossing of the two -- ruling over ruling, black over anything -- cut apart in black on cream, or laid edge to edge in flat colour, and punched through with discs.'),
+  peals: S('Paper and print', 'Every event a bell struck in a cloud of red dots: rings dense round a bright centre, thinning to dust on the paper, close for a high note and wide for a low one.'),
   harmonograph: S('Forms and numbers', 'A pendulum pen that draws while it slows, and stops when the drawing is finished.'),
   ulam: S('Forms and numbers', 'Whole numbers laid on a spiral, and the prime ones lining up on diagonals nobody can explain.'),
 };

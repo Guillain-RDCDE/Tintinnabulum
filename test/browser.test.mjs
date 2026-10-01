@@ -713,6 +713,7 @@ const answers = await page.evaluate(async () => {
   const out = {};
   // The nine newest, and the twenty-one that were repaired.
   for (const name of [
+    'orbs', 'tartan', 'peals',
     'scanlines', 'spindles', 'lattice', 'desordres',
     'worlds', 'sorts', 'nodes', 'skein', 'comb', 'emergence', 'cutpaper', 'planes', 'hatched',
     'reaction', 'dragon', 'quasicrystal', 'moire', 'rule30', 'langton', 'mobile', 'lavalamp',
