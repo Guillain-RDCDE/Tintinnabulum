@@ -358,6 +358,23 @@ export const WORKS = {
     mat: 'gallery', pace: REAL_TIME,
     cartel: 'Columns and rows of unequal width printed in one black, each cell the crossing of the two -- diagonal ruling over level lines comes out as a mesh, black over anything stays black -- and some cells punched through with a disc. A small event punches a disc, a large one re-dyes a whole column or row. A marimba, dry and quick.',
   }),
+  // Three pieces on a lattice: a knitting chart, a cut sheet of meshes, and a
+  // family tree on squared paper.
+  stitches: work('Daylight', 'calm', 'Dropped stitches', {
+    scene: 'lanes', palette: 'bone', kit: 'musicbox', space: 'room',
+    mat: 'gallery', pace: UNHURRIED,
+    cartel: 'Pale bars ruled across a black field like the rows of a knitting chart, and wherever an event falls a stitch dropped half a bar, a notch above and a tooth below; a large event drops a staircase of them. When the field is full the oldest are picked up again. A music box, one pin a stitch.',
+  }),
+  cutmeshes: work('Dusk', 'calm', 'Cut meshes', {
+    scene: 'meshes', palette: 'linen', kit: 'koto', space: 'room',
+    ground: 'coldpress', mat: 'gallery', pace: SLOW,
+    cartel: 'A square cut into blocks and cut again, each block ruled with a mesh of its own -- coarse, fine, crossed into stars -- over tints of sand, stone and umber, with now and then a small square of the accent. Every event cuts the block it falls in, or re-rules it when it is already small. A koto in the next room.',
+  }),
+  lineage: work('Daylight', 'lively', 'Lineage on squared paper', {
+    scene: 'lineage', palette: 'newsprint', kit: 'glassy', space: 'room',
+    mat: 'gallery', pace: REAL_TIME,
+    cartel: 'Coloured discs set on the crossings of a pale grid, each joined by a black line to the disc it came from and numbered in the order it arrived, until the tree is full and fades and the next event begins another. The colour is the kind of the event, the size its weight.',
+  }),
   peals: work('Dawn', 'calm', 'Peals in grain', {
     scene: 'peals', palette: 'newsprint', kit: 'handbells', space: 'hall',
     ground: 'coldpress', mat: 'gallery', pace: SLOW,

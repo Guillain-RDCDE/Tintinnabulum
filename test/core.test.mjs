@@ -861,7 +861,7 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('a variation never switches a dial off', switchedOff === 0, `switchedOff=${switchedOff}`);
   ok('the same number varies the dials the same way', unstable === 0);
 
-  for (const name of ['orbs', 'tartan', 'peals', 'scanlines', 'spindles', 'lattice', 'desordres', 'aura', 'worlds', 'benday', 'rise', 'frost', 'fracture', 'asemic', 'collapse', 'spectrogram', 'groove']) {
+  for (const name of ['lanes', 'meshes', 'lineage', 'orbs', 'tartan', 'peals', 'scanlines', 'spindles', 'lattice', 'desordres', 'aura', 'worlds', 'benday', 'rise', 'frost', 'fracture', 'asemic', 'collapse', 'spectrogram', 'groove']) {
     const s = m.SCENES[name];
     ok(`the new scene "${name}" is catalogued and has something to say`,
        s && s.shelf !== 'Other' && s.note.length > 30 && s.how.length > 60 && typeof s.frame === 'function', s ? s.shelf : 'missing');

@@ -148,6 +148,9 @@ export const CATALOGUE = {
   orbs: S('Paper and print', 'Discs plotted in a black pen and a red one, ruled or crossed into a mesh, hung on a few construction lines or set over a horizon of reeds and water; where two overlap, a texture neither pen drew.'),
   tartan: S('Paper and print', 'A sheet woven from columns and rows of unequal width, each cell the crossing of the two -- ruling over ruling, black over anything -- cut apart in black on cream, or laid edge to edge in flat colour, and punched through with discs.'),
   peals: S('Paper and print', 'Every event a bell struck in a cloud of red dots: rings dense round a bright centre, thinning to dust on the paper, close for a high note and wide for a low one.'),
+  lanes: S('Paper and print', 'White bars ruled across a black field like the rows of a knitting chart, and here and there a stitch dropped half a bar; a large event drops a staircase of them.'),
+  meshes: S('Paper and print', 'A square cut and cut again into blocks, each ruled with its own mesh -- coarse, fine, crossed into stars -- over tints of stone, sand, chalk and umber, with a square of orange somewhere.'),
+  lineage: S('Paper and print', 'Coloured discs on the crossings of a pale grid, each joined by a black line to the one it came from and numbered in the order it arrived: a family tree on squared paper.'),
   harmonograph: S('Forms and numbers', 'A pendulum pen that draws while it slows, and stops when the drawing is finished.'),
   ulam: S('Forms and numbers', 'Whole numbers laid on a spiral, and the prime ones lining up on diagonals nobody can explain.'),
 };
