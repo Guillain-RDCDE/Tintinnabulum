@@ -15,7 +15,7 @@
 // ten.
 
 import { scratch } from './paint.js';
-import { lightnessOf } from '../color.js';
+import { lightnessOf, lighten, mixColors } from '../color.js';
 
 const TAU = Math.PI * 2;
 const ROLES = ['user', 'anon', 'bot', 'default', 'alert'];
@@ -317,11 +317,13 @@ export const PRINTED_SCENES = {
   // --- emergence --------------------------------------------------------------------------
   emergence: {
     label: 'Emergence',
-    note: 'The same case of type, and a sentence in it coming apart. Line after line repeats whatever the feed last said, and across a band that drifts through the page the words lose their footing: letters drop out, ornaments take their place, and for a few lines there is a field of pure sign with no sense left in it at all. Below the band the sentence finds itself again. Every event throws a stone into the page and the words break up around where it landed -- so the picture is a sentence being read at exactly the rate the world will let it be read.',
+    note: 'The same case of type, and a sentence in it coming apart. Line after line repeats whatever the feed last said, and across a band that drifts through the page the words lose their footing: letters drop out, ornaments take their place, and for a few lines there is a field of pure sign with no sense left in it at all. Below the band the sentence finds itself again. Every event throws a stone into the page and the words break up around where it landed -- so the picture is a sentence being read at exactly the rate the world will let it be read. The second sheet is a grid of hexadecimal digits, and every event writes its own fingerprint into it where it falls, lit for a moment and then settled; dressed plain, with runs of one digit marked in red, every digit on a chip of its own colour, a field of colour with a dark square ring through it, or broken into words with empty blocks between.',
     how: 'A printing head walks the cells of a monospaced grid in reading order, several hundred a frame, and never stops: each cell is cleared and re-set from a disorder field, high inside the drifting band and around each recent event, low everywhere else. Below the threshold the cell takes the next character of the sentence, above it a sort from the case or nothing at all. Two colours and no more, as the thing it is quoting has.',
     positional: true,
     preview: { frames: 200, dt: 45 },
     params: {
+      figure: { label: 'Which sheet: sentence, hex', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      dress: { label: 'How the hex is dressed: plain, repeats, chips, shape, blocks', min: 0, max: 4, step: 1, default: 0, rebuild: true },
       size: { label: 'Size of the type', min: 0.5, max: 2.5, step: 0.05, default: 1, rebuild: true },
       band: { label: 'How wide the breakdown', min: 0.05, max: 1, step: 0.02, default: 0.3 },
       drift: { label: 'How fast the band moves', min: 0, max: 3, step: 0.05, default: 1 },
@@ -329,6 +331,11 @@ export const PRINTED_SCENES = {
     },
     init(api) {
       const s = api.scene;
+      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
+      if (s.figure === 1) {
+        hexInit(api);
+        return;
+      }
       const m = Math.min(api.w, api.h);
       s.em = Math.max(6, m * 0.022 * api.param('size'));
       s.cw = s.em * 0.62;
@@ -344,6 +351,10 @@ export const PRINTED_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      if (s.figure === 1) {
+        hexEvent(p, api);
+        return;
+      }
       if (!s.cols) return;
       // The sentence is whatever the world last said, reduced to something a
       // press could set: the page is then a reading of the feed rather than a
@@ -364,6 +375,10 @@ export const PRINTED_SCENES = {
     },
     frame(ctx, api) {
       const s = api.scene;
+      if (s.figure === 1) {
+        hexFrame(ctx, api);
+        return;
+      }
       if (!s.cols) return;
       const buf = scratch(api, 'buf');
       const b = s.bufCtx;
@@ -689,4 +704,255 @@ function strike(api, plate, color) {
     y = ny;
   }
   b.restore();
+}
+
+// --- the hex sheet -----------------------------------------------------------------------
+//
+// The second sheet of `emergence`: a monospaced grid of hexadecimal digits,
+// and every event writing its own fingerprint into it where it falls. Five
+// ways of dressing the same grid, on one dial:
+//
+//   0 plain    the digits, one ink on the ground
+//   1 repeats  a run of three or more of one digit marked in red, as chance makes them
+//   2 chips    every digit on a square of its own colour, sixteen colours
+//   3 shape    a field of colour with a square ring cut through it in the dark
+//   4 blocks   the grid broken into words of eight with gaps, some blocks left empty
+
+const HEX = '0123456789abcdef';
+
+/** Sixteen colours for sixteen digits, drawn from the palette and stepped in lightness. */
+function chipsOf(api) {
+  const pal = api.palette;
+  const base = ROLES.map((r) => pal[r]).filter(Boolean);
+  const out = [];
+  for (let d = 0; d < 16; d++) {
+    const a = base[d % base.length];
+    const b = base[(d * 7 + 3) % base.length];
+    out.push(lighten(mixColors(a, b, (d % 4) / 6), ((d >> 2) - 1.5) * 0.09));
+  }
+  return out;
+}
+
+/** A fingerprint of `n` hex digits for an event, from its own number. */
+function digitsOf(seed, n) {
+  const rnd = seeded(seed);
+  const out = new Uint8Array(n);
+  for (let i = 0; i < n; i++) out[i] = (rnd() * 16) | 0;
+  return out;
+}
+
+/** The palette's role colour that scores highest. */
+function hexMost(pal, score) {
+  let best = pal.default;
+  let top = -Infinity;
+  for (const role of ROLES) {
+    const c = pal[role];
+    if (!c || !/^#[0-9a-f]{6}$/i.test(c)) continue;
+    const n = parseInt(c.slice(1), 16);
+    const v = score((n >> 16) & 255, (n >> 8) & 255, n & 255);
+    if (v > top) {
+      top = v;
+      best = c;
+    }
+  }
+  return best;
+}
+
+function hexInit(api) {
+  const s = api.scene;
+  const m = Math.min(api.w, api.h);
+  s.dress = Math.max(0, Math.min(4, Math.round(api.param('dress'))));
+  s.em = Math.max(6, m * 0.03 * api.param('size'));
+  s.cw = s.em * 0.62;
+  s.ch = s.em * 1.32;
+  s.cols = Math.max(8, Math.floor(api.w / s.cw));
+  s.rows = Math.max(6, Math.floor(api.h / s.ch));
+  s.x0 = (api.w - s.cols * s.cw) / 2;
+  s.y0 = (api.h - s.rows * s.ch) / 2;
+  const n = s.cols * s.rows;
+  s.cells = new Uint8Array(n);
+  for (let i = 0; i < n; i++) s.cells[i] = (Math.random() * 16) | 0;
+  // When a cell was last written, on the sheet's own clock; 0 is never.
+  s.wrote = new Float32Array(n);
+  s.dirty = new Uint8Array(n).fill(1);
+  s.all = true;
+  s.clock = 1;
+  s.drive = 0;
+  s.chips = chipsOf(api);
+  // One square ring, from the start; a large event moves it.
+  const outer = Math.max(3, Math.round(Math.min(s.cols, s.rows * (s.ch / s.cw)) * 0.3));
+  s.rings = [{ c: s.cols >> 1, r: s.rows >> 1, outer, inner: outer - Math.max(2, Math.round(outer * 0.3)) }];
+  // Blocks: words of eight digits with a gap of three, lines in fours with a
+  // blank line between; a block shows or does not.
+  s.bw = 11;
+  s.bh = 5;
+  const bcols = Math.ceil(s.cols / s.bw);
+  const brows = Math.ceil(s.rows / s.bh);
+  s.blocks = new Uint8Array(bcols * brows);
+  for (let i = 0; i < s.blocks.length; i++) s.blocks[i] = Math.random() < 0.45 ? 1 : 0;
+  s.bcols = bcols;
+  s.lastAt = 0;
+  s.ambient = 0;
+  s.cleared = false;
+}
+
+/** Is this cell shown at all? Only the blocks dress hides any. */
+function hexShown(s, c, r) {
+  if (s.dress !== 4) return true;
+  if (c % s.bw >= 8 || r % s.bh >= 4) return false;
+  return s.blocks[((r / s.bh) | 0) * s.bcols + ((c / s.bw) | 0)] === 1;
+}
+
+/** Inside the dark band of a ring? */
+function hexInRing(s, c, r) {
+  for (const g of s.rings) {
+    const dx = Math.abs(c - g.c);
+    const dy = Math.abs(r - g.r) * (s.ch / s.cw);
+    const d = Math.max(dx, dy);
+    if (d <= g.outer && d >= g.inner) return true;
+  }
+  return false;
+}
+
+/** Length of the run of equal digits through cell i along its row. */
+function hexRun(s, c, r) {
+  const row = r * s.cols;
+  const v = s.cells[row + c];
+  let a = c;
+  let b = c;
+  while (a > 0 && s.cells[row + a - 1] === v) a--;
+  while (b < s.cols - 1 && s.cells[row + b + 1] === v) b++;
+  return b - a + 1;
+}
+
+function hexEvent(p, api) {
+  const s = api.scene;
+  if (!s.cells) return;
+  const q = Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34)));
+  const c0 = Math.max(0, Math.min(s.cols - 1, Math.floor((p.x - s.x0) / s.cw)));
+  const r0 = Math.max(0, Math.min(s.rows - 1, Math.floor((p.y - s.y0) / s.ch)));
+  // A fingerprint of eight digits, or thirty-two for a large event, written
+  // from where it fell along the line and on to the next.
+  const n = q > 0.6 ? 32 : q > 0.25 ? 16 : 8;
+  hexWrite(s, c0, r0, digitsOf(hashOf(p) ^ (Math.random() * 1e9), n));
+  if (s.dress === 3 && q > 0.55) {
+    const outer = Math.max(3, Math.round(Math.min(s.cols, s.rows * (s.ch / s.cw)) * (0.18 + q * 0.2)));
+    s.rings.push({ c: c0, r: r0, outer, inner: outer - Math.max(2, Math.round(outer * 0.3)) });
+    if (s.rings.length > 1) s.rings.shift();
+    s.all = true;
+  }
+  if (s.dress === 4) {
+    const bi = ((r0 / s.bh) | 0) * s.bcols + ((c0 / s.bw) | 0);
+    if (!s.blocks[bi]) {
+      s.blocks[bi] = 1;
+      s.all = true;
+    }
+    if (q > 0.7) {
+      const off = (Math.random() * s.blocks.length) | 0;
+      if (off !== bi && s.blocks[off]) {
+        s.blocks[off] = 0;
+        s.all = true;
+      }
+    }
+  }
+  s.drive = Math.min(1.6, s.drive + 0.3);
+  s.lastAt = api.now;
+}
+
+function hexWrite(s, c0, r0, digits) {
+  let c = c0;
+  let r = r0;
+  for (const d of digits) {
+    const i = r * s.cols + c;
+    s.cells[i] = d;
+    s.wrote[i] = s.clock;
+    // The run marks reach three either side, so a run made or broken here
+    // is redrawn whole.
+    for (let k = -3; k <= 3; k++) {
+      const cc = c + k;
+      if (cc >= 0 && cc < s.cols) s.dirty[r * s.cols + cc] = 1;
+    }
+    c++;
+    if (c >= s.cols) {
+      c = 0;
+      r = (r + 1) % s.rows;
+    }
+  }
+}
+
+function hexFrame(ctx, api) {
+  const s = api.scene;
+  if (!s.cells) return;
+  const buf = scratch(api, 'buf');
+  const b = s.bufCtx;
+  const pal = api.palette;
+  // The sheet's clock runs at the rate things arrive: a freshly written
+  // fingerprint stays lit until the next ones come, not for a fixed time.
+  s.drive = Math.max(0, s.drive - api.dt / 1200);
+  const step = api.dt * (0.03 + s.drive);
+  s.clock += step;
+  // In silence, after a pause, a short fingerprint now and then.
+  if (api.now - s.lastAt > 2500) {
+    s.ambient += api.dt;
+    if (s.ambient > 2600) {
+      s.ambient = 0;
+      hexWrite(s, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, digitsOf((Math.random() * 4294967295) >>> 0, 8));
+    }
+  } else {
+    s.ambient = 0;
+  }
+  // The repeats sheet is set in the palette's most orange ink and marks its
+  // runs in the reddest, as the sheet it follows does; the others in the press's ink.
+  const ink = s.dress === 1 ? hexMost(pal, (r, g, b) => r + g / 2 - b) : pressInk(api);
+  const dark = lightnessOf(pal.background) < 0.5;
+  const mark = lighten(hexMost(pal, (r, g, b) => r - g - b), dark ? 0.14 : 0);
+  const accent = pal.alert || pal.user;
+  const field = s.dress === 3 ? accent : pal.background;
+  if (!s.cleared) {
+    b.fillStyle = field;
+    b.fillRect(0, 0, api.w, api.h);
+    s.cleared = true;
+  }
+  b.font = `${Math.max(5, Math.round(s.em))}px ${MONO}`;
+  b.textBaseline = 'middle';
+  b.textAlign = 'center';
+  const fresh = 900;
+  for (let r = 0; r < s.rows; r++) {
+    for (let c = 0; c < s.cols; c++) {
+      const i = r * s.cols + c;
+      // A cell still lit from its writing is redrawn while it settles.
+      const age = s.wrote[i] ? s.clock - s.wrote[i] : Infinity;
+      if (!s.all && !s.dirty[i] && !(age < fresh + 200)) continue;
+      s.dirty[i] = 0;
+      const x = s.x0 + c * s.cw;
+      const y = s.y0 + r * s.ch;
+      const d = s.cells[i];
+      let ground = field;
+      let colour = ink;
+      if (s.dress === 2) {
+        ground = s.chips[d];
+        colour = lightnessOf(ground) > 0.6 ? '#111111' : '#f4f4f4';
+      } else if (s.dress === 3) {
+        ground = hexInRing(s, c, r) ? '#050505' : accent;
+        colour = '#f6f0ea';
+      } else if (s.dress === 1 && hexRun(s, c, r) >= 3) {
+        colour = mark;
+      }
+      b.fillStyle = ground;
+      b.fillRect(x - 0.5, y - 0.5, s.cw + 1, s.ch + 1);
+      if (!hexShown(s, c, r)) continue;
+      b.fillStyle = colour;
+      b.globalAlpha = 1;
+      b.fillText(HEX[d], x + s.cw / 2, y + s.ch / 2);
+      if (age < fresh) {
+        // Freshly written: struck over in the accent and let go.
+        b.globalAlpha = (1 - age / fresh) * 0.85;
+        b.fillStyle = s.dress === 3 ? '#050505' : accent;
+        b.fillText(HEX[d], x + s.cw / 2, y + s.ch / 2);
+        b.globalAlpha = 1;
+      }
+    }
+  }
+  s.all = false;
+  ctx.drawImage(buf, 0, 0);
 }

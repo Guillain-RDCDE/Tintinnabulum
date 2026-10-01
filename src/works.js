@@ -361,6 +361,33 @@ export const WORKS = {
     mat: 'gallery', pace: REAL_TIME,
     cartel: 'Columns and rows of unequal width printed in one black, each cell the crossing of the two -- diagonal ruling over level lines comes out as a mesh, black over anything stays black -- and some cells punched through with a disc. A small event punches a disc, a large one re-dyes a whole column or row. A marimba, dry and quick.',
   }),
+  // Five sheets of hexadecimal: every event writes its own fingerprint into
+  // the grid where it falls, and each sheet dresses the grid its own way.
+  hexplain: work('Night', 'calm', 'Fingerprints', {
+    scene: 'emergence', palette: 'coal', kit: 'synth', space: 'room',
+    pace: UNHURRIED, dials: { figure: 1, dress: 0 },
+    cartel: 'A screen of hexadecimal digits, white on black, and every event writing its own fingerprint into it where it falls -- eight digits for a small one, thirty-two for a large -- lit for a moment and then settled into the rest.',
+  }),
+  hexrepeats: work('Night', 'calm', 'Four of a kind', {
+    scene: 'emergence', palette: 'ember', kit: 'hatnote', space: 'room',
+    pace: UNHURRIED, dials: { figure: 1, dress: 1 },
+    cartel: 'The same screen of digits in orange, and wherever chance sets three or more of one digit in a row, the run is marked in red. Nobody puts them there: they are what a page of fingerprints makes by itself, found as they appear.',
+  }),
+  hexchips: work('Night', 'lively', 'Sixteen colours', {
+    scene: 'emergence', palette: 'ink', kit: 'steelpan', space: 'room',
+    pace: REAL_TIME, dials: { figure: 1, dress: 2 },
+    cartel: 'Every digit on a square of its own colour, sixteen colours for sixteen digits, so a fingerprint written by an event is a short bar of chips and a busy minute a wall of them.',
+  }),
+  hexring: work('Night', 'calm', 'A square in the digits', {
+    scene: 'emergence', palette: 'oxblood', kit: 'gongs', space: 'hall',
+    pace: SLOW, dials: { figure: 1, dress: 3 },
+    cartel: 'A field of red digits with a square ring cut through it in black, drawn by nothing but the ground behind the characters. Every event writes into it; a large one moves the ring to where it fell.',
+  }),
+  hexblocks: work('Night', 'calm', 'Words of eight', {
+    scene: 'emergence', palette: 'obsidian', kit: 'night', space: 'room',
+    pace: SLOW, dials: { figure: 1, dress: 4 },
+    cartel: 'The digits set in words of eight and blocks of four lines, with whole blocks left empty. An event fills the block it falls in; a large one empties another somewhere else, so the page is always partly blank.',
+  }),
   // Five pictures hung on the second sheet of a scene already on the wall.
   stack: work('Daylight', 'calm', 'A stack of hatched bands', {
     scene: 'spindles', palette: 'bone', kit: 'strings', space: 'room',
