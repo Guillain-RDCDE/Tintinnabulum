@@ -11,7 +11,7 @@
 
 import { scratch } from './paint.js';
 import { cap } from './budget.js';
-import { mixColors, lighten, lightnessOf } from '../color.js';
+import { mixColors, lighten, lightnessOf, parseColor } from '../color.js';
 import { noise2 } from './noise.js';
 
 const TAU = Math.PI * 2;
@@ -29,6 +29,120 @@ function seeded(seed) {
 
 /** The palette's four inks, in a fixed order. */
 const inks = (pal) => [pal.user, pal.anon, pal.alert, pal.default];
+
+// --- the pastel sheet ------------------------------------------------------------
+
+/** The palette's colour that scores highest on `score(r, g, b)`. */
+function mostOf(pal, score) {
+  let best = pal.default;
+  let top = -Infinity;
+  for (const c of [pal.user, pal.anon, pal.bot, pal.alert, pal.default]) {
+    if (!c) continue;
+    const { r, g, b } = parseColor(c);
+    const v = score(r, g, b);
+    if (v > top) {
+      top = v;
+      best = c;
+    }
+  }
+  return best;
+}
+
+/**
+ * An event on the pastel sheet: a smudge in the low band where it fell
+ * across, and its title, if it has one, typed under the picture.
+ */
+function pastelEvent(p, api) {
+  const s = api.scene;
+  const cool = mostOf(api.palette, (r, g, b) => b - r);
+  const q = Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34)));
+  s.smudges.push({
+    x: api.w * 0.12 + (p.x / api.w) * api.w * 0.76,
+    y: api.h * (0.64 + (Math.random() - 0.5) * 0.06),
+    rx: api.w * (0.025 + q * 0.06),
+    ry: api.h * (0.008 + q * 0.014),
+    color: Math.random() < 0.6 ? cool : mixColors(cool, p.color, 0.5),
+    born: s.clock || 0,
+  });
+  s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
+  const most = Math.max(6, Math.min(40, Math.floor((api.budget || 800) / 4)));
+  if (s.smudges.length > most) s.smudges.splice(0, s.smudges.length - most);
+  const title = String(p.label || '').trim();
+  if (title) {
+    s.lines.push(title.length > 34 ? title.slice(0, 33) + '…' : title);
+    if (s.lines.length > 4) s.lines.shift();
+  }
+  s.glow[0] = Math.min(1, s.glow[0] + 0.12);
+}
+
+/**
+ * One great field of colour in pastel on a pale sheet, a band of a cooler
+ * colour rubbed in low across it, and a few lines typed underneath. The field
+ * is the warmest colour the palette has; the band, its coolest.
+ */
+function pastelFrame(ctx, api) {
+  const s = api.scene;
+  const pal = api.palette;
+  const W = api.w;
+  const H = api.h;
+  const warm = mostOf(pal, (r, g, b) => r + g - 2 * b);
+  const soft = api.param('soft') * 1.8;
+  ctx.fillStyle = lighten(pal.background, 0.03);
+  ctx.fillRect(0, 0, W, H);
+  // The sheet's own clock runs at the rate things arrive: in silence the
+  // smudges stay where they were rubbed instead of fading on their own.
+  s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
+  const step = api.dt * (0.03 + (s.drive || 0));
+  s.clock = (s.clock || 0) + step;
+  s.glow[0] = Math.max(0, s.glow[0] - step / 9000);
+  // The field: feathered by stacking translucent copies inward, the edge
+  // nudged a little by noise so it is rubbed rather than ruled.
+  const c = lighten(warm, s.glow[0] * 0.08);
+  const x0 = W * 0.13;
+  const y0 = H * 0.05;
+  const fw = W * 0.74;
+  const fh = H * 0.56;
+  const layers = 10;
+  ctx.fillStyle = c;
+  for (let l = 0; l < layers; l++) {
+    const inset = (soft * (layers - l)) / layers;
+    const wob = noise2(l * 1.7, 3.1) * soft * 0.4;
+    ctx.globalAlpha = 0.14;
+    ctx.fillRect(x0 + inset - soft / 2 + wob, y0 + inset - soft / 2, fw - inset * 2 + soft, fh - inset * 2 + soft - wob);
+  }
+  // A thin pale bloom round the whole, as pastel dust spreads on paper.
+  ctx.globalAlpha = 0.06;
+  ctx.fillRect(x0 - soft * 1.5, y0 - soft * 1.5, fw + soft * 3, fh + soft * 3);
+  // The band: every smudge an ellipse rubbed a few times, fading over
+  // twelve seconds, and a faint standing trace so the band is never empty.
+  const cool = mostOf(pal, (r, g, b) => b - r);
+  ctx.fillStyle = mixColors(cool, pal.background, 0.75);
+  ctx.globalAlpha = 0.35;
+  ctx.fillRect(x0 + fw * 0.15, H * 0.635, fw * 0.8, H * 0.03);
+  for (const sm of s.smudges) {
+    const life = Math.max(0, 1 - (s.clock - sm.born) / 12000);
+    if (life <= 0) continue;
+    ctx.fillStyle = sm.color;
+    for (let k = 0; k < 3; k++) {
+      ctx.globalAlpha = 0.11 * life;
+      ctx.beginPath();
+      ctx.ellipse(sm.x + (k - 1) * sm.rx * 0.2, sm.y + (k - 1) * sm.ry * 0.3, sm.rx * (1 - k * 0.15), sm.ry, 0, 0, TAU);
+      ctx.fill();
+    }
+  }
+  // The typed lines, small, under the band and right of centre.
+  if (s.lines.length) {
+    const size = Math.max(8, Math.round(Math.min(W, H) * 0.018));
+    ctx.globalAlpha = 0.78;
+    ctx.fillStyle = pal.text || pal.default;
+    ctx.font = `${size}px "Courier New", ui-monospace, monospace`;
+    ctx.textBaseline = 'top';
+    s.lines.forEach((line, i) => {
+      ctx.fillText(line, W * 0.45, H * 0.74 + i * size * 1.45);
+    });
+  }
+  ctx.globalAlpha = 1;
+}
 
 /** The accumulation buffer, cleared the first time it is asked for. */
 function bufferFor(api, key = 'buf') {
@@ -120,21 +234,33 @@ export const PAINTER_SCENES = {
   fields: {
     label: 'Colour fields',
     positional: false,
-    note: "In the spirit of Mark Rothko's colour-field paintings: two or three soft rectangles hovering on a coloured ground, their edges feathered so they seem to breathe rather than sit. Busy moments brighten a field; quiet ones let it sink back.",
+    note: "In the spirit of Mark Rothko's colour-field paintings: two or three soft rectangles hovering on a coloured ground, their edges feathered so they seem to breathe rather than sit. Busy moments brighten a field; quiet ones let it sink back. The second sheet is a single great field in pastel on pale paper, a cooler colour rubbed in low across it where events fall, and the titles of the last few typed underneath like a poem.",
     params: {
+      figure: { label: 'Which sheet: fields, pastel', min: 0, max: 1, step: 1, default: 0, rebuild: true },
       bands: { label: 'Fields', min: 2, max: 3, step: 1, default: 2 },
       soft: { label: 'Softness', min: 2, max: 40, step: 1, default: 16 },
     },
     init(api) {
       api.scene.glow = new Float32Array(3);
+      api.scene.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
+      api.scene.smudges = [];
+      api.scene.lines = [];
     },
     event(p, api) {
+      if (api.scene.figure === 1) {
+        pastelEvent(p, api);
+        return;
+      }
       const bands = Math.round(api.param('bands'));
       const i = Math.min(bands - 1, Math.floor((p.y / api.h) * bands));
       api.scene.glow[i] = Math.min(1, api.scene.glow[i] + 0.22);
     },
     frame(ctx, api) {
       const s = api.scene;
+      if (s.figure === 1) {
+        pastelFrame(ctx, api);
+        return;
+      }
       const pal = api.palette;
       const bands = Math.round(api.param('bands'));
       const soft = api.param('soft');

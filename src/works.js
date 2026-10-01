@@ -38,6 +38,9 @@ const LIVELY = 4;
 const work = (room, energy, title, o) => ({
   room, energy, title,
   grain: false, mat: 'none', finish: 'none', ground: 'none', space: 'none', pace: REAL_TIME, living: 'still',
+  // Dials the work turns away from their defaults: a second sheet of a scene
+  // is a different picture, and a work hung on it has to say so.
+  dials: {},
   ...o,
 });
 
@@ -357,6 +360,32 @@ export const WORKS = {
     scene: 'tartan', palette: 'bone', kit: 'marimba', space: 'room',
     mat: 'gallery', pace: REAL_TIME,
     cartel: 'Columns and rows of unequal width printed in one black, each cell the crossing of the two -- diagonal ruling over level lines comes out as a mesh, black over anything stays black -- and some cells punched through with a disc. A small event punches a disc, a large one re-dyes a whole column or row. A marimba, dry and quick.',
+  }),
+  // Five pictures hung on the second sheet of a scene already on the wall.
+  stack: work('Daylight', 'calm', 'A stack of hatched bands', {
+    scene: 'spindles', palette: 'bone', kit: 'strings', space: 'room',
+    ground: 'hotpress', mat: 'gallery', pace: UNHURRIED, dials: { figure: 1, colour: 0 },
+    cartel: 'Bands of upright pen lines laid one on another in a leaning column, each solid at one end and breaking into dashes at the other, with a dark crossed triangle or half disc hanging from its top edge. An event re-hatches its band; a large one shifts it along the column.',
+  }),
+  typed: work('Daylight', 'calm', 'Yellow, with a line typed under it', {
+    scene: 'fields', palette: 'papyrus', kit: 'chimes', space: 'room',
+    ground: 'coldpress', mat: 'gallery', pace: SLOW, dials: { figure: 1 },
+    cartel: 'One great field of yellow in pastel on pale paper, a cooler colour rubbed in low across it wherever an event falls, and the titles of the last few typed underneath like a short poem. Nothing moves when nothing arrives.',
+  }),
+  patchwork: work('Daylight', 'lively', 'Patchwork with wires', {
+    scene: 'tartan', palette: 'newsprint', kit: 'steelpan', space: 'room',
+    mat: 'gallery', pace: REAL_TIME, dials: { figure: 2 },
+    cartel: 'A quilt of dyed patches, mottled like cloth, in a dark frame with dark seams, a few patches white with dots, and black wires run across it with a round dot at every end. A small event runs a wire, a middling one dyes a patch again, a large one a whole row or column.',
+  }),
+  pieces: work('Dawn', 'lively', 'Pieces, coloured and not', {
+    scene: 'planes', palette: 'papyrus', kit: 'clay', space: 'room',
+    ground: 'coldpress', mat: 'gallery', pace: REAL_TIME, dials: { figure: 1 },
+    cartel: 'Slabs of colour tilted every way and gathered into a band across the sheet, darkening where they cross, among as many pieces only drawn round in graphite and never coloured in. Each event lays one more piece and the oldest is seen through until it goes.',
+  }),
+  bunting: work('Daylight', 'lively', 'Bunting', {
+    scene: 'lanes', palette: 'papyrus', kit: 'marimba', space: 'room',
+    mat: 'gallery', pace: REAL_TIME, dials: { figure: 1 },
+    cartel: 'Rows of small triangles in every colour of the palette, bent into a slow wave across the sheet and cut into runs -- coarse in one, fine as teeth in the next -- with gaps between. An event re-cuts the run it falls on; a large one a stretch of its row.',
   }),
   // Three pieces on a lattice: a knitting chart, a cut sheet of meshes, and a
   // family tree on squared paper.

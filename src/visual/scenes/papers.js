@@ -176,11 +176,12 @@ export const PAPER_SCENES = {
   // --- planes -----------------------------------------------------------------------------
   planes: {
     label: 'Planes',
-    note: 'Half a dozen very large shapes at a time, laid over one another on a sheet of paper, and every one of them transparent. Where two cross, the colour belongs to neither: a black wash over a green disc is a green nobody mixed, and most of what you see in this picture is that. A few forms are hard-edged and printed; the rest are wet, and their edges have run. Each event brings one more plane in and pushes the oldest out, so the composition is never still and never crowded.',
+    note: 'Half a dozen very large shapes at a time, laid over one another on a sheet of paper, and every one of them transparent. Where two cross, the colour belongs to neither: a black wash over a green disc is a green nobody mixed, and most of what you see in this picture is that. A few forms are hard-edged and printed; the rest are wet, and their edges have run. Each event brings one more plane in and pushes the oldest out, so the composition is never still and never crowded. The second sheet is a scatter: many smaller slabs tilted every way in three colours that darken where they cross, among as many pieces only drawn round in graphite, all gathered into a band across the sheet.',
     how: 'A bounded pool of forms, redrawn whole every frame -- affordable precisely because there are so few -- and combined with multiply on a pale ground or screen on a dark one, which is how transparent pigment behaves and what makes the crossings their own colours. A wash is the same form struck four or five times at a low opacity with its edges nudged, which is cheaper than a blur and looks more like water.',
     positional: true,
     preview: { frames: 160, dt: 50 },
     params: {
+      figure: { label: 'Which sheet: planes, scatter', min: 0, max: 1, step: 1, default: 0, rebuild: true },
       count: { label: 'How many planes', min: 2, max: 18, step: 1, default: 10 },
       scale: { label: 'How large', min: 0.4, max: 1.6, step: 0.05, default: 1 },
       wash: { label: 'How much is wet', min: 0, max: 1, step: 0.02, default: 0.45 },
@@ -191,10 +192,13 @@ export const PAPER_SCENES = {
       s.forms = [];
       s.focus = { x: api.w * 0.5, y: api.h * 0.5 };
       s.ambient = 0;
+      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
       // A sheet with something already on it: four planes, so the first frame
       // of this scene is a composition and not an empty page.
-      for (let i = 0; i < 4; i++) {
-        add(api, api.w * (0.3 + Math.random() * 0.4), api.h * (0.3 + Math.random() * 0.4), null, false);
+      const first = s.figure === 1 ? 16 : 4;
+      for (let i = 0; i < first; i++) {
+        const spread = s.figure === 1 ? 0.84 : 0.4;
+        add(api, api.w * (0.5 - spread / 2 + Math.random() * spread), api.h * (0.3 + Math.random() * 0.4), null, false);
         s.forms[i].age = 1200;
       }
     },
@@ -210,7 +214,8 @@ export const PAPER_SCENES = {
       const s = api.scene;
       if (!s.forms) return;
       const paper = papers(api);
-      const cap = Math.max(2, Math.round(api.param('count')));
+      // The scatter is many small pieces rather than a few large ones.
+      const cap = Math.max(2, Math.round(api.param('count'))) * (s.figure === 1 ? 4 : 1);
       // The sheet works on its own only while nothing is arriving.
       //
       // It used to bring a plane in every nine hundred milliseconds whatever
@@ -244,10 +249,23 @@ export const PAPER_SCENES = {
         // The oldest plane on the sheet is the faintest: it is on its way
         // out, and it goes out by being seen through rather than by vanishing.
         const standing = (i + 1) / s.forms.length;
-        const alpha = veil * arrived * (0.4 + 0.6 * standing);
+        // The scatter is coloured pencil pressed hard: a piece stays nearly
+        // as strong as it was laid until it is close to going.
+        const alpha = s.figure === 1
+          ? Math.min(1, veil * 1.3 * arrived * (0.7 + 0.3 * standing))
+          : veil * arrived * (0.4 + 0.6 * standing);
         ctx.fillStyle = f.color;
         ctx.strokeStyle = f.color;
-        if (f.wet) {
+        if (f.outline) {
+          // Only drawn round, in graphite: the shape of a piece that was
+          // never coloured in, which is half of what the scatter is.
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = Math.min(1, 0.3 + arrived * 0.6) * (0.55 + 0.45 * standing);
+          ctx.strokeStyle = paper.pale ? paper.ink : paper.card;
+          ctx.lineWidth = Math.max(0.7, Math.min(api.w, api.h) * 0.0016);
+          ctx.lineJoin = 'round';
+          outline(ctx, f);
+        } else if (f.wet) {
           // A wash: the same form several times, low, with its edges moved.
           ctx.globalCompositeOperation = blend;
           for (let i = 0; i < 5; i++) {
@@ -341,6 +359,10 @@ function add(api, x, y, color, accent) {
   const m = Math.min(api.w, api.h);
   const paper = papers(api);
   const scale = api.param('scale');
+  if (s.figure === 1) {
+    scatter(api, x, y, color);
+    return;
+  }
   const kind = accent ? 'spot'
     : Math.random() < 0.18 ? 'disc'
       : Math.random() < 0.3 ? 'bar'
@@ -370,8 +392,84 @@ function add(api, x, y, color, accent) {
   if (s.forms.length > 64) s.forms.splice(0, s.forms.length - 64);
 }
 
+/**
+ * One piece of the scatter: a tilted slab of colour, or a tilted outline in
+ * graphite with a notch cut in one side, gathered towards a band across the
+ * middle of the sheet. Colours are the palette's own and overlap with
+ * multiply, so a red over a blue is the dark that neither is.
+ */
+function scatter(api, x, y, color) {
+  const s = api.scene;
+  const m = Math.min(api.w, api.h);
+  const paper = papers(api);
+  const scale = api.param('scale');
+  const r = m * (0.05 + Math.random() * 0.1) * scale;
+  const outlined = Math.random() < 0.38;
+  s.forms.push({
+    kind: 'slab',
+    x: Math.max(m * 0.04, Math.min(api.w - m * 0.04, x)),
+    // Pulled towards the middle band, as the drawing keeps to one.
+    y: api.h * 0.5 + (y - api.h * 0.5) * 0.45,
+    r,
+    w: r * (1 + Math.random() * 1.2),
+    h: r * (1 + Math.random() * 1.8),
+    tilt: (Math.random() - 0.5) * 0.9,
+    notch: outlined && Math.random() < 0.6 ? { side: (Math.random() * 4) | 0, at: 0.2 + Math.random() * 0.5, size: 0.12 + Math.random() * 0.18 } : null,
+    color: color || paper.sheets[(Math.random() * paper.sheets.length) | 0] || paper.ink,
+    solid: false,
+    wet: false,
+    outline: outlined,
+    age: 0,
+  });
+  if (s.forms.length > 96) s.forms.splice(0, s.forms.length - 96);
+}
+
+/** A slab's corners, tilted about its centre, with its notch if it has one. */
+function slabPath(ctx, f, j) {
+  const hw = f.w / 2 + j;
+  const hh = f.h / 2 + j;
+  let pts = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
+  if (f.notch) {
+    // A step cut into one side: two extra corners, so an outline reads as a
+    // piece of paper with a bite taken out rather than a ruled box.
+    const n = f.notch;
+    const a = pts[n.side];
+    const b = pts[(n.side + 1) % 4];
+    const ux = b[0] - a[0];
+    const uy = b[1] - a[1];
+    const len = Math.hypot(ux, uy) || 1;
+    const nx = -uy / len;
+    const ny = ux / len;
+    const d = Math.min(f.w, f.h) * n.size;
+    const p1 = [a[0] + ux * n.at, a[1] + uy * n.at];
+    const p2 = [a[0] + ux * (n.at + 0.25), a[1] + uy * (n.at + 0.25)];
+    const cut = [p1, [p1[0] - nx * d, p1[1] - ny * d], [p2[0] - nx * d, p2[1] - ny * d], p2];
+    pts = [...pts.slice(0, n.side + 1), ...cut, ...pts.slice(n.side + 1)];
+  }
+  const c = Math.cos(f.tilt);
+  const sn = Math.sin(f.tilt);
+  ctx.beginPath();
+  pts.forEach(([px, py], i) => {
+    const X = f.x + px * c - py * sn;
+    const Y = f.y + px * sn + py * c;
+    if (i) ctx.lineTo(X, Y);
+    else ctx.moveTo(X, Y);
+  });
+  ctx.closePath();
+}
+
+function outline(ctx, f) {
+  slabPath(ctx, f, 0);
+  ctx.stroke();
+}
+
 /** Draw one plane, its edge nudged by `j` when it is a wash. */
 function form(ctx, f, j) {
+  if (f.kind === 'slab') {
+    slabPath(ctx, f, j);
+    ctx.fill();
+    return;
+  }
   ctx.beginPath();
   if (f.kind === 'disc' || f.kind === 'spot') {
     ctx.arc(f.x, f.y, Math.max(1, f.r + j), 0, TAU);

@@ -110,11 +110,12 @@ export const RULED_SCENES = {
   // --- spindles ---------------------------------------------------------------------------
   spindles: {
     label: 'Spindle lines',
-    note: 'A sheet divided into cells, and every cell filled with lines drawn from one edge to the other -- lines that swell and thin along their length like thread wound unevenly on a spindle, so that a cell of them reads as a woven thing rather than a ruled one. Some cells are struck solid black, some are drawn so lightly they are only grain, and some are left bare. Behind them, when you want it, the ruled construction the sheet was laid out on, running past the cells into the margin. Every event takes a cell and fills it again: a small one as grain, a middling one as lines, a large one solid.',
+    note: 'A sheet divided into cells, and every cell filled with lines drawn from one edge to the other -- lines that swell and thin along their length like thread wound unevenly on a spindle, so that a cell of them reads as a woven thing rather than a ruled one. Some cells are struck solid black, some are drawn so lightly they are only grain, and some are left bare. Behind them, when you want it, the ruled construction the sheet was laid out on, running past the cells into the margin. Every event takes a cell and fills it again: a small one as grain, a middling one as lines, a large one solid. The second sheet is a stack: bands of upright pen lines laid one on another in a leaning column, each solid at one end and breaking into dashes at the other, with a dark crossed triangle or half disc hanging from its top edge; an event re-hatches its band, and a large one shifts it along.',
     how: 'The sheet is tiled by columns, each cell spanning one to three rows and now and then left out, and the rules are the edges of that tiling drawn end to end. A line is forty-eight short strokes at a width read off a profile; the profile is a few bumps placed by the event\'s own number, or, when the piece is sounding, the waveform of the note at the instant it was struck, a different window of it for each line. Grain is the same line drawn dashed and pale. A cell is re-struck only when it changes, one a frame, so the picture costs what has just been redrawn and not what is on it.',
     positional: true,
     preview: { frames: 200, dt: 50 },
     params: {
+      figure: { label: 'Which sheet: cells, stack', min: 0, max: 1, step: 1, default: 0, rebuild: true },
       columns: { label: 'How many columns', min: 3, max: 10, step: 1, default: 7, rebuild: true },
       hatch: { label: 'How close the lines', min: 0.5, max: 2, step: 0.05, default: 1 },
       rules: { label: 'How much of the ruled grid shows', min: 0, max: 1, step: 0.02, default: 0.5 },
@@ -123,6 +124,11 @@ export const RULED_SCENES = {
     },
     init(api) {
       const s = api.scene;
+      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
+      if (s.figure === 1) {
+        stackUp(s, api);
+        return;
+      }
       const m = Math.min(api.w, api.h);
       const cols = Math.max(2, Math.min(12, Math.round(api.param('columns'))));
       const margin = m * 0.1;
@@ -204,6 +210,11 @@ export const RULED_SCENES = {
       }
       if (!cell) return;
       const q = sizeOf(p, api);
+      if (s.figure === 1) {
+        restack(s, api, cell, q, Math.random() < api.param('colour') ? p.color : inkOf(api));
+        s.lastAt = api.now;
+        return;
+      }
       cell.kind = q < 0.22 ? 'grain' : q < 0.66 ? 'lines' : 'solid';
       cell.vertical = (p.pick === undefined ? Math.random() : p.pick) < 0.55;
       cell.color = Math.random() < api.param('colour') ? p.color : inkOf(api);
@@ -218,6 +229,29 @@ export const RULED_SCENES = {
       if (!s.cells) return;
       const buf = scratch(api, 'buf');
       const b = s.bufCtx;
+      if (s.figure === 1) {
+        // The stack: blocks lie over one another, so a changed block cannot
+        // be struck alone without cutting into its neighbours. The whole
+        // stack is struck again instead, and at most a few times a second.
+        if (api.now - s.lastAt > 2500) {
+          s.ambient += api.dt;
+          if (s.ambient > 2600) {
+            s.ambient = 0;
+            restack(s, api, s.cells[(Math.random() * s.cells.length) | 0], 0.1, inkOf(api));
+          }
+        } else {
+          s.ambient = 0;
+        }
+        if (s.dirty && api.now - s.struckAt > 140) {
+          b.fillStyle = api.palette.background;
+          b.fillRect(0, 0, api.w, api.h);
+          for (const cell of s.cells) strikeStacked(b, cell, s, api);
+          s.dirty = false;
+          s.struckAt = api.now;
+        }
+        ctx.drawImage(buf, 0, 0);
+        return;
+      }
       if (!s.cleared) {
         b.fillStyle = api.palette.background;
         b.fillRect(0, 0, api.w, api.h);
@@ -631,6 +665,117 @@ export const RULED_SCENES = {
     },
   },
 };
+
+// --- the stack ---------------------------------------------------------------------------
+
+/**
+ * A column of blocks laid one above another, each a little to the left or the
+ * right of the one below, as in a pen drawing of stacked hatched bands.
+ */
+function stackUp(s, api) {
+  const span = api.h * 0.76;
+  const side = Math.min(api.w * 0.42, api.h * 0.32);
+  const top = (api.h - span) / 2;
+  s.cells = [];
+  let y = top;
+  let cx = api.w / 2;
+  while (y < top + span - span * 0.02) {
+    const h = Math.min(top + span - y, span * (0.025 + Math.random() * 0.055));
+    const w = side * (0.5 + Math.random() * 0.5);
+    cx = clampTo(cx + (Math.random() - 0.5) * side * 0.5, api.w / 2 - side * 0.45, api.w / 2 + side * 0.45);
+    const cell = { x: cx - w / 2, y, w, h, kind: 'stack', done: true };
+    dressStacked(cell, 0.3 + Math.random() * 0.4, inkOf(api));
+    s.cells.push(cell);
+    // A sliver of overlap now and then, so the blocks read as laid on one
+    // another rather than ruled in a column.
+    y += h * (Math.random() < 0.4 ? 0.85 : 1.0);
+  }
+  s.side = side;
+  s.dirty = true;
+  s.struckAt = -1e9;
+  s.lastAt = 0;
+  s.ambient = 0;
+}
+
+/** A block's own hatching: where its lines break up, and what hangs from its top. */
+function dressStacked(cell, q, color) {
+  cell.fade = 0.35 + Math.random() * 0.4;
+  cell.color = color;
+  cell.seed = Math.floor(Math.random() * 1e9);
+  // A dark figure hanging from the top edge: a triangle point down, or a
+  // half disc, more often and larger on a larger event.
+  cell.notch = Math.random() < 0.35 + q * 0.6
+    ? { at: 0.12 + Math.random() * 0.62, wide: 0.6 + q * 1.4, deep: 0.45 + Math.random() * 0.4, round: Math.random() < 0.45 }
+    : null;
+}
+
+/** Change the stack for an event: the block re-hatched, and a large one moved. */
+function restack(s, api, cell, q, color) {
+  dressStacked(cell, q, color);
+  if (q > 0.6) {
+    const dx = (Math.random() - 0.5) * s.side * 0.4;
+    cell.x = clampTo(cell.x + dx, api.w * 0.08, api.w * 0.92 - cell.w);
+  }
+  s.dirty = true;
+}
+
+/** One block: upright pen lines, solid to the left and breaking into dashes to the right. */
+function strikeStacked(b, cell, s, api) {
+  const unit = Math.min(api.w, api.h);
+  const pitch = Math.max(2.4, (unit * 0.0085) / api.param('hatch'));
+  const hair = Math.max(0.6, pitch * 0.32);
+  const rnd = seeded(cell.seed);
+  b.save();
+  b.strokeStyle = cell.color;
+  b.lineWidth = hair;
+  b.lineCap = 'butt';
+  const n = Math.max(2, Math.floor(cell.w / pitch));
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+    const x = cell.x + (i + 0.5) * (cell.w / n) + (rnd() - 0.5) * pitch * 0.15;
+    const y0 = cell.y + (rnd() - 0.5) * pitch * 0.5;
+    const y1 = cell.y + cell.h + (rnd() - 0.5) * pitch * 0.5;
+    if (t > cell.fade) {
+      // Past the fade the pen skips: dashes that shorten and gaps that
+      // open as the line goes right.
+      const k = (t - cell.fade) / (1 - cell.fade);
+      b.setLineDash([Math.max(1, pitch * (2.6 - 1.8 * k)), Math.max(0.8, pitch * (0.35 + 1.4 * k))]);
+      b.lineDashOffset = rnd() * pitch * 3;
+    } else {
+      b.setLineDash([]);
+    }
+    b.beginPath();
+    b.moveTo(x, y0);
+    b.lineTo(x + (rnd() - 0.5) * hair, y1);
+    b.stroke();
+  }
+  b.setLineDash([]);
+  const nt = cell.notch;
+  if (nt) {
+    const cx = cell.x + cell.w * nt.at;
+    const half = Math.min(cell.w * 0.3, (cell.h * nt.wide) / 2);
+    const deep = cell.h * nt.deep;
+    b.beginPath();
+    if (nt.round) {
+      b.ellipse(cx, cell.y, half, deep, 0, 0, Math.PI);
+    } else {
+      b.moveTo(cx - half, cell.y);
+      b.lineTo(cx + half, cell.y);
+      b.lineTo(cx + half * 0.15, cell.y + deep);
+    }
+    b.closePath();
+    b.clip();
+    // Crossed: level lines over the upright ones, so the figure is a mesh.
+    b.lineWidth = hair * 0.9;
+    b.beginPath();
+    for (let y = cell.y + pitch * 0.25; y < cell.y + deep; y += pitch * 0.55) {
+      b.moveTo(cx - half, y);
+      b.lineTo(cx + half, y);
+    }
+    b.stroke();
+  }
+  b.restore();
+}
 
 // --- the relief --------------------------------------------------------------------------
 

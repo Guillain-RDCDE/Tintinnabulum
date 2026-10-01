@@ -721,6 +721,14 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
     if (!w.title || !w.cartel) broken.push(`${name} has no label`);
   }
   for (const [name, w] of Object.entries(WORKS)) if (!lib.GROUNDS[w.ground]) broken.push(`${name}.ground=${w.ground}`);
+  // A dial a work turns must be one its scene has, and within its range.
+  for (const [name, w] of Object.entries(WORKS)) {
+    const specs = (SCENES[w.scene] && SCENES[w.scene].params) || {};
+    for (const [dial, v] of Object.entries(w.dials || {})) {
+      const sp = specs[dial];
+      if (!sp || !(v >= sp.min && v <= sp.max)) broken.push(`${name}.dials.${dial}=${v}`);
+    }
+  }
   ok('every work names things that exist', broken.length === 0, broken.join(', ') || `${Object.keys(WORKS).length} works`);
   // A room named for its light must hang works in that light: a night room on
   // a light palette, or a dawn room on a dark one, is a label that lies.

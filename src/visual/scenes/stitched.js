@@ -161,11 +161,12 @@ export const STITCHED_SCENES = {
   // --- lanes -----------------------------------------------------------------------------
   lanes: {
     label: 'Dropped stitches',
-    note: 'White bars ruled across a black field, one above another like the rows of a knitting chart, and every so often a bar steps down half its height for the space of one stitch and carries on, leaving a black notch above and a white tooth below. Every event drops a stitch where it falls; a large one drops a run of them, each a step further along and a row further down, a staircase through the field. As the field fills, the oldest stitches are picked up again and the bars run straight.',
+    note: 'White bars ruled across a black field, one above another like the rows of a knitting chart, and every so often a bar steps down half its height for the space of one stitch and carries on, leaving a black notch above and a white tooth below. Every event drops a stitch where it falls; a large one drops a run of them, each a step further along and a row further down, a staircase through the field. As the field fills, the oldest stitches are picked up again and the bars run straight. The second sheet is bunting: the rows bent into a slow wave and cut into runs of small triangles in five colours, coarse in one run and fine as teeth in the next, with gaps between; an event re-cuts the run it falls on, and a large one a stretch of its row.',
     how: 'A lattice of units: each row a bar one unit high with a gap of one unit under it. A dropped stitch is two units of bar taken out and one unit put back in the gap below, on the second of the two, which is the whole figure of the drawing it is modelled on. Stitches are a list, capped by the renderer\'s budget and by the dial; the field is redrawn every frame as a few hundred rectangles, which costs less than remembering what changed. A new stitch shows for a moment in the colour of its event before it settles into the bar.',
     positional: true,
     preview: { frames: 120, dt: 50 },
     params: {
+      figure: { label: 'Which sheet: stitches, bunting', min: 0, max: 1, step: 1, default: 0, rebuild: true },
       rows: { label: 'How many rows', min: 12, max: 60, step: 1, default: 36, rebuild: true },
       keep: { label: 'How many stitches before the oldest are picked up', min: 10, max: 200, step: 1, default: 60 },
       run: { label: 'How long a staircase a large event drops', min: 1, max: 8, step: 1, default: 3 },
@@ -173,6 +174,11 @@ export const STITCHED_SCENES = {
     },
     init(api) {
       const s = api.scene;
+      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
+      if (s.figure === 1) {
+        hangBunting(s, api);
+        return;
+      }
       const m = Math.min(api.w, api.h);
       const rows = Math.max(8, Math.min(80, Math.round(api.param('rows'))));
       const margin = m * 0.02;
@@ -189,6 +195,12 @@ export const STITCHED_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      if (s.figure === 1) {
+        if (!s.bands) return;
+        rebunt(s, api, p.x, p.y, sizeOf(p, api), Math.random() < api.param('colour') ? p.color : null);
+        s.lastAt = api.now;
+        return;
+      }
       if (!s.stitches) return;
       const q = sizeOf(p, api);
       const col = clampTo(Math.floor((p.x - s.x0) / s.unit), 0, s.cols - 2);
@@ -201,6 +213,20 @@ export const STITCHED_SCENES = {
     },
     frame(ctx, api) {
       const s = api.scene;
+      if (s.figure === 1) {
+        if (!s.bands) return;
+        if (api.now - s.lastAt > 2500) {
+          s.ambient += api.dt;
+          if (s.ambient > 2600) {
+            s.ambient = 0;
+            rebunt(s, api, Math.random() * api.w, Math.random() * api.h, 0.1, null);
+          }
+        } else {
+          s.ambient = 0;
+        }
+        drawBunting(ctx, s, api);
+        return;
+      }
       if (!s.stitches) return;
       const ink = inkOf(api);
       // A stitch now and then in silence, after a pause; never while the
@@ -442,6 +468,167 @@ export const STITCHED_SCENES = {
     },
   },
 };
+
+// --- bunting ------------------------------------------------------------------------------
+
+/** A run of the bunting: where it starts and ends, how fine it is cut, and its colours. */
+function runOf(x0, x1, h, color) {
+  const fine = Math.random() < 0.25;
+  return {
+    x0, x1,
+    pitch: fine ? h * (0.3 + Math.random() * 0.15) : h * (0.9 + Math.random() * 1.6),
+    fine,
+    lean: (Math.random() < 0.5 ? -1 : 1) * h * (0.2 + Math.random() * 0.5),
+    seed: Math.floor(Math.random() * 1e9),
+    color,
+  };
+}
+
+/** Cut a stretch of a row into runs with gaps between them. */
+function layRuns(x0, x1, h, W) {
+  const runs = [];
+  let x = x0;
+  while (x < x1) {
+    const len = W * (0.12 + Math.random() * 0.36);
+    const end = Math.min(x1, x + len);
+    runs.push(runOf(x, end, h, null));
+    x = end + (Math.random() < 0.45 ? W * (0.01 + Math.random() * 0.045) : 0);
+  }
+  return runs;
+}
+
+function hangBunting(s, api) {
+  const W = api.w;
+  const H = api.h;
+  const n = Math.max(6, Math.round(api.param('rows') / 2.4));
+  const margin = Math.min(W, H) * 0.07;
+  s.left = margin;
+  s.right = W - margin;
+  s.top = margin;
+  s.foot = H - margin;
+  const pitch = (s.foot - s.top) / n;
+  s.bandH = pitch * 0.55;
+  s.phase = Math.random() * TAU;
+  s.sway = pitch * (0.6 + Math.random() * 0.8);
+  s.bands = [];
+  for (let i = 0; i < n; i++) {
+    s.bands.push({ y: s.top + (i + 0.5) * pitch, runs: layRuns(s.left - W * 0.05, s.right, s.bandH, W) });
+  }
+  const paper = papers(api);
+  s.inks = paper.sheets.length >= 3 ? paper.sheets : [...paper.sheets, inkOf(api)];
+  s.lastAt = 0;
+  s.ambient = 0;
+}
+
+/** The middle of a band at x: a slow wave the rows share, each a little behind the one above. */
+function bandY(s, band, i, x, W) {
+  const u = x / W;
+  return band.y + Math.sin(u * Math.PI * 1.3 + s.phase + i * 0.22) * s.sway * 0.5 - u * s.sway * 0.4;
+}
+
+/** Re-cut the bunting where an event falls: one run, or a stretch of the row. */
+function rebunt(s, api, x, y, q, color) {
+  let best = 0;
+  let bd = Infinity;
+  s.bands.forEach((b, i) => {
+    const d = Math.abs(bandY(s, b, i, x, api.w) - y);
+    if (d < bd) {
+      bd = d;
+      best = i;
+    }
+  });
+  const band = s.bands[best];
+  if (q < 0.5) {
+    const run = band.runs.find((r) => x >= r.x0 && x <= r.x1);
+    if (run) {
+      const fresh = runOf(run.x0, run.x1, s.bandH, color);
+      band.runs.splice(band.runs.indexOf(run), 1, fresh);
+      return;
+    }
+    // In a gap: a short run fills part of it.
+    band.runs.push(runOf(x - api.w * 0.03, x + api.w * 0.03, s.bandH, color));
+  } else {
+    const span = api.w * (0.15 + q * 0.3);
+    const a = x - span / 2;
+    const b = x + span / 2;
+    // The runs it cuts across are trimmed to the stretch, not dropped whole:
+    // dropping them left holes far wider than the event.
+    const kept = [];
+    for (const r of band.runs) {
+      if (r.x1 < a || r.x0 > b) kept.push(r);
+      else {
+        if (r.x0 < a) kept.push({ ...r, x1: a });
+        if (r.x1 > b) kept.push({ ...r, x0: b });
+      }
+    }
+    band.runs = kept.concat(layRuns(a, b, s.bandH, api.w));
+    if (color) band.runs[band.runs.length - 1].color = color;
+  }
+  band.runs.sort((r1, r2) => r1.x0 - r2.x0);
+  // Runs never pile up: past a row's share of the budget the oldest overlaps go.
+  // Past the ceiling the shortest go, not the leftmost: the runs are kept in
+  // order along the row, and cutting from the front emptied its left end.
+  const most = 40;
+  while (band.runs.length > most) {
+    let k = 0;
+    band.runs.forEach((r, i) => { if (r.x1 - r.x0 < band.runs[k].x1 - band.runs[k].x0) k = i; });
+    band.runs.splice(k, 1);
+  }
+}
+
+function drawBunting(ctx, s, api) {
+  const W = api.w;
+  const h = s.bandH;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(s.left, s.top - h, s.right - s.left, s.foot - s.top + h * 2);
+  ctx.clip();
+  s.bands.forEach((band, i) => {
+    for (const run of band.runs) {
+      const rnd = (() => {
+        let k = run.seed >>> 0 || 1;
+        return () => {
+          k ^= k << 13; k >>>= 0;
+          k ^= k >>> 17;
+          k ^= k << 5; k >>>= 0;
+          return k / 4294967296;
+        };
+      })();
+      for (let xa = run.x0; xa < run.x1 - 0.5; xa += run.pitch) {
+        const xb = Math.min(run.x1, xa + run.pitch);
+        const ya = bandY(s, band, i, xa, W);
+        const yb = bandY(s, band, i, xb, W);
+        // A parallelogram leaning by the run's own amount, cut on its
+        // diagonal into two triangles of two colours.
+        const tl = [xa, ya - h / 2];
+        const tr = [xb, yb - h / 2];
+        const br = [xb - run.lean, yb + h / 2];
+        const bl = [xa - run.lean, ya + h / 2];
+        const c1 = run.color && rnd() < 0.4 ? run.color : s.inks[(rnd() * s.inks.length) | 0];
+        let c2 = s.inks[(rnd() * s.inks.length) | 0];
+        if (rnd() < 0.2) c2 = c1;
+        ctx.fillStyle = c1;
+        ctx.beginPath();
+        ctx.moveTo(tl[0], tl[1]);
+        ctx.lineTo(tr[0], tr[1]);
+        ctx.lineTo(br[0], br[1]);
+        ctx.closePath();
+        ctx.fill();
+        // A fine run is teeth: one triangle a cell and the ground between.
+        if (!run.fine) {
+          ctx.fillStyle = c2;
+          ctx.beginPath();
+          ctx.moveTo(tl[0], tl[1]);
+          ctx.lineTo(br[0], br[1]);
+          ctx.lineTo(bl[0], bl[1]);
+          ctx.closePath();
+          ctx.fill();
+        }
+      }
+    }
+  });
+  ctx.restore();
+}
 
 /** Drop a stitch at one place, unless one is already there or beside it. */
 function drop(s, api, row, col, color) {

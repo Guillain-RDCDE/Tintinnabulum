@@ -1302,7 +1302,7 @@ export function setupStudio({
       tool: w.scene,
       seed: 1 + (hashOf(name) % 99999),
       inks: inksOfPalette(w.palette).map(hex).filter((c) => !isViolet(c)),
-      dials: Object.fromEntries(Object.entries(scene.params || {}).map(([k, d]) => [k, d.default])),
+      dials: { ...Object.fromEntries(Object.entries(scene.params || {}).map(([k, d]) => [k, d.default])), ...(w.dials || {}) },
       kit: w.kit,
       finish: FINISHES[w.finish] ? w.finish : 'none',
       grain: w.grain ? 0.18 : 0,

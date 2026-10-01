@@ -177,6 +177,7 @@ function showWork(name) {
     scene: w.scene, palette: w.palette, finish: w.finish, ground: w.ground,
     mat: w.mat, grain: Boolean(w.grain), living: w.living,
     pace: [0.25, 0.5, 0.75, 1, 1.3, 1.7][w.pace] ?? 1,
+    params: { [w.scene]: { ...(w.dials || {}) } },
   });
   return true;
 }

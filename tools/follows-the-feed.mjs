@@ -31,6 +31,14 @@ const flag = (name, fallback) => {
 const only = argv.filter((a, i) => !a.startsWith('--') && !(argv[i - 1] || '').startsWith('--'));
 const WORST = Number(flag('worst', 0));
 const port = Number(flag('port', 8931));
+// Dials to turn, as name=value pairs: `--set figure=1` measures a scene's
+// second sheet, which can answer the feed quite differently from its first.
+const SET = Object.fromEntries(
+  String(flag('set', ''))
+    .split(',')
+    .filter((kv) => kv.includes('='))
+    .map((kv) => [kv.split('=')[0].trim(), Number(kv.split('=')[1])])
+);
 
 const { srv, base } = await startServer(port);
 const browser = await launch();
@@ -103,7 +111,7 @@ try {
     const names = opt.only.length ? opt.only : SCENE_NAMES;
     const out = [];
     for (const name of names) {
-      const sink = new CanvasSink(cv, { palette: 'marine', scene: name, showHud: false, showLabels: false });
+      const sink = new CanvasSink(cv, { palette: 'marine', scene: name, showHud: false, showLabels: false, params: { [name]: opt.set } });
       sink.start();
       let n = 0;
       const feed = (count, side) => {
@@ -200,7 +208,7 @@ try {
       out.push({ name, quiet, busy, drift, jolt, here, away, landed });
     }
     return out;
-  }, { only });
+  }, { only, set: SET });
 
   if (errors.length) throw new Error('page errors: ' + errors.join(' | '));
 

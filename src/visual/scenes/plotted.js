@@ -21,6 +21,7 @@
 
 import { scratch, toRgb } from './paint.js';
 import { papers } from './papers.js';
+import { lighten } from '../color.js';
 
 const TAU = Math.PI * 2;
 
@@ -434,6 +435,136 @@ function rulings(b, s) {
   b.stroke();
 }
 
+// --- the quilt ----------------------------------------------------------------------------
+
+/**
+ * A patch of the quilt: one of the palette's colours, pushed a little lighter
+ * or darker so no two patches of one colour match, or now and then white
+ * with a few black dots on it, like a domino.
+ */
+function patchOf(s, color) {
+  if (!color && Math.random() < 0.08) return { kind: 'domino', dots: 1 + ((Math.random() * 3) | 0) };
+  const base = color || s.quiltInks[(Math.random() * s.quiltInks.length) | 0];
+  return { kind: 'patch', color: lighten(base, (Math.random() - 0.55) * 0.16), seed: Math.floor(Math.random() * 1e9) };
+}
+
+/** One patch, mottled as dyed cloth is, so a flat colour has a weather in it. */
+function strikeQuilt(b, cell, s) {
+  const t = cell.override || patchOf(s, null);
+  cell.override = t;
+  b.save();
+  b.beginPath();
+  b.rect(cell.x, cell.y, cell.w, cell.h);
+  b.clip();
+  if (t.kind === 'domino') {
+    b.fillStyle = s.card;
+    b.fillRect(cell.x, cell.y, cell.w, cell.h);
+    b.fillStyle = s.ink;
+    const r = Math.max(1.5, Math.min(cell.w, cell.h) * 0.08);
+    for (let i = 0; i < t.dots; i++) {
+      b.beginPath();
+      b.arc(cell.x + cell.w * (0.3 + 0.4 * ((i * 0.618) % 1)), cell.y + cell.h * ((i + 1) / (t.dots + 1)), r, 0, TAU);
+      b.fill();
+    }
+  } else {
+    b.fillStyle = t.color;
+    b.fillRect(cell.x, cell.y, cell.w, cell.h);
+    const rnd = seeded(t.seed);
+    const reach = Math.max(cell.w, cell.h);
+    for (let i = 0; i < 7; i++) {
+      b.globalAlpha = 0.08 + rnd() * 0.1;
+      b.fillStyle = lighten(t.color, rnd() < 0.5 ? 0.12 : -0.12);
+      b.beginPath();
+      b.ellipse(cell.x + rnd() * cell.w, cell.y + rnd() * cell.h, reach * (0.15 + rnd() * 0.35), reach * (0.08 + rnd() * 0.2), rnd() * Math.PI, 0, TAU);
+      b.fill();
+    }
+    b.globalAlpha = 1;
+  }
+  b.restore();
+}
+
+/**
+ * A wire: a black line run along a row or down a column for a cell or three,
+ * with a short spur or two off it, every free end a round dot.
+ */
+function wire(s, api, x, y, q) {
+  const m = Math.min(api.w, api.h);
+  const across = Math.random() < 0.5;
+  const len = m * (0.06 + q * 0.18);
+  const dir = Math.random() < 0.5 ? -1 : 1;
+  // Kept on the quilt: a wire that ran off the edge would hang in the air.
+  const lo = s.margin;
+  const hiX = api.w - s.margin;
+  const hiY = api.h - s.margin;
+  const w = { x, y, x1: across ? clampTo(x + len * dir, lo, hiX) : x, y1: across ? y : clampTo(y + len * dir, lo, hiY), spurs: [] };
+  const n = 1 + ((Math.random() * 2.5) | 0);
+  for (let i = 0; i < n; i++) {
+    const t = 0.2 + Math.random() * 0.7;
+    const sl = m * (0.025 + Math.random() * 0.04) * (Math.random() < 0.5 ? -1 : 1);
+    w.spurs.push({ t, len: sl });
+  }
+  s.wires.push(w);
+  const most = Math.max(8, Math.min(20, Math.floor((api.budget || 800) / 6)));
+  if (s.wires.length > most) s.wires.splice(0, s.wires.length - most);
+}
+
+/** The wires, over the patches, redrawn each frame -- there are never many. */
+function wires(ctx, s, api) {
+  const m = Math.min(api.w, api.h);
+  const lw = Math.max(1, m * 0.0035);
+  const dot = lw * 2.2;
+  ctx.save();
+  ctx.strokeStyle = s.ink;
+  ctx.fillStyle = s.ink;
+  ctx.lineWidth = lw;
+  ctx.lineCap = 'round';
+  const ends = [];
+  ctx.beginPath();
+  for (const w of s.wires) {
+    ctx.moveTo(w.x, w.y);
+    ctx.lineTo(w.x1, w.y1);
+    ends.push([w.x, w.y], [w.x1, w.y1]);
+    const across = w.y1 === w.y;
+    for (const sp of w.spurs) {
+      const px = w.x + (w.x1 - w.x) * sp.t;
+      const py = w.y + (w.y1 - w.y) * sp.t;
+      const ex = across ? px : clampTo(px + sp.len, s.margin, api.w - s.margin);
+      const ey = across ? clampTo(py + sp.len, s.margin, api.h - s.margin) : py;
+      ctx.moveTo(px, py);
+      ctx.lineTo(ex, ey);
+      ends.push([ex, ey]);
+    }
+  }
+  ctx.stroke();
+  for (const [x, y] of ends) {
+    ctx.beginPath();
+    ctx.arc(x, y, dot, 0, TAU);
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
+/** An event on the quilt: a wire, a patch dyed again, or a whole row or column. */
+function requilt(s, api, cell, q, color) {
+  const own = Math.random() < Math.max(0.35, api.param('colour')) ? color : null;
+  if (q < 0.2) {
+    wire(s, api, cell.x + cell.w * (0.2 + Math.random() * 0.6), cell.y + cell.h * (0.2 + Math.random() * 0.6), q);
+    return;
+  }
+  if (q < 0.72) {
+    cell.override = patchOf(s, own);
+    cell.done = false;
+    return;
+  }
+  const base = own || s.quiltInks[(Math.random() * s.quiltInks.length) | 0];
+  const byCol = Math.random() < 0.5;
+  for (const c of s.cells) {
+    if (byCol ? c.c !== cell.c : c.r !== cell.r) continue;
+    if (Math.random() < 0.6) c.override = patchOf(s, base);
+    c.done = false;
+  }
+}
+
 // --- the peals ----------------------------------------------------------------------------
 
 /** Scatter `n` dots of dust over the whole sheet. */
@@ -553,11 +684,11 @@ export const PLOTTED_SCENES = {
   tartan: {
     label: 'Woven cells',
     note: 'A sheet woven like cloth from columns and rows of unequal width, wide ones with a thin one between, and every cell the crossing of the two: a column of diagonal ruling crossed by a row of level lines comes out as a mesh, a black stripe crossing anything stays black. On the first sheet the cells are cut apart by narrow gutters and printed in one black on cream, some punched through with a white disc. On the second they are laid edge to edge on lines that run on past the grid, in flat colour, black and fine stripes, with dots set in them. A small event punches a disc, a middling one re-treats its cell, a large one re-dyes a whole column or row.',
-    how: 'Column widths and row heights are drawn from a few sizes, never two thin ones together, and normalised to the sheet. Each column and each row carries a treatment of its own -- which line families it adds, or whether it is solid -- and a cell is the union of the two, unless an event has overridden it. The ruled sheet crosses its threads the way a weave does: blank lets the other through, two colours make black, stripes lie over whatever is under them. A cell is struck onto a buffer only when it changes, a few a frame, so a re-dyed column draws itself down the sheet in a fraction of a second.',
+    how: 'Column widths and row heights are drawn from a few sizes, never two thin ones together, and normalised to the sheet. Each column and each row carries a treatment of its own -- which line families it adds, or whether it is solid -- and a cell is the union of the two, unless an event has overridden it. The ruled sheet crosses its threads the way a weave does: blank lets the other through, two colours make black, stripes lie over whatever is under them. The quilt is a third sheet: every patch dyed its own colour and mottled like cloth, set in a dark frame with thin dark seams, a few patches white with black dots, and black wires run across it with a round dot at every end. A small event runs a new wire, a middling one dyes a patch again, a large one a row or a column. A cell is struck onto a buffer only when it changes, a few a frame, so a re-dyed column draws itself down the sheet in a fraction of a second.',
     positional: true,
     preview: { frames: 160, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: cut, ruled', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: cut, ruled, quilt', min: 0, max: 2, step: 1, default: 0, rebuild: true },
       columns: { label: 'How many columns', min: 4, max: 12, step: 1, default: 7, rebuild: true },
       pitch: { label: 'How close the ruling', min: 0.6, max: 2, step: 0.05, default: 1, rebuild: true },
       holes: { label: 'How many discs', min: 0, max: 1, step: 0.02, default: 0.45 },
@@ -566,7 +697,7 @@ export const PLOTTED_SCENES = {
     init(api) {
       const s = api.scene;
       const m = Math.min(api.w, api.h);
-      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure'))));
+      s.figure = Math.max(0, Math.min(2, Math.round(api.param('figure'))));
       const ncol = Math.max(3, Math.min(14, Math.round(api.param('columns'))));
       const nrow = Math.max(4, Math.min(16, Math.round((ncol * api.h) / api.w * 1.25)));
       const paper = papers(api);
@@ -576,12 +707,16 @@ export const PLOTTED_SCENES = {
       s.sheets = paper.sheets.slice().sort(() => Math.random() - 0.5).slice(0, 2);
       s.pitch = Math.max(2.6, (m * 0.017) / api.param('pitch'));
       s.hair = Math.max(0.6, m * 0.0014);
-      const margin = s.figure === 0 ? m * 0.04 : m * 0.11;
-      const gutter = s.figure === 0 ? Math.max(2, m * 0.013) : 0;
+      // The quilt dyes with every colour the palette has, and a white.
+      s.card = paper.card;
+      s.quiltInks = paper.sheets.length ? paper.sheets : [s.ink];
+      const margin = s.figure === 0 ? m * 0.04 : s.figure === 1 ? m * 0.11 : m * 0.07;
+      const gutter = s.figure === 0 ? Math.max(2, m * 0.013) : s.figure === 1 ? 0 : Math.max(1, m * 0.005);
+      s.margin = margin;
       const spanW = api.w - margin * 2 - gutter * (ncol - 1);
       const spanH = api.h - margin * 2 - gutter * (nrow - 1);
       const ws = stripes(spanW, ncol, 0.3, false);
-      const hs = stripes(spanH, nrow, 0.35, s.figure === 0);
+      const hs = s.figure === 2 ? stripes(spanH, nrow, 0.2, false) : stripes(spanH, nrow, 0.35, s.figure === 0);
       s.colX = [];
       s.rowY = [];
       let x = margin;
@@ -597,6 +732,7 @@ export const PLOTTED_SCENES = {
       const hole = api.param('holes');
       s.cols = ws.map(() => (s.figure === 0 ? threadCut('col') : threadRuled(s.sheets, s.ink)));
       s.rows = hs.map(() => (s.figure === 0 ? threadCut('row') : threadRuled(s.sheets, s.ink)));
+      s.wires = [];
       s.cells = [];
       for (let r = 0; r < nrow; r++) {
         for (let c = 0; c < ncol; c++) {
@@ -627,6 +763,18 @@ export const PLOTTED_SCENES = {
         for (let i = 0; i < 4; i++) {
           const ey = y0 + Math.random() * (y1 - y0);
           s.lines.push({ x0: x0 - over(), y0: ey, x1: x0 + (x1 - x0) * (0.3 + Math.random() * 0.7), y1: ey });
+        }
+      }
+      if (s.figure === 2) {
+        // The quilt: every patch its own colour, a few of them white with
+        // dots, and a dozen wires already run across it.
+        for (const cell of s.cells) {
+          cell.hole = 0;
+          cell.override = patchOf(s, null);
+        }
+        for (let i = 0; i < 12; i++) {
+          const cell = s.cells[(Math.random() * s.cells.length) | 0];
+          wire(s, api, cell.x + Math.random() * cell.w, cell.y + Math.random() * cell.h, 0.4);
         }
       }
       s.cleared = false;
@@ -660,6 +808,12 @@ export const PLOTTED_SCENES = {
         b.fillStyle = api.palette.background;
         b.fillRect(0, 0, api.w, api.h);
         if (s.figure === 1) rulings(b, s);
+        if (s.figure === 2) {
+          // The quilt's own dark ground, a frame round it and the seams.
+          b.fillStyle = s.ink;
+          const fr = s.margin * 0.35;
+          b.fillRect(s.margin - fr, s.margin - fr, api.w - (s.margin - fr) * 2, api.h - (s.margin - fr) * 2);
+        }
         s.cleared = true;
       }
       if (api.now - s.lastAt > 2500) {
@@ -667,7 +821,8 @@ export const PLOTTED_SCENES = {
         if (s.ambient > 1900) {
           s.ambient = 0;
           const cell = s.cells[(Math.random() * s.cells.length) | 0];
-          cell.hole = cell.hole > 0 ? 0 : 0.3 + Math.random() * 0.4;
+          if (s.figure === 2) cell.override = patchOf(s, null);
+          else cell.hole = cell.hole > 0 ? 0 : 0.3 + Math.random() * 0.4;
           cell.done = false;
         }
       } else {
@@ -679,11 +834,13 @@ export const PLOTTED_SCENES = {
       for (const cell of s.cells) {
         if (cell.done) continue;
         if (s.figure === 0) strikeCut(b, cell, s, api);
-        else strikeRuled(b, cell, s, api);
+        else if (s.figure === 1) strikeRuled(b, cell, s, api);
+        else strikeQuilt(b, cell, s);
         cell.done = true;
         if (--budget <= 0) break;
       }
       ctx.drawImage(buf, 0, 0);
+      if (s.figure === 2) wires(ctx, s, api);
     },
   },
 
@@ -899,6 +1056,10 @@ function placeOrb(s, api, x, y, q, p) {
 
 /** Change the woven sheet for an event: a disc, a cell, or a whole thread. */
 function reweave(s, api, cell, q, color) {
+  if (s.figure === 2) {
+    requilt(s, api, cell, q, color);
+    return;
+  }
   const tinted = Math.random() < api.param('colour');
   // On the ruled sheet an event speaks in the sheet's own two inks unless
   // the colour dial lets its own through.

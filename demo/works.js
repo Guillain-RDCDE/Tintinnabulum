@@ -82,7 +82,7 @@ export function setupWorks({
       shape: canvas.shape,
       richness: canvas.richness,
       depth: canvas.depth,
-      params: Object.fromEntries(Object.entries(scene.params || {}).map(([k, d]) => [k, d.default])),
+      params: { ...Object.fromEntries(Object.entries(scene.params || {}).map(([k, d]) => [k, d.default])), ...(w.dials || {}) },
       finish: w.finish,
       mat: w.mat,
       ground: w.ground,
@@ -405,6 +405,10 @@ export function setupWorks({
     look.selectRotate(0);
     look.selectSceneRotate(0);
     look.selectScene(w.scene);
+    // The work's own dials, and only those: whatever was left turned on this
+    // scene by hand would otherwise hang inside somebody else's composition.
+    canvas.resetParams(w.scene);
+    for (const [k, v] of Object.entries(w.dials || {})) canvas.setParam(k, v, w.scene);
     look.selectPalette(w.palette);
     look.selectFinish(w.finish);
     look.selectGround(w.ground);
