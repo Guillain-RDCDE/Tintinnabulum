@@ -118,10 +118,11 @@ export const PAPER_SCENES = {
   // --- cutpaper ---------------------------------------------------------------------------
   cutpaper: {
     label: 'Cut paper',
-    note: 'Shapes cut out of coloured paper with a blade and butted up against one another until there is no ground left showing. Everything is flat -- no shadow, no edge, no depth of any kind -- so the picture holds together by how the pieces pack rather than by what is in front of what, and a face or a bird appears now and then out of nothing more than a half disc landing above two dots. Every event cuts one more piece and lays it down over whatever was there, which means the picture is the whole history of the cutting and the oldest of it is buried.',
+    note: 'Shapes cut out of coloured paper with a blade and butted up against one another until there is no ground left showing. Everything is flat -- no shadow, no edge, no depth of any kind -- so the picture holds together by how the pieces pack rather than by what is in front of what, and a face or a bird appears now and then out of nothing more than a half disc landing above two dots. Every event cuts one more piece and lays it down over whatever was there, which means the picture is the whole history of the cutting and the oldest of it is buried. The second sheet is a totem: a standing figure cut in bands, every band a strip of triangles between two ragged edges, in red, blue, yellow, cream and black on a coloured ground, its outline jutting out in points here and there. A small event re-colours the triangle it falls on, a middling one its whole band, and a large one re-cuts the band so the figure changes shape.',
     how: 'Every cut is aligned to a module, so pieces meet exactly and the mosaic never shows a seam of ground. A piece is a flat field of one colour, and on better than half of them a second shape -- half disc, quarter, wedge, stem -- is cut into the same box in another. The two neutrals of the palette carry most of the area and the categories punctuate it, which is the ratio the thing is built on. Struck onto a buffer and never redrawn.',
     preview: { frames: 220, dt: 45 },
     params: {
+      figure: { label: 'Which sheet: collage, totem', min: 0, max: 1, step: 1, default: 0, rebuild: true },
       scale: { label: 'Size of a piece', min: 0.5, max: 2.4, step: 0.05, default: 1, rebuild: true },
       colour: { label: 'How much colour against the neutrals', min: 0, max: 1, step: 0.02, default: 0.4 },
       faces: { label: 'How often an eye', min: 0, max: 1, step: 0.02, default: 0.22 },
@@ -129,6 +130,11 @@ export const PAPER_SCENES = {
     },
     init(api) {
       const s = api.scene;
+      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
+      if (s.figure === 1) {
+        raiseTotem(api);
+        return;
+      }
       const m = Math.min(api.w, api.h);
       s.module = Math.max(8, (m / 11) * api.param('scale'));
       s.cols = Math.max(2, Math.ceil(api.w / s.module));
@@ -138,11 +144,19 @@ export const PAPER_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      if (s.figure === 1) {
+        if (s.levels) recutTotem(api, p.x, p.y, Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34))));
+        return;
+      }
       if (!s.module || !s.bufCtx) return;
       lay(api, Math.floor(p.x / s.module), Math.floor(p.y / s.module), p.color);
     },
     frame(ctx, api) {
       const s = api.scene;
+      if (s.figure === 1) {
+        drawTotem(ctx, api);
+        return;
+      }
       const buf = scratch(api, 'buf');
       const b = s.bufCtx;
       if (!s.cleared) {
@@ -481,4 +495,199 @@ function form(ctx, f, j) {
     ctx.rect(f.x - f.w / 2 - j, f.y - f.h / 2 - j, f.w + j * 2, f.h + j * 2);
   }
   ctx.fill();
+}
+
+// --- the totem ----------------------------------------------------------------------------
+
+// The five inks of the totem, the same on every ground, as on the sheets it
+// follows: pulled a little towards the palette's own colours so it belongs.
+const TOTEM_INKS = ['#e0432f', '#2d5fb0', '#efc43f', '#ece2d3', '#222222'];
+const TOTEM_WEIGHTS = [0.17, 0.17, 0.16, 0.25, 0.25];
+
+function totemInk(s) {
+  let r = Math.random();
+  for (let i = 0; i < TOTEM_WEIGHTS.length; i++) {
+    r -= TOTEM_WEIGHTS[i];
+    if (r <= 0) return i;
+  }
+  return 4;
+}
+
+/**
+ * The points of one level: its two ends and a few between, sorted across.
+ * Some are set straight under a point of the level above, which is what
+ * gives the sheets their shared corners and long upright seams.
+ */
+function levelPoints(cx, half, n, above) {
+  const xs = [cx - half, cx + half];
+  for (let i = 0; i < n; i++) {
+    if (above && Math.random() < 0.45) {
+      const x = above[(Math.random() * above.length) | 0];
+      if (x > cx - half && x < cx + half) {
+        xs.push(x);
+        continue;
+      }
+    }
+    xs.push(cx - half + Math.random() * half * 2);
+  }
+  return xs.sort((a, b) => a - b);
+}
+
+/** Stand the figure up: levels down the sheet, each with its ragged width. */
+function raiseTotem(api) {
+  const s = api.scene;
+  const W = api.w;
+  const H = api.h;
+  const span = H * 0.8;
+  const top = (H - span) / 2;
+  const n = 9;
+  const gaps = [];
+  for (let i = 0; i < n; i++) gaps.push(0.7 + Math.random() * 0.6);
+  const sum = gaps.reduce((a, v) => a + v, 0);
+  const reach = Math.min(W * 0.36, H * 0.26);
+  s.levels = [];
+  let y = top;
+  let cx = W / 2;
+  let half = reach * 0.4;
+  for (let k = 0; k <= n; k++) {
+    // A narrow head and foot, a body that wanders in width and centre, and
+    // now and then a level that juts out on one side into a point.
+    const edge = k === 0 || k === n;
+    half = edge ? reach * (0.15 + Math.random() * 0.45) : Math.max(reach * 0.5, Math.min(reach, half + (Math.random() - 0.5) * reach * 0.5));
+    cx = Math.max(W / 2 - reach * 0.3, Math.min(W / 2 + reach * 0.3, cx + (Math.random() - 0.5) * reach * 0.25));
+    const above = s.levels.length ? s.levels[s.levels.length - 1].xs : null;
+    const xs = levelPoints(cx, half, edge ? (Math.random() * 3) | 0 : 2 + ((Math.random() * 4) | 0), above);
+    if (!edge && Math.random() < 0.3) {
+      if (Math.random() < 0.5) xs[0] -= reach * (0.2 + Math.random() * 0.3);
+      else xs[xs.length - 1] += reach * (0.2 + Math.random() * 0.3);
+    }
+    s.levels.push({ y, xs, cx, half });
+    if (k < n) y += (gaps[k] / sum) * span;
+  }
+  s.inks = TOTEM_INKS.map((c) => c);
+  const pal = api.palette;
+  const pulls = [pal.alert, pal.user, pal.anon, null, null];
+  s.inks = TOTEM_INKS.map((c, i) => (pulls[i] && /^#/.test(pulls[i]) ? mixColors(c, pulls[i], 0.12) : c));
+  s.bands = [];
+  for (let k = 0; k < n; k++) s.bands.push(stripOf(s, k, null));
+  s.lastAt = 0;
+  s.ambient = 0;
+}
+
+/**
+ * The triangles of one band, between level k and level k+1: walk both edges
+ * from left to right and always advance the one whose next point is nearer,
+ * which is the strip the sheets are cut as. Colours are kept where the
+ * number of triangles has not changed.
+ */
+function stripOf(s, k, old) {
+  const a = s.levels[k];
+  const b = s.levels[k + 1];
+  const tris = [];
+  let i = 0;
+  let j = 0;
+  while (i < a.xs.length - 1 || j < b.xs.length - 1) {
+    const takeA = j >= b.xs.length - 1 || (i < a.xs.length - 1 && a.xs[i + 1] <= b.xs[j + 1]);
+    if (takeA) {
+      tris.push([[a.xs[i], a.y], [a.xs[i + 1], a.y], [b.xs[j], b.y]]);
+      i++;
+    } else {
+      tris.push([[a.xs[i], a.y], [b.xs[j], b.y], [b.xs[j + 1], b.y]]);
+      j++;
+    }
+  }
+  const inks = tris.map((_, t) => {
+    if (old && old.inks.length === tris.length) return old.inks[t];
+    return totemInk(s);
+  });
+  // No two neighbours in one ink: the sheet reads as cut pieces only if the
+  // cuts can be seen.
+  for (let t = 1; t < inks.length; t++) if (inks[t] === inks[t - 1]) inks[t] = (inks[t] + 1 + ((Math.random() * 3) | 0)) % 5;
+  return { tris, inks };
+}
+
+function insideTri(px, py, [[x1, y1], [x2, y2], [x3, y3]]) {
+  const d1 = (px - x2) * (y1 - y2) - (x1 - x2) * (py - y2);
+  const d2 = (px - x3) * (y2 - y3) - (x2 - x3) * (py - y3);
+  const d3 = (px - x1) * (y3 - y1) - (x3 - x1) * (py - y1);
+  const neg = d1 < 0 || d2 < 0 || d3 < 0;
+  const pos = d1 > 0 || d2 > 0 || d3 > 0;
+  return !(neg && pos);
+}
+
+/** An event on the totem: one triangle, one band, or a band cut again. */
+function recutTotem(api, x, y, q) {
+  const s = api.scene;
+  // The band at that height, whether or not the event fell on the figure.
+  let k = s.bands.length - 1;
+  for (let i = 0; i < s.bands.length; i++) {
+    if (y < s.levels[i + 1].y) {
+      k = i;
+      break;
+    }
+  }
+  const band = s.bands[k];
+  if (q < 0.4) {
+    let t = band.tris.findIndex((tri) => insideTri(x, y, tri));
+    if (t < 0) {
+      // Off the figure: the nearest triangle of the band, by its centre.
+      let best = Infinity;
+      band.tris.forEach((tri, i) => {
+        const d = Math.abs((tri[0][0] + tri[1][0] + tri[2][0]) / 3 - x);
+        if (d < best) {
+          best = d;
+          t = i;
+        }
+      });
+    }
+    if (t >= 0) band.inks[t] = (band.inks[t] + 1 + ((Math.random() * 4) | 0)) % 5;
+  } else if (q < 0.75) {
+    band.inks = band.inks.map(() => totemInk(s));
+  } else {
+    // The band's lower edge cut again, so the figure changes shape there
+    // and the band below follows it.
+    const lv = s.levels[k + 1];
+    const last = k + 1 === s.levels.length - 1;
+    lv.xs = levelPoints(lv.cx, lv.half * (0.8 + Math.random() * 0.4), last ? (Math.random() * 3) | 0 : 2 + ((Math.random() * 4) | 0), s.levels[k].xs);
+    if (!last && Math.random() < 0.35) lv.xs[Math.random() < 0.5 ? 0 : lv.xs.length - 1] += (Math.random() < 0.5 ? -1 : 1) * lv.half * 0.4;
+    lv.xs.sort((a, b) => a - b);
+    s.bands[k] = stripOf(s, k, null);
+    if (k + 1 < s.bands.length) s.bands[k + 1] = stripOf(s, k + 1, null);
+  }
+  s.lastAt = api.now;
+}
+
+function drawTotem(ctx, api) {
+  const s = api.scene;
+  if (!s.bands) return;
+  // A triangle re-coloured now and then in silence, after a pause.
+  if (api.now - s.lastAt > 2500) {
+    s.ambient += api.dt;
+    if (s.ambient > 2600) {
+      s.ambient = 0;
+      const band = s.bands[(Math.random() * s.bands.length) | 0];
+      const t = (Math.random() * band.inks.length) | 0;
+      band.inks[t] = (band.inks[t] + 1 + ((Math.random() * 4) | 0)) % 5;
+    }
+  } else {
+    s.ambient = 0;
+  }
+  ctx.fillStyle = api.palette.background;
+  ctx.fillRect(0, 0, api.w, api.h);
+  for (const band of s.bands) {
+    band.tris.forEach((tri, t) => {
+      ctx.fillStyle = s.inks[band.inks[t]];
+      // Stroked in its own colour too, a hair wide, so neighbours meet
+      // without the hairline of ground antialiasing leaves between them.
+      ctx.strokeStyle = ctx.fillStyle;
+      ctx.lineWidth = 0.6;
+      ctx.beginPath();
+      ctx.moveTo(tri[0][0], tri[0][1]);
+      ctx.lineTo(tri[1][0], tri[1][1]);
+      ctx.lineTo(tri[2][0], tri[2][1]);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
 }

@@ -366,6 +366,11 @@ export const WORKS = {
     ground: 'coldpress', mat: 'gallery', pace: SLOW, dials: { figure: 1 },
     cartel: 'A square cut and cut again, every block drawn round in a heavy line and laid in red, in black, or ruled with upright or level lines, fine or wide, or left bare. An event re-rules the block it falls in or cuts it once more; a large one lays out a whole quarter afresh.',
   }),
+  totem: work('Dusk', 'calm', 'Totem', {
+    scene: 'cutpaper', palette: 'ochre', kit: 'clay', space: 'hall',
+    grain: true, mat: 'gallery', pace: SLOW, dials: { figure: 1 },
+    cartel: 'A standing figure cut in bands, every band a strip of triangles in red, blue, yellow, cream and black, its outline jutting out into points here and there, on a ground of ochre. A small event re-colours the triangle it falls on, a middling one its whole band, a large one cuts the band again and the figure changes shape.',
+  }),
   // Five sheets of hexadecimal: every event writes its own fingerprint into
   // the grid where it falls, and each sheet dresses the grid its own way.
   hexplain: work('Night', 'calm', 'Fingerprints', {
