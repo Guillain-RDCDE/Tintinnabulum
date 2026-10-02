@@ -141,6 +141,7 @@ export const PAPER_SCENES = {
       s.rows = Math.max(2, Math.ceil(api.h / s.module));
       s.cleared = false;
       s.ambient = 0;
+      s.lastAt = 0;
     },
     event(p, api) {
       const s = api.scene;
@@ -149,7 +150,16 @@ export const PAPER_SCENES = {
         return;
       }
       if (!s.module || !s.bufCtx) return;
-      lay(api, Math.floor(p.x / s.module), Math.floor(p.y / s.module), p.color);
+      // A few pieces round where it fell, more for a larger event: one piece
+      // alone is lost in a collage of hundreds.
+      const q = Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34)));
+      const col = Math.floor(p.x / s.module);
+      const row = Math.floor(p.y / s.module);
+      const n = 1 + Math.round(q * 3);
+      for (let i = 0; i < n; i++) {
+        lay(api, col + ((Math.random() * 3) | 0) - 1, row + ((Math.random() * 3) | 0) - 1, i === 0 ? p.color : null);
+      }
+      s.lastAt = api.now;
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -177,11 +187,17 @@ export const PAPER_SCENES = {
           lay(api, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, null);
         }
       }
-      s.ambient += api.dt;
-      const every = 110;
-      while (s.ambient > every) {
-        s.ambient -= every;
-        lay(api, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, null);
+      // The blade works on its own only after a pause, and slowly. It used to
+      // cut a piece every hundred and ten milliseconds whatever arrived, so
+      // a silent minute put down as many pieces as a busy one.
+      if (api.now - (s.lastAt || 0) > 2500) {
+        s.ambient += api.dt;
+        if (s.ambient > 1800) {
+          s.ambient = 0;
+          lay(api, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, null);
+        }
+      } else {
+        s.ambient = 0;
       }
       ctx.drawImage(buf, 0, 0);
     },
