@@ -371,6 +371,23 @@ export const WORKS = {
     grain: true, mat: 'gallery', pace: SLOW, dials: { figure: 1 },
     cartel: 'A standing figure cut in bands, every band a strip of triangles in red, blue, yellow, cream and black, its outline jutting out into points here and there, on a ground of ochre. A small event re-colours the triangle it falls on, a middling one its whole band, a large one cuts the band again and the figure changes shape.',
   }),
+  // Three currents of turned squares: upright in one corner, on their points
+  // across the rest, drifting so they crowd and part.
+  embers: work('Night', 'calm', 'Current of embers', {
+    scene: 'grid', palette: 'ember', kit: 'gongs', space: 'hall',
+    pace: UNHURRIED, dials: { figure: 1, fill: 0.9, square: 0.72 },
+    cartel: 'Thousands of small squares in amber, red and ash on a dark ground, upright in one corner and turned further across the sheet until they stand on their points, crowding into one another where they turn most. Every event turns and re-inks the squares round where it falls; they settle only while the feed goes on.',
+  }),
+  primaries: work('Night', 'lively', 'Turned primaries', {
+    scene: 'grid', palette: 'ink', kit: 'steelpan', space: 'room',
+    pace: REAL_TIME, dials: { figure: 1, fill: 0.95, square: 0.8 },
+    cartel: 'The same current packed so close the squares lock into one another, in red, blue, gold, teal and white on black. Every event stirs the patch it falls on and leaves it turned.',
+  }),
+  scattered: work('Daylight', 'calm', 'Squares, scattered', {
+    scene: 'grid', palette: 'blush', kit: 'musicbox', space: 'room',
+    mat: 'gallery', pace: SLOW, dials: { figure: 1, fill: 0.62, square: 0.55 },
+    cartel: 'A looser current on a pale ground, with wide gaps where whole runs of squares are missing, so the turning reads as a few strands drifting across the sheet. A large event fills some gaps and opens others.',
+  }),
   // Four flights of stairs in one palette: bars laid in a progression, each a
   // veil or ruled fine, multiplying where they cross.
   stairdrift: work('Daylight', 'calm', 'Stairs, drifting', {

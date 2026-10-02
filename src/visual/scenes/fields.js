@@ -89,14 +89,22 @@ export const FIELD_SCENES = {
   grid: {
     label: 'Grid',
     positional: false,
-    note: 'An ordered grid that each event knocks out of true, settling back over time. After Vera Molnár.',
+    note: 'An ordered grid that each event knocks out of true, settling back over time. After Vera Molnár. The second sheet is a current: solid squares in a few inks on a coloured ground, upright in one corner and turned further and further across the sheet until they stand on their points, drifting so they crowd and part, with cells left empty. Every event turns and re-inks the squares round where it falls.',
     // `rebuild` says a change re-runs init(): a grid cannot resize its cells
     // without being built again, where a line width can just be read.
     params: {
+      figure: { label: 'Which sheet: outlines, current', min: 0, max: 1, step: 1, default: 0, rebuild: true },
       cell: { label: 'Cell size', min: 16, max: 90, step: 1, default: 40, rebuild: true },
       square: { label: 'Square size', min: 0.25, max: 0.95, step: 0.01, default: 0.62 },
+      fill: { label: 'How full the current is', min: 0.3, max: 1, step: 0.02, default: 0.82, rebuild: true },
+      turn: { label: 'How far the current turns them', min: 0, max: 1.5, step: 0.05, default: 1 },
     },
     init(api) {
+      api.scene.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
+      if (api.scene.figure === 1) {
+        currentInit(api);
+        return;
+      }
       const cell = api.param('cell');
       const cols = Math.max(1, Math.floor(api.w / cell));
       const rows = Math.max(1, Math.floor(api.h / cell));
@@ -108,6 +116,10 @@ export const FIELD_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      if (s.figure === 1) {
+        currentEvent(p, api);
+        return;
+      }
       if (!s.heat) return;
       const cx = Math.floor((p.x / api.w) * s.cols);
       const cy = Math.floor((p.y / api.h) * s.rows);
@@ -119,6 +131,10 @@ export const FIELD_SCENES = {
     },
     frame(ctx, api) {
       const s = api.scene;
+      if (s.figure === 1) {
+        currentFrame(ctx, api);
+        return;
+      }
       if (!s.heat) return;
       const decay = Math.min(0.06, api.dt / 1000) * 0.55;
       const w = api.w / s.cols;
@@ -233,3 +249,141 @@ export const FIELD_SCENES = {
     },
   },
 };
+
+// --- the current --------------------------------------------------------------------------
+
+/**
+ * The angle the current gives a square at (u, v), both 0..1: nothing in the
+ * calm corner, a quarter turn's half by the far side, and a slow wave across
+ * it so the turning comes in bands rather than a ramp.
+ */
+function currentAngle(s, u, v) {
+  const du = s.calm[0] ? 1 - u : u;
+  const dv = s.calm[1] ? 1 - v : v;
+  const d = Math.min(1, Math.hypot(du, dv) / 1.1);
+  const ease = d * d * (3 - 2 * d);
+  const wave = Math.sin(u * s.fu + v * s.fv + s.phase) * 0.18;
+  return (Math.PI / 4) * Math.max(0, Math.min(1.1, ease + wave * ease));
+}
+
+function currentInit(api) {
+  const s = api.scene;
+  const m = Math.min(api.w, api.h);
+  const margin = m * 0.05;
+  s.x0 = margin;
+  s.y0 = margin;
+  s.W = api.w - margin * 2;
+  s.H = api.h - margin * 2;
+  const cell = Math.max(7, api.param('cell') * (m / 900) * 0.72);
+  s.cols = Math.max(6, Math.round(s.W / cell));
+  s.rows = Math.max(6, Math.round(s.H / cell));
+  s.cw = s.W / s.cols;
+  s.ch = s.H / s.rows;
+  s.calm = [Math.random() < 0.5, Math.random() < 0.3 ? 0 : 1];
+  s.fu = 3 + Math.random() * 4;
+  s.fv = 2 + Math.random() * 4;
+  s.phase = Math.random() * TAU;
+  const n = s.cols * s.rows;
+  s.ink = new Uint8Array(n);
+  s.on = new Uint8Array(n);
+  s.twist = new Float32Array(n);
+  s.lit = new Float32Array(n);
+  const fill = api.param('fill');
+  for (let i = 0; i < n; i++) {
+    s.ink[i] = (Math.random() * 5) | 0;
+    // Gaps come in loose patches, not as salt: a cell is left out more
+    // readily where its neighbour above was.
+    const above = i >= s.cols ? s.on[i - s.cols] : 1;
+    s.on[i] = Math.random() < fill * (above ? 1 : 0.7) ? 1 : 0;
+  }
+  s.clock = 0;
+  s.drive = 0;
+  s.lastAt = 0;
+  s.ambient = 0;
+}
+
+function currentEvent(p, api) {
+  const s = api.scene;
+  if (!s.ink) return;
+  const q = Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34)));
+  const c0 = (p.x - s.x0) / s.cw;
+  const r0 = (p.y - s.y0) / s.ch;
+  const reach = 1.2 + q * 4.5;
+  const ink = (Math.random() * 5) | 0;
+  const spin = (Math.random() < 0.5 ? -1 : 1) * (0.35 + q * 0.6);
+  const lo = (v, n) => Math.max(0, Math.floor(v - reach));
+  const hi = (v, n) => Math.min(n - 1, Math.ceil(v + reach));
+  for (let r = lo(r0, s.rows); r <= hi(r0, s.rows); r++) {
+    for (let c = lo(c0, s.cols); c <= hi(c0, s.cols); c++) {
+      const d = Math.hypot(c + 0.5 - c0, r + 0.5 - r0) / reach;
+      if (d > 1) continue;
+      const i = r * s.cols + c;
+      const k = 1 - d;
+      s.twist[i] += spin * k;
+      s.lit[i] = Math.max(s.lit[i], k);
+      // The middle of the stir takes the event's ink; a large event also
+      // fills the gaps it passes through, or opens new ones.
+      // Mixed, not a patch: the sheets keep their inks salted together.
+      if (d < 0.6 && Math.random() < 0.5) s.ink[i] = Math.random() < 0.5 ? ink : (Math.random() * 5) | 0;
+      if (q > 0.6 && Math.random() < 0.3 * k) s.on[i] = s.on[i] ? 0 : 1;
+    }
+  }
+  s.drive = Math.min(1.6, s.drive + 0.3);
+  s.lastAt = api.now;
+}
+
+function currentFrame(ctx, api) {
+  const s = api.scene;
+  if (!s.ink) return;
+  const pal = api.palette;
+  const inks = [pal.user, pal.anon, pal.bot, pal.alert, pal.default].map((c) => c || pal.default);
+  // The sheet's clock runs at the rate things arrive: a stirred patch
+  // settles only while the feed is working, and stays turned in silence.
+  s.drive = Math.max(0, s.drive - api.dt / 1200);
+  const step = api.dt * (0.02 + s.drive) / 1000;
+  const settle = Math.exp(-step * 1.6);
+  const fade = Math.exp(-step * 3);
+  if (api.now - s.lastAt > 2500) {
+    s.ambient += api.dt;
+    if (s.ambient > 3200) {
+      s.ambient = 0;
+      const i = (Math.random() * s.ink.length) | 0;
+      s.ink[i] = (Math.random() * 5) | 0;
+    }
+  } else {
+    s.ambient = 0;
+  }
+  ctx.fillStyle = pal.background;
+  ctx.fillRect(0, 0, api.w, api.h);
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(s.x0, s.y0, s.W, s.H);
+  ctx.clip();
+  const turn = api.param('turn');
+  const side = Math.min(s.cw, s.ch) * Math.max(0.3, api.param('square') + 0.18);
+  for (let r = 0; r < s.rows; r++) {
+    const v = (r + 0.5) / s.rows;
+    for (let c = 0; c < s.cols; c++) {
+      const i = r * s.cols + c;
+      s.twist[i] *= settle;
+      s.lit[i] *= fade;
+      if (!s.on[i]) continue;
+      const u = (c + 0.5) / s.cols;
+      const a = currentAngle(s, u, v) * turn;
+      // Carried along the current a little, more where it turns most, so
+      // the turned squares crowd into one another and the upright ones keep
+      // their rows.
+      const shift = (a / (Math.PI / 4)) * s.cw * 0.35;
+      const x = s.x0 + (c + 0.5) * s.cw + Math.cos(a + Math.PI / 4) * shift;
+      const y = s.y0 + (r + 0.5) * s.ch - Math.sin(a + Math.PI / 4) * shift * 0.6;
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(-(a + s.twist[i]));
+      ctx.fillStyle = inks[s.ink[i]];
+      const grow = 1 + s.lit[i] * 0.12;
+      ctx.fillRect((-side * grow) / 2, (-side * grow) / 2, side * grow, side * grow);
+      ctx.restore();
+    }
+  }
+  ctx.restore();
+}
