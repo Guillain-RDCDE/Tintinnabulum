@@ -713,7 +713,7 @@ const answers = await page.evaluate(async () => {
   const out = {};
   // The nine newest, and the twenty-one that were repaired.
   for (const name of [
-    'orbs', 'tartan', 'peals', 'lanes', 'meshes', 'lineage',
+    'orbs', 'tartan', 'peals', 'lanes', 'meshes', 'lineage', 'cutpaper',
     'scanlines', 'spindles', 'lattice', 'desordres',
     'worlds', 'sorts', 'nodes', 'skein', 'comb', 'emergence', 'cutpaper', 'planes', 'hatched',
     'reaction', 'dragon', 'quasicrystal', 'moire', 'rule30', 'langton', 'mobile', 'lavalamp',
@@ -3703,6 +3703,12 @@ ok('at the start of a row only the forward arrow shows', Number(rowStart.prev) <
 ok('the forward arrow moves the row along, and the back arrow appears', rowMoved.moved > 100 && Number(rowMoved.prevShown) > 0.99, JSON.stringify(rowMoved));
 ok('the arrows reach the last work in the row', rowMoved.atEnd && rowMoved.lastInView, JSON.stringify(rowMoved));
 
+// The real pointer is still where the arrow was clicked, over the end of a
+// row that may still be gliding under it: a real card entering beneath it
+// would take the live slot from the card this check hovers by hand. Moved
+// out of the way first, onto the page's own margin.
+await page.mouse.move(2, 2);
+await page.waitForTimeout(150);
 const hoverLive = await page.evaluate(async () => {
   const card = document.querySelector('#works .card:not([hidden])');
   card.dispatchEvent(new PointerEvent('pointerenter'));
