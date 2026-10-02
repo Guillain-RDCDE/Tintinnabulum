@@ -361,6 +361,11 @@ export const WORKS = {
     mat: 'gallery', pace: REAL_TIME,
     cartel: 'Columns and rows of unequal width printed in one black, each cell the crossing of the two -- diagonal ruling over level lines comes out as a mesh, black over anything stays black -- and some cells punched through with a disc. A small event punches a disc, a large one re-dyes a whole column or row. A marimba, dry and quick.',
   }),
+  stripes: work('Daylight', 'calm', 'Cut and ruled', {
+    scene: 'meshes', palette: 'vellum', kit: 'koto', space: 'room',
+    ground: 'coldpress', mat: 'gallery', pace: SLOW, dials: { figure: 1 },
+    cartel: 'A square cut and cut again, every block drawn round in a heavy line and laid in red, in black, or ruled with upright or level lines, fine or wide, or left bare. An event re-rules the block it falls in or cuts it once more; a large one lays out a whole quarter afresh.',
+  }),
   // Five sheets of hexadecimal: every event writes its own fingerprint into
   // the grid where it falls, and each sheet dresses the grid its own way.
   hexplain: work('Night', 'calm', 'Fingerprints', {

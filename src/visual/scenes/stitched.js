@@ -41,6 +41,10 @@ function clampTo(v, lo, hi) {
 
 /** A block's look: a tint and a mesh, drawn from the sheet's own few. */
 function dressBlock(blk, s, color) {
+  if (s.figure === 1) {
+    dressStriped(blk, s, color);
+    return;
+  }
   const pick = Math.random();
   if (color && color === s.accent && blk.w * blk.h > 6) color = null;
   blk.tint = color || s.tints[(Math.random() * s.tints.length) | 0];
@@ -77,7 +81,7 @@ function layout(s, region, depth) {
   const out = [];
   const go = (blk, d) => {
     const big = blk.w * blk.h;
-    if (d <= 0 || big <= 9 || (d < depth && Math.random() < 0.3)) {
+    if (d <= 0 || big <= (s.figure === 1 ? 30 : 9) || (d < depth && Math.random() < 0.3)) {
       dressBlock(blk, s, null);
       out.push(blk);
       return;
@@ -94,7 +98,80 @@ function layout(s, region, depth) {
   return out;
 }
 
+/**
+ * A block of the striped sheet: bare, a flat colour, black, or ruled with
+ * upright or level lines, fine or wide -- the five things the sheets it
+ * follows do, and nothing else.
+ */
+function dressStriped(blk, s, color) {
+  const pick = Math.random();
+  const flat = s.fill * 0.5;
+  const black = flat + s.black * 0.3;
+  const ruled = black + 0.36;
+  if (color || pick < flat) {
+    blk.kind = 'flat';
+    blk.tint = color || s.flats[(Math.random() * s.flats.length) | 0];
+  } else if (pick < black) {
+    blk.kind = 'black';
+  } else if (pick < ruled) {
+    blk.kind = Math.random() < 0.6 ? 'upright' : 'level';
+    // Fine or wide: the upright rulings are mostly fine, the level ones
+    // mostly wide, as on the sheets.
+    const fine = blk.kind === 'upright' ? Math.random() < 0.7 : Math.random() < 0.3;
+    blk.step = fine ? 1 : 2.4 + Math.random() * 2.4;
+  } else {
+    blk.kind = 'blank';
+  }
+  blk.done = false;
+}
+
+function strikeStriped(b, blk, s) {
+  const x = s.x0 + blk.c * s.unit;
+  const y = s.y0 + blk.r * s.unit;
+  const w = blk.w * s.unit;
+  const h = blk.h * s.unit;
+  b.save();
+  b.fillStyle = s.ground;
+  b.fillRect(x, y, w, h);
+  if (blk.kind === 'flat') {
+    b.fillStyle = blk.tint;
+    b.fillRect(x, y, w, h);
+  } else if (blk.kind === 'black') {
+    b.fillStyle = s.ink;
+    b.fillRect(x, y, w, h);
+  } else if (blk.kind === 'upright' || blk.kind === 'level') {
+    b.beginPath();
+    b.rect(x, y, w, h);
+    b.clip();
+    const step = s.stripe * blk.step;
+    b.strokeStyle = s.line;
+    b.lineWidth = s.rule;
+    b.beginPath();
+    if (blk.kind === 'upright') {
+      for (let gx = x + step; gx < x + w - s.rule; gx += step) {
+        b.moveTo(Math.round(gx) + 0.5, y);
+        b.lineTo(Math.round(gx) + 0.5, y + h);
+      }
+    } else {
+      for (let gy = y + step; gy < y + h - s.rule; gy += step) {
+        b.moveTo(x, Math.round(gy) + 0.5);
+        b.lineTo(x + w, Math.round(gy) + 0.5);
+      }
+    }
+    b.stroke();
+  }
+  b.restore();
+  // The edge of every block in the heavy line, so the cuts read as drawn.
+  b.strokeStyle = s.line;
+  b.lineWidth = s.edge;
+  b.strokeRect(x, y, w, h);
+}
+
 function strikeBlock(b, blk, s) {
+  if (s.figure === 1) {
+    strikeStriped(b, blk, s);
+    return;
+  }
   const x = s.x0 + blk.c * s.unit;
   const y = s.y0 + blk.r * s.unit;
   const w = blk.w * s.unit;
@@ -278,12 +355,16 @@ export const STITCHED_SCENES = {
   // --- meshes ----------------------------------------------------------------------------
   meshes: {
     label: 'Cut meshes',
-    note: 'A square cut into blocks and the blocks cut again, every one ruled with a mesh of its own: a coarse grid, a fine grid, a grid crossed with diagonals into stars, laid over tints of stone, sand, chalk and dark umber, with a square of orange somewhere to keep the eye moving. Every event cuts the block it falls in and gives the pieces new meshes; a block already as small as the sheet allows is re-ruled instead, and a large event lays out a whole quarter afresh.',
+    note: 'A square cut into blocks and the blocks cut again, every one ruled with a mesh of its own: a coarse grid, a fine grid, a grid crossed with diagonals into stars, laid over tints of stone, sand, chalk and dark umber, with a square of orange somewhere to keep the eye moving. Every event cuts the block it falls in and gives the pieces new meshes; a block already as small as the sheet allows is re-ruled instead, and a large event lays out a whole quarter afresh. The second sheet keeps the cuts and drops the meshes: every block drawn round in a heavy line and left bare, laid in a flat colour or in black, or ruled with upright or level lines, fine or wide, all in one family of inks -- or in nothing but the line, when the colour is turned down.',
     how: 'A lattice of units over a square, and a list of blocks, each a rectangle of whole units with a tint, a mesh pitch and a flag for the diagonals. The first sheet is cut recursively a few levels deep. An event finds its block and splits it in two or four at a point between a third and two thirds of the way, or re-dresses it if it is a single unit; a large event takes every block in its quarter away and cuts the quarter again. The blocks are struck onto a buffer only when they change, a few a frame, so the sheet costs what was just cut.',
     positional: true,
     preview: { frames: 140, dt: 50 },
     params: {
+      figure: { label: 'Which sheet: meshes, stripes', min: 0, max: 1, step: 1, default: 0, rebuild: true },
       lattice: { label: 'How fine the lattice of blocks', min: 6, max: 20, step: 1, default: 12, rebuild: true },
+      fill: { label: 'How much flat colour, on the stripes', min: 0, max: 1, step: 0.02, default: 0.55, rebuild: true },
+      black: { label: 'How much black, on the stripes', min: 0, max: 1, step: 0.02, default: 0.25, rebuild: true },
+      tone: { label: 'Lines in ink or in the colour, on the stripes', min: 0, max: 1, step: 1, default: 0, rebuild: true },
       mesh: { label: 'How fine the mesh', min: 0.5, max: 2, step: 0.05, default: 1, rebuild: true },
       accent: { label: 'How much of the accent colour', min: 0, max: 1, step: 0.02, default: 0.3 },
       colour: { label: 'How much colour from the event', min: 0, max: 1, step: 0.02, default: 0 },
@@ -291,8 +372,10 @@ export const STITCHED_SCENES = {
     init(api) {
       const s = api.scene;
       const m = Math.min(api.w, api.h);
-      const n = Math.max(4, Math.min(24, Math.round(api.param('lattice'))));
-      const side = m * 0.86;
+      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
+      // The striped sheet is cut more freely: twice as many places to cut.
+      const n = Math.max(4, Math.min(48, Math.round(api.param('lattice')) * (s.figure === 1 ? 2 : 1)));
+      const side = m * (s.figure === 1 ? 0.78 : 0.86);
       s.n = n;
       s.unit = side / n;
       s.x0 = (api.w - side) / 2;
@@ -311,7 +394,23 @@ export const STITCHED_SCENES = {
       s.tints = [bg, bg, lighten(bg, paper.pale ? 0.05 : 0.08), lighten(bg, -0.06), mixColors(bg, '#9a9c9e', 0.35)];
       const warm = paper.sheets.find((c) => c) || s.ink;
       s.accent = warm;
-      s.blocks = layout(s, { c: 0, r: 0, w: n, h: n }, 3);
+      if (s.figure === 1) {
+        // One family of inks: the line, the black, two or three colours
+        // close to each other, and the ground left bare.
+        s.fill = api.param('fill');
+        s.black = api.param('black');
+        s.ground = api.palette.background;
+        // One hue, the palette's alert, in two or three strengths: the
+        // sheets this follows are red and black, or orange and amber, never
+        // a sampler of the whole palette.
+        const hue = api.palette.alert || paper.sheets[0] || s.ink;
+        s.flats = [hue, lighten(hue, -0.1), lighten(hue, 0.09)];
+        s.line = Math.round(api.param('tone')) === 1 ? hue : s.ink;
+        s.edge = Math.max(1.2, m * 0.0045);
+        s.rule = Math.max(0.8, m * 0.0028);
+        s.stripe = Math.max(2.5, (m * 0.011) / api.param('mesh'));
+      }
+      s.blocks = layout(s, { c: 0, r: 0, w: n, h: n }, s.figure === 1 ? 3 : 3);
       s.cleared = false;
       s.lastAt = 0;
       s.ambient = 0;
@@ -323,7 +422,8 @@ export const STITCHED_SCENES = {
       const c = clampTo(Math.floor((p.x - s.x0) / s.unit), 0, s.n - 1);
       const r = clampTo(Math.floor((p.y - s.y0) / s.unit), 0, s.n - 1);
       // The accent is a punctuation mark: rare, and only on a small block.
-      const color = Math.random() < api.param('colour') ? p.color : Math.random() < api.param('accent') * 0.12 ? s.accent : null;
+      const color = Math.random() < api.param('colour') ? p.color
+        : s.figure !== 1 && Math.random() < api.param('accent') * 0.12 ? s.accent : null;
       recut(s, api, c, r, q, color);
       s.lastAt = api.now;
     },
@@ -668,8 +768,11 @@ function recut(s, api, c, r, q, color) {
   }
   // A small event re-rules its block; a middling one cuts it, while the
   // block is big enough to be worth cutting and the sheet is not yet busy.
-  const most = Math.max(12, Math.min(48, Math.floor((api.budget || 800) * 0.2)));
-  const kids = q > 0.4 && blk.w * blk.h >= 4 && s.blocks.length < most ? split(s, blk) : [];
+  // The striped sheet holds a dozen or two blocks and no more, as the
+  // sheets it follows do; cut finer it reads as a sampler.
+  const most = s.figure === 1 ? 22 : Math.max(12, Math.min(48, Math.floor((api.budget || 800) * 0.2)));
+  const least = s.figure === 1 ? 16 : 4;
+  const kids = q > 0.4 && blk.w * blk.h >= least && s.blocks.length < most ? split(s, blk) : [];
   if (!kids.length) {
     dressBlock(blk, s, color);
     return;
