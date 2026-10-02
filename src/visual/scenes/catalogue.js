@@ -78,7 +78,7 @@ export const CATALOGUE = {
   lanterns: S('Night', 'Paper lanterns rising over a lake at night, their light in the water.'),
   jellyfish: S('Night', 'Jellyfish pulsing in deep water, lit from inside.'),
   snowfall: S('Night', 'Snow falling past lit windows and settling on the roofs.'),
-  constellation: S('Night', 'Events become stars, and the busy ones find each other across the dark.'),
+  constellation: S('Night', 'Events become stars, and the busy ones find each other across the dark. Or a molecule: nested targets bonded into pairs or a whole network.'),
   digitalrain: S('Night', 'The titles of events falling in green down a black screen, letter by letter, among a softer rain of code.'),
 
   // --- materials ---------------------------------------------------------

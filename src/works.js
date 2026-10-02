@@ -371,6 +371,22 @@ export const WORKS = {
     grain: true, mat: 'gallery', pace: SLOW, dials: { figure: 1 },
     cartel: 'A standing figure cut in bands, every band a strip of triangles in red, blue, yellow, cream and black, its outline jutting out into points here and there, on a ground of ochre. A small event re-colours the triangle it falls on, a middling one its whole band, a large one cuts the band again and the figure changes shape.',
   }),
+  // Three molecules of nested targets, a few pairs bonded or a whole network.
+  pairs: work('Night', 'calm', 'Targets in the dark', {
+    scene: 'constellation', palette: 'ink', kit: 'glassy', space: 'room',
+    grain: true, pace: UNHURRIED, dials: { figure: 1, bonds: 0.2 },
+    cartel: 'Targets of two or three nested colours scattered on black, a few with a thin halo, and here and there two or three of them bonded by a fine line. Every event re-colours a target, sets a new one down and bonds it to its neighbours, or rings one with a halo.',
+  }),
+  network: work('Daylight', 'lively', 'Molecule on yellow', {
+    scene: 'constellation', palette: 'citron', kit: 'marimba', space: 'room',
+    grain: true, pace: REAL_TIME, dials: { figure: 1, bonds: 0.75 },
+    cartel: 'A whole network of targets in pink, violet, navy, orange and leaf green on lemon yellow, bonded by black lines and dotted ones in the colours of their two ends. The feed keeps adding atoms and the oldest let go.',
+  }),
+  confetti: work('Dawn', 'lively', 'Confetti molecule', {
+    scene: 'constellation', palette: 'confetti', kit: 'musicbox', space: 'room',
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { figure: 1, bonds: 0.9 },
+    cartel: 'The same molecule on cream paper, bonded almost everywhere, with a few large targets sitting in clearings of their own. Every event is an atom: re-coloured, newly bonded or haloed.',
+  }),
   // Three currents of turned squares: upright in one corner, on their points
   // across the rest, drifting so they crowd and part.
   embers: work('Night', 'calm', 'Current of embers', {
