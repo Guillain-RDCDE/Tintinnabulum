@@ -861,6 +861,22 @@ export const PALETTES = {
       hud: 'rgba(78, 65, 45, 0.45)',
     },
   },
+  sorbet: {
+    label: 'Sorbet',
+    family: 'Neutral',
+    note: 'Slate, coral, ochre and peach on a pale grey, with a little teal. Ruled fine they read as pastel; laid as a veil, deeper; where two cross, a third.',
+    colors: {
+      background: '#efefef',
+      default: '#eba06c',
+      user: '#4b6c93',
+      anon: '#e2664b',
+      bot: '#cf9c12',
+      alert: '#1f9c86',
+      text: '#33373d',
+      banner: 'rgba(51, 55, 61, 0.85)',
+      hud: 'rgba(51, 55, 61, 0.45)',
+    },
+  },
 
   cobweb: {
     label: 'Cobweb',

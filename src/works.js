@@ -371,6 +371,28 @@ export const WORKS = {
     grain: true, mat: 'gallery', pace: SLOW, dials: { figure: 1 },
     cartel: 'A standing figure cut in bands, every band a strip of triangles in red, blue, yellow, cream and black, its outline jutting out into points here and there, on a ground of ochre. A small event re-colours the triangle it falls on, a middling one its whole band, a large one cuts the band again and the figure changes shape.',
   }),
+  // Four flights of stairs in one palette: bars laid in a progression, each a
+  // veil or ruled fine, multiplying where they cross.
+  stairdrift: work('Daylight', 'calm', 'Stairs, drifting', {
+    scene: 'planes', palette: 'sorbet', kit: 'koto', space: 'room',
+    grain: true, mat: 'gallery', pace: UNHURRIED, dials: { figure: 2, layout: 0 },
+    cartel: 'Long bars climbing the diagonal one above another, each a veil of colour or ruled fine across its length, with a short solid block at a join now and then; where two overlap the colours multiply into a third. Every event lays a step again.',
+  }),
+  staircorner: work('Daylight', 'lively', 'Two flights meeting', {
+    scene: 'planes', palette: 'sorbet', kit: 'marimba', space: 'room',
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { figure: 2, layout: 1 },
+    cartel: 'Rows from one side shortening as they go and columns from the other rising to meet them, so the two flights cross along the diagonal in a seam of crossed rulings. Every event re-inks a step; a large one a run of them.',
+  }),
+  stairslope: work('Dawn', 'calm', 'A slope in steps', {
+    scene: 'planes', palette: 'sorbet', kit: 'chimes', space: 'room',
+    grain: true, mat: 'gallery', pace: SLOW, dials: { figure: 2, layout: 2, cool: 0.3 },
+    cartel: 'Bars set flush to one side, each longer than the one before, rising into a slope; each a little deeper than its step, so neighbours overlap into a darker seam. Teal and slate more than coral, the cool end of the palette.',
+  }),
+  stairsplit: work('Dawn', 'lively', 'Split on the diagonal', {
+    scene: 'planes', palette: 'sorbet', kit: 'glassy', space: 'room',
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { figure: 2, layout: 3 },
+    cartel: 'Bars turned on the diagonal and laid either side of a straight gap, their reach shaped into a lozenge; veils and fine rulings in coral, peach, ochre and slate. Every event lays a step again where it falls.',
+  }),
   // Five sheets of hexadecimal: every event writes its own fingerprint into
   // the grid where it falls, and each sheet dresses the grid its own way.
   hexplain: work('Night', 'calm', 'Fingerprints', {

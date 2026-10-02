@@ -206,12 +206,14 @@ export const PAPER_SCENES = {
   // --- planes -----------------------------------------------------------------------------
   planes: {
     label: 'Planes',
-    note: 'Half a dozen very large shapes at a time, laid over one another on a sheet of paper, and every one of them transparent. Where two cross, the colour belongs to neither: a black wash over a green disc is a green nobody mixed, and most of what you see in this picture is that. A few forms are hard-edged and printed; the rest are wet, and their edges have run. Each event brings one more plane in and pushes the oldest out, so the composition is never still and never crowded. The second sheet is a scatter: many smaller slabs tilted every way in three colours that darken where they cross, among as many pieces only drawn round in graphite, all gathered into a band across the sheet.',
+    note: 'Half a dozen very large shapes at a time, laid over one another on a sheet of paper, and every one of them transparent. Where two cross, the colour belongs to neither: a black wash over a green disc is a green nobody mixed, and most of what you see in this picture is that. A few forms are hard-edged and printed; the rest are wet, and their edges have run. Each event brings one more plane in and pushes the oldest out, so the composition is never still and never crowded. The second sheet is a scatter: many smaller slabs tilted every way in three colours that darken where they cross, among as many pieces only drawn round in graphite, all gathered into a band across the sheet. The third sheet is stairs: long bars laid one after another in a progression -- a drift up the diagonal, two flights meeting at a corner, a slope, or two halves turned on the diagonal either side of a gap -- each bar either a veil of colour or ruled fine across its length, so that where they cross the colours multiply. Every event lays a step again.',
     how: 'A bounded pool of forms, redrawn whole every frame -- affordable precisely because there are so few -- and combined with multiply on a pale ground or screen on a dark one, which is how transparent pigment behaves and what makes the crossings their own colours. A wash is the same form struck four or five times at a low opacity with its edges nudged, which is cheaper than a blur and looks more like water.',
     positional: true,
     preview: { frames: 160, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: planes, scatter', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: planes, scatter, stairs', min: 0, max: 2, step: 1, default: 0, rebuild: true },
+      layout: { label: 'How the stairs are laid: drift, corner, slope, split', min: 0, max: 3, step: 1, default: 0, rebuild: true },
+      cool: { label: 'How much of the cool ink, on the stairs', min: 0, max: 1, step: 0.02, default: 0.12 },
       count: { label: 'How many planes', min: 2, max: 18, step: 1, default: 10 },
       scale: { label: 'How large', min: 0.4, max: 1.6, step: 0.05, default: 1 },
       wash: { label: 'How much is wet', min: 0, max: 1, step: 0.02, default: 0.45 },
@@ -222,7 +224,11 @@ export const PAPER_SCENES = {
       s.forms = [];
       s.focus = { x: api.w * 0.5, y: api.h * 0.5 };
       s.ambient = 0;
-      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
+      s.figure = Math.max(0, Math.min(2, Math.round(api.param('figure') || 0)));
+      if (s.figure === 2) {
+        layStairs(api);
+        return;
+      }
       // A sheet with something already on it: four planes, so the first frame
       // of this scene is a composition and not an empty page.
       const first = s.figure === 1 ? 16 : 4;
@@ -234,6 +240,10 @@ export const PAPER_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      if (s.figure === 2) {
+        if (s.bars) stepStairs(api, p.x, p.y, Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34))), p.color);
+        return;
+      }
       if (!s.forms) return;
       s.quiet = Math.max(0, (s.quiet || 0) - 0.3);
       s.focus.x = s.focus.x * 0.7 + p.x * 0.3;
@@ -242,6 +252,10 @@ export const PAPER_SCENES = {
     },
     frame(ctx, api) {
       const s = api.scene;
+      if (s.figure === 2) {
+        drawStairs(ctx, api);
+        return;
+      }
       if (!s.forms) return;
       const paper = papers(api);
       // The scatter is many small pieces rather than a few large ones.
@@ -706,4 +720,200 @@ function drawTotem(ctx, api) {
       ctx.stroke();
     });
   }
+}
+
+// --- the stairs ---------------------------------------------------------------------------
+
+/** The inks of the stairs: the palette's warm and slate ones, and its cool one now and then. */
+function stairInk(api, given) {
+  if (given && Math.random() < 0.3) return given;
+  const pal = api.palette;
+  if (pal.alert && Math.random() < api.param('cool')) return pal.alert;
+  const warm = [pal.user, pal.anon, pal.bot, pal.default].filter(Boolean);
+  return warm[(Math.random() * warm.length) | 0];
+}
+
+/** One bar of a layout, at step k: where it lies, which way it runs. */
+function stairGeometry(s, k) {
+  const S = s.S;
+  const N = s.N;
+  const th = s.th;
+  const r = Math.random;
+  if (s.layout === 0) {
+    // A drift up the diagonal: bars of random length centred on a line from
+    // the bottom left to the top right, with a jitter either side.
+    const t = k / (N - 1);
+    const len = S * (0.24 + r() * 0.24);
+    const cx = S * (0.14 + t * 0.72) + (r() - 0.5) * S * 0.2;
+    const x = Math.max(0, Math.min(S - len, cx - len / 2));
+    const y = S - th * 1.25 - k * th * 0.82;
+    // A short solid block now and then, as the sheets set at the joins.
+    if (r() < 0.2) return { x: Math.min(S - th * 1.5, Math.max(0, cx + len / 2 - th * 0.75)), y, w: th * 1.5, h: th * 1.25, dir: 'h', block: true };
+    return { x, y, w: len, h: th * 1.25, dir: 'h' };
+  }
+  if (s.layout === 1) {
+    // Two flights meeting at a corner: rows from the left, shortening as
+    // they go down, and columns from the foot, rising as they go right.
+    const gap = s.gap;
+    if (k < N) {
+      const len = Math.max(th, S - k * th - gap);
+      return { x: 0, y: k * th, w: len, h: th, dir: 'h' };
+    }
+    const j = k - N;
+    const tall = Math.max(th, (j + 1) * th - gap);
+    return { x: j * th, y: S - tall, w: th, h: tall, dir: 'v' };
+  }
+  if (s.layout === 2) {
+    // A slope: rows set flush right, each longer than the one above, and a
+    // little deeper than its step so neighbours overlap into a darker seam.
+    const len = S * ((k + 1) / N);
+    return { x: S - len, y: k * th, w: len, h: th * 1.18, dir: 'h' };
+  }
+  // Split: rows either side of a gap down the middle, their reach shaped
+  // by a diamond so the whole stands as a lozenge once turned.
+  const half = k < N ? -1 : 1;
+  const i = k % N;
+  const env = 1 - Math.abs((2 * i) / (N - 1) - 1);
+  const len = S * 0.5 * Math.max(0.1, env * (0.55 + r() * 0.5));
+  const mid = S / 2;
+  const g = S * 0.012;
+  return half < 0
+    ? { x: mid - g - len, y: i * th, w: len, h: th, dir: 'h' }
+    : { x: mid + g, y: i * th, w: len, h: th, dir: 'h' };
+}
+
+function stairBar(api, s, k, color) {
+  const geo = stairGeometry(s, k);
+  return {
+    ...geo,
+    k,
+    kind: geo.block || Math.random() < 0.28 ? 'veil' : 'lines',
+    color: stairInk(api, color),
+    born: api.now,
+  };
+}
+
+function layStairs(api) {
+  const s = api.scene;
+  const m = Math.min(api.w, api.h);
+  s.layout = Math.max(0, Math.min(3, Math.round(api.param('layout'))));
+  s.S = m * (s.layout === 3 ? 0.78 : 0.82);
+  s.N = s.layout === 0 ? 24 : s.layout === 1 ? 22 : s.layout === 2 ? 20 : 15;
+  s.th = s.S / (s.layout === 0 ? 21 : s.N);
+  s.gap = Math.random() < 0.5 ? 0 : s.th * 0.6;
+  s.ox = (api.w - s.S) / 2;
+  s.oy = (api.h - s.S) / 2;
+  // Which way round: the sheets are the same layout mirrored and turned.
+  s.fx = Math.random() < 0.5 ? 1 : -1;
+  s.fy = s.layout === 0 || s.layout === 3 ? 1 : Math.random() < 0.5 ? 1 : -1;
+  const count = s.layout === 1 || s.layout === 3 ? s.N * 2 : s.N;
+  s.bars = [];
+  for (let k = 0; k < count; k++) {
+    const b = stairBar(api, s, k, null);
+    b.born = -1e9;
+    s.bars.push(b);
+  }
+  s.pitch = Math.max(2.2, s.S * 0.0045);
+  s.lastAt = 0;
+  s.ambient = 0;
+}
+
+/** Where a point of the canvas falls in the stairs' own frame. */
+function toStairs(s, x, y) {
+  let u = x - s.ox - s.S / 2;
+  let v = y - s.oy - s.S / 2;
+  if (s.layout === 3) {
+    const c = Math.SQRT1_2;
+    const ru = u * c + v * c;
+    const rv = -u * c + v * c;
+    u = ru;
+    v = rv;
+  }
+  return [u * s.fx + s.S / 2, v * s.fy + s.S / 2];
+}
+
+/** An event: the step nearest it laid again, or a run of steps for a large one. */
+function stepStairs(api, x, y, q, color) {
+  const s = api.scene;
+  const [u, v] = toStairs(s, x, y);
+  let best = 0;
+  let d = Infinity;
+  s.bars.forEach((b, i) => {
+    const dx = u < b.x ? b.x - u : u > b.x + b.w ? u - b.x - b.w : 0;
+    const dy = v < b.y ? b.y - v : v > b.y + b.h ? v - b.y - b.h : 0;
+    const e = dx * dx + dy * dy;
+    if (e < d) {
+      d = e;
+      best = i;
+    }
+  });
+  const run = q > 0.65 ? 3 + ((Math.random() * 3) | 0) : 1;
+  for (let n = 0; n < run; n++) {
+    const i = (best + n) % s.bars.length;
+    const old = s.bars[i];
+    const fresh = stairBar(api, s, old.k, n === 0 ? color : null);
+    // A small event keeps the step where it is and only re-inks it; the
+    // layout's own randomness moves it only when the event is large.
+    if (q < 0.35) Object.assign(fresh, { x: old.x, y: old.y, w: old.w, h: old.h, dir: old.dir });
+    s.bars[i] = fresh;
+  }
+  s.lastAt = api.now;
+}
+
+function drawStairs(ctx, api) {
+  const s = api.scene;
+  if (!s.bars) return;
+  if (api.now - s.lastAt > 2500) {
+    s.ambient += api.dt;
+    // A whole bar is a lot of the sheet, so the quiet hand is slow.
+    if (s.ambient > 4500) {
+      s.ambient = 0;
+      const b = s.bars[(Math.random() * s.bars.length) | 0];
+      b.color = stairInk(api, null);
+      b.born = api.now;
+    }
+  } else {
+    s.ambient = 0;
+  }
+  const paper = papers(api);
+  ctx.fillStyle = api.palette.background;
+  ctx.fillRect(0, 0, api.w, api.h);
+  ctx.save();
+  ctx.translate(s.ox + s.S / 2, s.oy + s.S / 2);
+  if (s.layout === 3) ctx.rotate(-Math.PI / 4);
+  ctx.scale(s.fx, s.fy);
+  ctx.translate(-s.S / 2, -s.S / 2);
+  ctx.globalCompositeOperation = paper.pale ? 'multiply' : 'screen';
+  const pitch = s.pitch;
+  const hair = Math.max(0.6, pitch * 0.3);
+  for (const b of s.bars) {
+    const arrive = Math.min(1, (api.now - b.born) / 450);
+    if (b.kind === 'veil') {
+      ctx.globalAlpha = 0.55 * arrive;
+      ctx.fillStyle = b.color;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      continue;
+    }
+    // Ruled across the bar's length: upright lines in a lying bar, level
+    // ones in a standing bar, fine enough that a bar reads as a tint.
+    ctx.globalAlpha = 0.8 * arrive;
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = hair;
+    ctx.beginPath();
+    if (b.dir === 'h') {
+      for (let x = b.x + pitch / 2; x < b.x + b.w; x += pitch) {
+        ctx.moveTo(x, b.y);
+        ctx.lineTo(x, b.y + b.h);
+      }
+    } else {
+      for (let y = b.y + pitch / 2; y < b.y + b.h; y += pitch) {
+        ctx.moveTo(b.x, y);
+        ctx.lineTo(b.x + b.w, y);
+      }
+    }
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
 }
