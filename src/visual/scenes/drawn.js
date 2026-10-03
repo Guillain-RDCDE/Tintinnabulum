@@ -16,15 +16,7 @@
 // struck once onto a buffer from the renderer's pool and never redrawn.
 
 import { scratch } from './paint.js';
-import { papers } from './papers.js';
-
-const TAU = Math.PI * 2;
-
-/** The darkest ink against the ground, or the palest on a dark one. */
-function penInk(api) {
-  const paper = papers(api);
-  return paper.pale ? paper.ink : paper.card;
-}
+import { TAU, inkOf, papers } from './shared.js';
 
 export const DRAWN_SCENES = {
   // --- comb -------------------------------------------------------------------------------
@@ -101,7 +93,7 @@ export const DRAWN_SCENES = {
         b.fillRect(0, 0, api.w, api.h);
         s.cleared = true;
       }
-      const ink = penInk(api);
+      const ink = inkOf(api);
       const unrest = api.param('unrest');
       const breaks = api.param('breaks');
       const step = Math.max(0.4, Math.min(6, (api.dt / 16) * 1.2 * api.param('speed')));
@@ -318,7 +310,7 @@ export const DRAWN_SCENES = {
         s.cleared = true;
       }
       const m = Math.min(api.w, api.h);
-      const ink = penInk(api);
+      const ink = inkOf(api);
       // A colour belongs to the turn it arrived on and not to the drawing:
       // held, it turns a skein of one ink into a ball of wool.
       s.inkLife = Math.max(0, (s.inkLife || 0) - api.dt);

@@ -16,26 +16,8 @@
 // budget, and with nothing arriving the sheet stays as it was.
 
 import { scratch } from './paint.js';
-import { papers } from './papers.js';
 import { mixColors, lighten } from '../color.js';
-
-const TAU = Math.PI * 2;
-
-/** How big an event is, 0 to 1, against the largest mark the renderer makes. */
-function sizeOf(p, api) {
-  const most = Math.min(api.w, api.h) * 0.34;
-  return Math.max(0, Math.min(1, p.r / most));
-}
-
-/** The darkest ink against the ground, or the palest on a dark one. */
-function inkOf(api) {
-  const paper = papers(api);
-  return paper.pale ? paper.ink : paper.card;
-}
-
-function clampTo(v, lo, hi) {
-  return v < lo ? lo : v > hi ? hi : v;
-}
+import { TAU, sizeOf, inkOf, clampTo, papers, ambient } from './shared.js';
 
 // --- meshes -------------------------------------------------------------------------------
 
@@ -292,15 +274,7 @@ export const STITCHED_SCENES = {
       const s = api.scene;
       if (s.figure === 1) {
         if (!s.bands) return;
-        if (api.now - s.lastAt > 2500) {
-          s.ambient += api.dt;
-          if (s.ambient > 2600) {
-            s.ambient = 0;
-            rebunt(s, api, Math.random() * api.w, Math.random() * api.h, 0.1, null);
-          }
-        } else {
-          s.ambient = 0;
-        }
+        ambient(s, api, 2600, () => rebunt(s, api, Math.random() * api.w, Math.random() * api.h, 0.1, null));
         drawBunting(ctx, s, api);
         return;
       }
@@ -308,15 +282,7 @@ export const STITCHED_SCENES = {
       const ink = inkOf(api);
       // A stitch now and then in silence, after a pause; never while the
       // feed is working.
-      if (api.now - s.lastAt > 2500) {
-        s.ambient += api.dt;
-        if (s.ambient > 2400) {
-          s.ambient = 0;
-          drop(s, api, (Math.random() * s.rows) | 0, (Math.random() * (s.cols - 1)) | 0, null);
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 2400, () => drop(s, api, (Math.random() * s.rows) | 0, (Math.random() * (s.cols - 1)) | 0, null));
       const keep = Math.max(4, Math.min(Math.round(api.param('keep')), Math.floor((api.budget || 800) * 0.6)));
       while (s.stitches.length > keep) s.stitches.shift();
 
@@ -437,17 +403,11 @@ export const STITCHED_SCENES = {
         b.fillRect(0, 0, api.w, api.h);
         s.cleared = true;
       }
-      if (api.now - s.lastAt > 2500) {
-        s.ambient += api.dt;
-        if (s.ambient > 2600) {
-          s.ambient = 0;
-          // Only a small block: a quiet sheet may twitch, not repaint itself.
-          const small = s.blocks.filter((k) => k.w * k.h <= 4);
-          if (small.length) dressBlock(small[(Math.random() * small.length) | 0], s, null);
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 2600, () => {
+        // Only a small block: a quiet sheet may twitch, not repaint itself.
+        const small = s.blocks.filter((k) => k.w * k.h <= 4);
+        if (small.length) dressBlock(small[(Math.random() * small.length) | 0], s, null);
+      });
       let budget = 4;
       for (const blk of s.blocks) {
         if (blk.done) continue;
@@ -499,15 +459,7 @@ export const STITCHED_SCENES = {
       if (!s.nodes) return;
       const m = Math.min(api.w, api.h);
       const ink = inkOf(api);
-      if (api.now - s.lastAt > 2500) {
-        s.ambient += api.dt;
-        if (s.ambient > 3000) {
-          s.ambient = 0;
-          grow(s, api, Math.random() * api.w, Math.random() * api.h, 0.3, null);
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 3000, () => grow(s, api, Math.random() * api.w, Math.random() * api.h, 0.3, null));
       for (let i = s.nodes.length - 1; i >= 0; i--) {
         if (s.nodes[i].goneAt && api.now - s.nodes[i].goneAt > 900) s.nodes.splice(i, 1);
       }

@@ -86,5 +86,48 @@ export function toRgb(c) {
   return [200, 200, 200];
 }
 
-/** @deprecated the old name, kept so nothing outside this folder breaks. */
-export const hexToRgb = toRgb;
+/** A colour packed as one 32-bit pixel, for scenes that write image data. */
+export function packRgba(c) {
+  const [r, g, b] = toRgb(c);
+  return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
+}
+
+/**
+ * The scene's accumulation buffer, cleared the first time it is asked for.
+ *
+ * Seven families had this, four of them with a check for a canvas that
+ * `scratch` never fails to return. The transform is reset before the clear
+ * because one family had learned the hard way that a buffer handed back by
+ * the pool can carry the last scene's transform.
+ */
+export function bufferFor(api, key = 'buf', readBack = false) {
+  const cv = scratch(api, key, readBack);
+  const g = api.scene[key + 'Ctx'];
+  if (!api.scene[key + 'Clean']) {
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.clearRect(0, 0, cv.width, cv.height);
+    api.scene[key + 'Clean'] = true;
+  }
+  return g;
+}
+
+/** Fade an accumulation buffer towards clear, so a scene that builds up also forgets. */
+export function fade(g, cv, keep, dt) {
+  if (keep >= 0.999) return;
+  g.save();
+  g.globalCompositeOperation = 'destination-out';
+  g.fillStyle = `rgba(0,0,0,${(1 - keep) * Math.min(0.06, dt / 1000) * 1.8})`;
+  g.fillRect(0, 0, cv.width, cv.height);
+  g.restore();
+}
+
+/** A soft round light, drawn as a radial gradient. Nothing for no radius or no light. */
+export function glow(ctx, x, y, r, colour, alpha) {
+  if (r <= 0 || alpha <= 0) return;
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+  g.addColorStop(0, colour);
+  g.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.globalAlpha = Math.min(1, alpha);
+  ctx.fillStyle = g;
+  ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}

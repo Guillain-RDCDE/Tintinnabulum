@@ -16,8 +16,8 @@
 
 import { scratch } from './paint.js';
 import { lightnessOf, lighten, mixColors } from '../color.js';
+import { TAU, seeded, hashOf, mostOf, ambient, kick } from './shared.js';
 
-const TAU = Math.PI * 2;
 const ROLES = ['user', 'anon', 'bot', 'default', 'alert'];
 
 // The case. Letters and marks are set as type; the ornaments are cut here,
@@ -39,24 +39,6 @@ const ORNAMENTS = [
 ];
 const HEART = ORNAMENTS.indexOf('heart');
 
-/** A small deterministic generator, so a sort belongs to its event for good. */
-function seeded(n) {
-  let s = (n >>> 0) || 1;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
-
-/** A number that belongs to this event and to no other. */
-function hashOf(p) {
-  const id = String(p.label || '') + '@' + (p.x | 0) + ',' + (p.y | 0);
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
 
 /** What a printer would have in the press: the darkest thing there is. */
 function pressInk(api) {
@@ -741,22 +723,8 @@ function digitsOf(seed, n) {
   return out;
 }
 
-/** The palette's role colour that scores highest. */
-function hexMost(pal, score) {
-  let best = pal.default;
-  let top = -Infinity;
-  for (const role of ROLES) {
-    const c = pal[role];
-    if (!c || !/^#[0-9a-f]{6}$/i.test(c)) continue;
-    const n = parseInt(c.slice(1), 16);
-    const v = score((n >> 16) & 255, (n >> 8) & 255, n & 255);
-    if (v > top) {
-      top = v;
-      best = c;
-    }
-  }
-  return best;
-}
+/** The palette's role colour that scores highest, ties to the case's own order. */
+const hexMost = (pal, score) => mostOf(pal, score, { roles: ROLES });
 
 function hexInit(api) {
   const s = api.scene;
@@ -855,7 +823,7 @@ function hexEvent(p, api) {
       }
     }
   }
-  s.drive = Math.min(1.6, s.drive + 0.3);
+  kick(s);
   s.lastAt = api.now;
 }
 
@@ -892,15 +860,7 @@ function hexFrame(ctx, api) {
   const step = api.dt * (0.03 + s.drive);
   s.clock += step;
   // In silence, after a pause, a short fingerprint now and then.
-  if (api.now - s.lastAt > 2500) {
-    s.ambient += api.dt;
-    if (s.ambient > 2600) {
-      s.ambient = 0;
-      hexWrite(s, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, digitsOf((Math.random() * 4294967295) >>> 0, 8));
-    }
-  } else {
-    s.ambient = 0;
-  }
+  ambient(s, api, 2600, () => hexWrite(s, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, digitsOf((Math.random() * 4294967295) >>> 0, 8)));
   // The repeats sheet is set in the palette's most orange ink and marks its
   // runs in the reddest, as the sheet it follows does; the others in the press's ink.
   const ink = s.dress === 1 ? hexMost(pal, (r, g, b) => r + g / 2 - b) : pressInk(api);

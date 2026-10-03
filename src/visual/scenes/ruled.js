@@ -22,40 +22,7 @@
 // never be mistaken for the feed.
 
 import { scratch } from './paint.js';
-import { papers } from './papers.js';
-
-const TAU = Math.PI * 2;
-
-/** A small deterministic generator, so a cell belongs to its event for good. */
-function seeded(n) {
-  let s = (n >>> 0) || 1;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
-
-/** A number that belongs to this event and to no other. */
-function hashOf(p) {
-  const id = String(p.label || '') + '@' + (p.x | 0) + ',' + (p.y | 0) + '/' + Math.round((p.pick || 0) * 1e6) + '/' + (p.r | 0);
-  let h = 2166136261;
-  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
-
-/** How big an event is, 0 to 1, against the largest mark the renderer makes. */
-function sizeOf(p, api) {
-  const most = Math.min(api.w, api.h) * 0.34;
-  return Math.max(0, Math.min(1, p.r / most));
-}
-
-/** The darkest ink against the ground, or the palest on a dark one. */
-function inkOf(api) {
-  const paper = papers(api);
-  return paper.pale ? paper.ink : paper.card;
-}
+import { TAU, seeded, hashOf, sizeOf, inkOf, clampTo, enqueue, drain, ambient } from './shared.js';
 
 const SAMPLES = 48;
 
@@ -190,7 +157,6 @@ export const RULED_SCENES = {
       s.cleared = false;
       s.lastAt = 0;
       s.ambient = 0;
-      s.queue = 0;
     },
     event(p, api) {
       const s = api.scene;
@@ -218,7 +184,7 @@ export const RULED_SCENES = {
       cell.kind = q < 0.22 ? 'grain' : q < 0.66 ? 'lines' : 'solid';
       cell.vertical = (p.pick === undefined ? Math.random() : p.pick) < 0.55;
       cell.color = Math.random() < api.param('colour') ? p.color : inkOf(api);
-      cell.seed = hashOf(p);
+      cell.seed = hashOf(p, { fine: true });
       cell.profiles = null;
       cell.heard = api.sound && api.sound.wave ? api.param('listen') : 0;
       cell.done = false;
@@ -233,15 +199,7 @@ export const RULED_SCENES = {
         // The stack: blocks lie over one another, so a changed block cannot
         // be struck alone without cutting into its neighbours. The whole
         // stack is struck again instead, and at most a few times a second.
-        if (api.now - s.lastAt > 2500) {
-          s.ambient += api.dt;
-          if (s.ambient > 2600) {
-            s.ambient = 0;
-            restack(s, api, s.cells[(Math.random() * s.cells.length) | 0], 0.1, inkOf(api));
-          }
-        } else {
-          s.ambient = 0;
-        }
+        ambient(s, api, 2600, () => restack(s, api, s.cells[(Math.random() * s.cells.length) | 0], 0.1, inkOf(api)));
         if (s.dirty && api.now - s.struckAt > 140) {
           b.fillStyle = api.palette.background;
           b.fillRect(0, 0, api.w, api.h);
@@ -260,23 +218,17 @@ export const RULED_SCENES = {
       }
       // A hand goes on filling cells when nothing arrives, and only then: at
       // any real rate the feed has the sheet to itself.
-      if (api.now - s.lastAt > 2500) {
-        s.ambient += api.dt;
-        if (s.ambient > 1600) {
-          s.ambient = 0;
-          const cell = s.cells[(Math.random() * s.cells.length) | 0];
-          const pick = Math.random();
-          cell.kind = pick < 0.12 ? 'blank' : pick < 0.36 ? 'grain' : pick < 0.86 ? 'lines' : 'solid';
-          cell.vertical = Math.random() < 0.55;
-          cell.color = inkOf(api);
-          cell.seed = Math.floor(Math.random() * 1e9);
-          cell.profiles = null;
-          cell.heard = 0;
-          cell.done = false;
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 1600, () => {
+        const cell = s.cells[(Math.random() * s.cells.length) | 0];
+        const pick = Math.random();
+        cell.kind = pick < 0.12 ? 'blank' : pick < 0.36 ? 'grain' : pick < 0.86 ? 'lines' : 'solid';
+        cell.vertical = Math.random() < 0.55;
+        cell.color = inkOf(api);
+        cell.seed = Math.floor(Math.random() * 1e9);
+        cell.profiles = null;
+        cell.heard = 0;
+        cell.done = false;
+      });
       // One cell a frame: a cell is a thousand strokes and a burst is a dozen
       // cells, and a dozen thousand strokes in one frame is a spike with no
       // reason to exist. A burst still shows within a few frames.
@@ -496,24 +448,14 @@ export const RULED_SCENES = {
       }
       // The neat hand, when nothing arrives: one careful pass every second
       // or so, and nothing at all while the feed is working.
-      if (api.now - s.lastAt > 2000) {
-        s.ambient += api.dt;
-        if (s.ambient > 1100) {
-          s.ambient = 0;
-          const x = s.left + Math.random() * s.side;
-          const y = s.top + Math.random() * s.side;
-          order(s, api, x, y, 0.05, inkOf(api), 1);
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 1100, () => {
+        const x = s.left + Math.random() * s.side;
+        const y = s.top + Math.random() * s.side;
+        order(s, api, x, y, 0.05, inkOf(api), 1);
+      }, 2000);
       // A few dozen strokes a frame and no more; a burst is a queue, not a
       // spike, and it still shows within a few frames.
-      let budget = 48;
-      while (s.queue.length && budget-- > 0) {
-        const job = s.queue.shift();
-        job(b);
-      }
+      drain(s, b, 48);
       ctx.drawImage(buf, 0, 0);
     },
   },
@@ -567,15 +509,7 @@ export const RULED_SCENES = {
       const m = Math.min(api.w, api.h);
       // The plain grows a small cube now and then when nothing arrives, and
       // never while the feed is working.
-      if (api.now - s.lastAt > 2500) {
-        s.ambient += api.dt;
-        if (s.ambient > 1800) {
-          s.ambient = 0;
-          raise(s, api, s.left + Math.random() * (s.right - s.left), s.top + Math.random() * (s.foot - s.top), 0.08 + Math.random() * 0.1, null);
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 1800, () => raise(s, api, s.left + Math.random() * (s.right - s.left), s.top + Math.random() * (s.foot - s.top), 0.08 + Math.random() * 0.1, null));
 
       // Forms rise, stand and sink. Rising is stamped into the field as it
       // goes (a maximum only ever grows); a sinking form means the field has
@@ -1099,23 +1033,6 @@ function marks(s, api, count, make) {
   for (let i = 0; i < count; i++) enqueue(s, api, make());
 }
 
-/**
- * Queue one stroke, within the renderer's budget.
- *
- * A flood of a thousand events is a queue that would take seconds to strike;
- * past the budget the oldest orders are dropped, since what they would have
- * drawn is under what came after anyway.
- */
-function enqueue(s, api, job) {
-  s.queue.push(job);
-  const most = Math.max(60, Math.min(1200, api.budget || 800));
-  if (s.queue.length > most) s.queue.splice(0, s.queue.length - most);
-}
-
 function gauss() {
   return (Math.random() + Math.random() + Math.random() - 1.5) * 1.6;
-}
-
-function clampTo(v, lo, hi) {
-  return v < lo ? lo : v > hi ? hi : v;
 }

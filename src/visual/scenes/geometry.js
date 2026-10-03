@@ -16,25 +16,10 @@
 // thousands of segments and redrawing it every frame is the one thing this
 // cannot afford.
 
-import { scratch } from './paint.js';
+import { scratch, bufferFor } from './paint.js';
 
 const TAU = Math.PI * 2;
 
-/**
- * Prepare a scene's accumulation buffer, clearing it the first time.
- *
- * Returns the drawing context, or null before the canvas has a size -- which
- * happens on the first frame after a resize and is not worth a crash.
- */
-function canvasFor(api, key = 'buf') {
-  const cv = scratch(api, key);
-  const g = api.scene[key + 'Ctx'];
-  if (!api.scene[key + 'Clean']) {
-    g.clearRect(0, 0, cv.width, cv.height);
-    api.scene[key + 'Clean'] = true;
-  }
-  return g;
-}
 
 export const GEOMETRY_SCENES = {
 
@@ -84,7 +69,7 @@ export const GEOMETRY_SCENES = {
     frame(ctx, api) {
       const s = api.scene;
       const cv = scratch(api);
-      const g = canvasFor(api);
+      const g = bufferFor(api);
       if (!g) return;
 
       const cx = api.w / 2;

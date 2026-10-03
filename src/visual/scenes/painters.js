@@ -9,44 +9,16 @@
 // Everything here is drawn from the palette, so a room follows whatever
 // scheme is chosen, and every collection a room keeps is small and fixed.
 
-import { scratch } from './paint.js';
+import { scratch, bufferFor } from './paint.js';
 import { cap } from './budget.js';
-import { mixColors, lighten, lightnessOf, parseColor } from '../color.js';
+import { mixColors, lighten, lightnessOf } from '../color.js';
 import { noise2 } from './noise.js';
-
-const TAU = Math.PI * 2;
-
-/** A generator that gives the same composition on every visit. */
-function seeded(seed) {
-  let s = (seed || 1) >>> 0;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
+import { TAU, seeded, mostOf, kick, tempo } from './shared.js';
 
 /** The palette's four inks, in a fixed order. */
 const inks = (pal) => [pal.user, pal.anon, pal.alert, pal.default];
 
 // --- the pastel sheet ------------------------------------------------------------
-
-/** The palette's colour that scores highest on `score(r, g, b)`. */
-function mostOf(pal, score) {
-  let best = pal.default;
-  let top = -Infinity;
-  for (const c of [pal.user, pal.anon, pal.bot, pal.alert, pal.default]) {
-    if (!c) continue;
-    const { r, g, b } = parseColor(c);
-    const v = score(r, g, b);
-    if (v > top) {
-      top = v;
-      best = c;
-    }
-  }
-  return best;
-}
 
 /**
  * An event on the pastel sheet: a smudge in the low band where it fell
@@ -64,7 +36,7 @@ function pastelEvent(p, api) {
     color: Math.random() < 0.6 ? cool : mixColors(cool, p.color, 0.5),
     born: s.clock || 0,
   });
-  s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
+  kick(s);
   const most = Math.max(6, Math.min(40, Math.floor((api.budget || 800) / 4)));
   if (s.smudges.length > most) s.smudges.splice(0, s.smudges.length - most);
   const title = String(p.label || '').trim();
@@ -142,18 +114,6 @@ function pastelFrame(ctx, api) {
     });
   }
   ctx.globalAlpha = 1;
-}
-
-/** The accumulation buffer, cleared the first time it is asked for. */
-function bufferFor(api, key = 'buf') {
-  const cv = scratch(api, key);
-  if (!cv) return null;
-  const g = api.scene[key + 'Ctx'];
-  if (!api.scene[key + 'Clean']) {
-    g.clearRect(0, 0, cv.width, cv.height);
-    api.scene[key + 'Clean'] = true;
-  }
-  return g;
 }
 
 /** Ease a stored number towards a target at a rate independent of frame rate. */
@@ -512,7 +472,7 @@ export const PAINTER_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
+      kick(s);
       const arm = Math.floor(Math.random() * 15);
       s.vel[arm] += (Math.random() - 0.5) * 0.0026 * api.param('sway');
       s.colour[s.next % 8] = p.color;
@@ -528,8 +488,7 @@ export const PAINTER_SCENES = {
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
       // seconds is disturbed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.05 + Math.min(1, s.drive);
+      const pace = tempo(s, api, 0.05);
       const dt = Math.min(50, api.dt) * pace;
       s.clock = (s.clock || 0) + api.dt * pace;
       // A damped pendulum per arm, with a slow drift so it never stops dead.
@@ -710,8 +669,7 @@ export const PAINTER_SCENES = {
       }
       // The cloth grows at the rate things arrive. It grew in bands of its
       // own colour through a silent hour before, which is a loom on a motor.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.04 + Math.min(1, s.drive);
+      const pace = tempo(s, api, 0.04);
       s.acc += (api.param('speed') * api.dt * pace) / 1000;
       while (s.acc >= 1) {
         s.acc -= 1;

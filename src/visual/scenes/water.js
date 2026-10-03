@@ -9,34 +9,10 @@
 // Fixed, typed collections; offscreen work only on the shared 'buf' and
 // 'layer' buffers, so a change of scene never buys a canvas.
 
-import { scratch } from './paint.js';
+import { scratch, bufferFor } from './paint.js';
 import { mixColors, lighten, lightnessOf } from '../color.js';
 import { noise2 } from './noise.js';
-
-const TAU = Math.PI * 2;
-
-function seeded(seed) {
-  let s = (seed || 1) >>> 0;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
-
-/** The accumulation buffer, cleared on the first frame of a scene. */
-function bufferFor(api, key = 'buf') {
-  const cv = scratch(api, key);
-  if (!cv) return null;
-  const g = api.scene[key + 'Ctx'];
-  if (!api.scene[key + 'Clean']) {
-    g.setTransform(1, 0, 0, 1, 0, 0);
-    g.clearRect(0, 0, cv.width, cv.height);
-    api.scene[key + 'Clean'] = true;
-  }
-  return g;
-}
+import { TAU, seeded } from './shared.js';
 
 /** Fade an accumulation buffer towards clear, at a rate per second. */
 function fadeBuffer(g, cv, perSecond, dt) {

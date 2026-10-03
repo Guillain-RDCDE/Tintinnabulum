@@ -15,20 +15,9 @@
 // of an hour is hundreds of thousands of marks and no machine will redraw that
 // sixty times a second.
 
-import { scratch, toRgb } from './paint.js';
+import { scratch, toRgb, bufferFor } from './paint.js';
 
 const TAU = Math.PI * 2;
-
-/** The scene's accumulation buffer, cleared the first time it is asked for. */
-function canvasFor(api, key = 'buf', readBack = false) {
-  const cv = scratch(api, key, readBack);
-  const g = api.scene[key + 'Ctx'];
-  if (!api.scene[key + 'Clean']) {
-    g.clearRect(0, 0, cv.width, cv.height);
-    api.scene[key + 'Clean'] = true;
-  }
-  return g;
-}
 
 export const RECURSIVE_SCENES = {
   hilbert: {
@@ -176,7 +165,7 @@ export const RECURSIVE_SCENES = {
       s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
       const pace = 0.04 + Math.min(1, s.drive);
       const cv = scratch(api);
-      const g = canvasFor(api);
+      const g = bufferFor(api);
       if (!g) return;
 
       // The dragon of order k fits a box roughly 1.5 by 1 in units of its

@@ -26,43 +26,9 @@
 //   Interruptions Vera Molnar, 1968-69. A field of identical strokes with some
 //                 of them removed, which is the whole piece.
 
-import { scratch } from './paint.js';
+import { scratch, bufferFor, fade } from './paint.js';
 import { cap } from './budget.js';
-
-const TAU = Math.PI * 2;
-
-/** The scene's accumulation buffer, cleared the first time it is asked for. */
-function bufferFor(api, key = 'buf') {
-  const cv = scratch(api, key);
-  if (!cv) return null;
-  const g = api.scene[key + 'Ctx'];
-  if (!api.scene[key + 'Clean']) {
-    g.clearRect(0, 0, cv.width, cv.height);
-    api.scene[key + 'Clean'] = true;
-  }
-  return g;
-}
-
-/** Fade an accumulation buffer, so a scene that builds up also forgets. */
-function fade(g, cv, keep, dt) {
-  if (keep >= 0.999) return;
-  g.save();
-  g.globalCompositeOperation = 'destination-out';
-  g.fillStyle = `rgba(0,0,0,${(1 - keep) * Math.min(0.06, dt / 1000) * 1.8})`;
-  g.fillRect(0, 0, cv.width, cv.height);
-  g.restore();
-}
-
-/** A per-scene generator that gives the same picture on every visit. */
-function seeded(seed) {
-  let s = (seed || 1) >>> 0;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
+import { TAU, seeded } from './shared.js';
 
 export const FANTASIA_SCENES = {
 

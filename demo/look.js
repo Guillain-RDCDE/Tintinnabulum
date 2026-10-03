@@ -540,15 +540,18 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     };
 
     function step() {
-      if (!order || !order.length) order = shuffle();
-      // Start from where the chooser actually is, so the first step is a
-      // change rather than a jump back to the top of the list.
-      let next = order[at % order.length];
-      if (next === current()) {
-        at++;
-        next = order[at % order.length];
+      // A fresh walk leaves out where the chooser is, so the first step is a
+      // change rather than a jump back to the top of the list -- and so the
+      // walk cannot come straight back to it one step later, which it did:
+      // skipping the current name only when it came up next left it free to
+      // come up the step after that.
+      if (!order || at >= order.length) {
+        const here = current();
+        order = shuffle().filter((n) => n !== here);
+        at = 0;
       }
-      at++;
+      let next = order[at++];
+      if (next === current() && at < order.length) next = order[at++];
       go(next);
     }
 

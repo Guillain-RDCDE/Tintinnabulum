@@ -2,6 +2,7 @@
 
 import { drawShape, isHollow } from '../shapes.js';
 import { lightnessOf, mixColors } from '../color.js';
+import { ambient } from './shared.js';
 
 const TAU = Math.PI * 2;
 
@@ -315,16 +316,10 @@ function moleculeFrame(ctx, api) {
     s.bondsAt = api.param('bonds');
     bondAll(s, api);
   }
-  if (api.now - s.lastAt > 2500) {
-    s.ambient += api.dt;
-    if (s.ambient > 3500) {
-      s.ambient = 0;
-      const n = s.nodes[(Math.random() * s.nodes.length) | 0];
-      if (n) n.rings = ringsOf(s);
-    }
-  } else {
-    s.ambient = 0;
-  }
+  ambient(s, api, 3500, () => {
+    const n = s.nodes[(Math.random() * s.nodes.length) | 0];
+    if (n) n.rings = ringsOf(s);
+  });
   const dark = lightnessOf(pal.background) < 0.5;
   const m = Math.min(api.w, api.h);
   const lw = Math.max(1, m * 0.0028);

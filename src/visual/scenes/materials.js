@@ -8,35 +8,12 @@
 // Every collection kept here is small and fixed, and the point data lives in
 // typed arrays.
 
-import { scratch } from './paint.js';
+import { scratch, bufferFor } from './paint.js';
 import { mixColors, lighten, lightnessOf } from '../color.js';
 import { noise2 } from './noise.js';
-
-const TAU = Math.PI * 2;
-
-function seeded(seed) {
-  let s = (seed || 1) >>> 0;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
+import { TAU, seeded } from './shared.js';
 
 const inks = (pal) => [pal.user, pal.anon, pal.alert, pal.default];
-
-/** The accumulation buffer, cleared on the first frame of a scene. */
-function bufferFor(api, key = 'buf') {
-  const cv = scratch(api, key);
-  if (!cv) return null;
-  const g = api.scene[key + 'Ctx'];
-  if (!api.scene[key + 'Clean']) {
-    g.clearRect(0, 0, cv.width, cv.height);
-    api.scene[key + 'Clean'] = true;
-  }
-  return g;
-}
 
 // --- marbling ------------------------------------------------------------------
 //

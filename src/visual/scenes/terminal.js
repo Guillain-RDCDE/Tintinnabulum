@@ -12,6 +12,7 @@
 
 import { scratch, toRgb } from './paint.js';
 import { mixColors, lighten } from '../color.js';
+import { seeded } from './shared.js';
 
 /** Half-width katakana and digits: the characters the genre is made of. */
 const GLYPHS = (() => {
@@ -23,16 +24,6 @@ const GLYPHS = (() => {
 const glyph = () => GLYPHS[Math.floor(Math.random() * GLYPHS.length)];
 
 const FONT = '"MS Gothic", "Noto Sans Mono CJK JP", "Hiragino Kaku Gothic ProN", Osaka, monospace';
-
-function seeded(seed) {
-  let s = (seed || 1) >>> 0;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
 
 export const TERMINAL_SCENES = {
   digitalrain: {

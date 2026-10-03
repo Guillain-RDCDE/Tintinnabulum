@@ -19,34 +19,9 @@
 // burst is a queue and not a spike, and the sheet is washed back only as events
 // arrive, so a silent minute leaves it as it was.
 
-import { scratch, toRgb } from './paint.js';
-import { papers } from './papers.js';
+import { scratch } from './paint.js';
 import { lighten } from '../color.js';
-
-const TAU = Math.PI * 2;
-
-/** A small deterministic generator, so a mark belongs to its event for good. */
-function seeded(n) {
-  let s = (n >>> 0) || 1;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
-
-/** How big an event is, 0 to 1, against the largest mark the renderer makes. */
-function sizeOf(p, api) {
-  const most = Math.min(api.w, api.h) * 0.34;
-  return Math.max(0, Math.min(1, p.r / most));
-}
-
-/** The darkest ink against the ground, or the palest on a dark one. */
-function inkOf(api) {
-  const paper = papers(api);
-  return paper.pale ? paper.ink : paper.card;
-}
+import { TAU, seeded, sizeOf, inkOf, clampTo, enqueue, drain, mostOf, papers, ambient } from './shared.js';
 
 /**
  * The second pen: the reddest colour the palette carries, if it carries one
@@ -54,21 +29,7 @@ function inkOf(api) {
  * modelled on are black and vermilion, and a palette without a red should
  * give a sheet in one ink rather than a red it does not have.
  */
-function redOf(api) {
-  let best = null;
-  let most = 50;
-  for (const role of ['user', 'anon', 'bot', 'alert', 'default']) {
-    const c = api.palette[role];
-    if (!c) continue;
-    const [r, g, b] = toRgb(c);
-    const lead = r - Math.max(g, b);
-    if (lead > most) {
-      most = lead;
-      best = c;
-    }
-  }
-  return best || inkOf(api);
-}
+const redOf = (api) => mostOf(api.palette, (r, g, b) => r - Math.max(g, b), { floor: 50, fallback: inkOf(api) });
 
 /**
  * Where the tone of the piece sits, 0 low to 1 high: the centre of mass of
@@ -88,25 +49,6 @@ function toneOf(p, api) {
     if (mass > top * 4) return Math.max(0, Math.min(1, (sum / mass) / (top * 0.35)));
   }
   return p.pick === undefined ? Math.random() : p.pick;
-}
-
-/** Queue one job within the renderer's budget; the oldest go first. */
-function enqueue(s, api, job) {
-  s.queue.push(job);
-  const most = Math.max(60, Math.min(1200, api.budget || 800));
-  if (s.queue.length > most) s.queue.splice(0, s.queue.length - most);
-}
-
-/** Strike queued jobs onto the buffer, up to a budget a frame. */
-function drain(s, b, budget) {
-  while (s.queue.length && budget-- > 0) {
-    const job = s.queue.shift();
-    job(b);
-  }
-}
-
-function clampTo(v, lo, hi) {
-  return v < lo ? lo : v > hi ? hi : v;
 }
 
 // --- the pen ------------------------------------------------------------------------------
@@ -666,15 +608,7 @@ export const PLOTTED_SCENES = {
       }
       // A small disc now and then when nothing arrives, and nothing at all
       // while the feed is working.
-      if (api.now - s.lastAt > 2500) {
-        s.ambient += api.dt;
-        if (s.ambient > 2200) {
-          s.ambient = 0;
-          placeOrb(s, api, Math.random() * api.w, Math.random() * api.h, 0.04 + Math.random() * 0.08, null);
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 2200, () => placeOrb(s, api, Math.random() * api.w, Math.random() * api.h, 0.04 + Math.random() * 0.08, null));
       drain(s, b, 3);
       ctx.drawImage(buf, 0, 0);
     },
@@ -816,18 +750,12 @@ export const PLOTTED_SCENES = {
         }
         s.cleared = true;
       }
-      if (api.now - s.lastAt > 2500) {
-        s.ambient += api.dt;
-        if (s.ambient > 1900) {
-          s.ambient = 0;
-          const cell = s.cells[(Math.random() * s.cells.length) | 0];
-          if (s.figure === 2) cell.override = patchOf(s, null);
-          else cell.hole = cell.hole > 0 ? 0 : 0.3 + Math.random() * 0.4;
-          cell.done = false;
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 1900, () => {
+        const cell = s.cells[(Math.random() * s.cells.length) | 0];
+        if (s.figure === 2) cell.override = patchOf(s, null);
+        else cell.hole = cell.hole > 0 ? 0 : 0.3 + Math.random() * 0.4;
+        cell.done = false;
+      });
       // A few cells a frame: a re-dyed column is a dozen cells and shows as
       // a stroke running down the sheet rather than a spike.
       let budget = 4;
@@ -884,15 +812,7 @@ export const PLOTTED_SCENES = {
         dust(b, api, Math.round(api.w * api.h * 0.012 * api.param('grain')), s.ink);
         s.cleared = true;
       }
-      if (api.now - s.lastAt > 2500) {
-        s.ambient += api.dt;
-        if (s.ambient > 2600) {
-          s.ambient = 0;
-          strikePeal(s, api, Math.random() * api.w, Math.random() * api.h, 0.05, Math.random(), s.ink, 0.35);
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 2600, () => strikePeal(s, api, Math.random() * api.w, Math.random() * api.h, 0.05, Math.random(), s.ink, 0.35));
       // The washes first, then the dots: a peal is always over the fade it
       // brought with it.
       for (const pl of s.peals) {

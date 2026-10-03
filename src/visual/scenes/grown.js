@@ -13,16 +13,11 @@
 // arrives, and the collections the budget watches stay short.
 
 import { noise2 } from './noise.js';
-import { toRgb, scratch } from './paint.js';
+import { toRgb, scratch, packRgba as pack } from './paint.js';
 import { mixColors, shadeOf, lighten, lightnessOf } from '../color.js';
 
 const TAU = Math.PI * 2;
 const ROLES = ['user', 'anon', 'bot', 'default', 'alert'];
-
-const pack = (c) => {
-  const [r, g, b] = toRgb(c);
-  return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
-};
 
 /** A small canvas of the scene's own, for pictures computed at a low resolution. */
 function smallCanvas(w, h) {

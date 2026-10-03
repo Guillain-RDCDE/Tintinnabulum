@@ -7,7 +7,7 @@
 // does quickly: gradients, filled paths, and dots batched by colour.
 
 import { noise2 } from './noise.js';
-import { toRgb, scratch } from './paint.js';
+import { toRgb, scratch, packRgba } from './paint.js';
 import { mixColors } from '../color.js';
 
 const TAU = Math.PI * 2;
@@ -123,16 +123,12 @@ export const GRAPHIC_SCENES = {
         s.img = bctx.createImageData(BW, BH);
         s.px = new Uint32Array(s.img.data.buffer);
       }
-      const pack = (c) => {
-        const [r, g, b] = toRgb(c);
-        return ((255 << 24) | (b << 16) | (g << 8) | r) >>> 0;
-      };
       if (s.inkFor !== s.ramp) {
-        s.inks = s.ramp.map(pack);
+        s.inks = s.ramp.map(packRgba);
         s.inkFor = s.ramp;
       }
       const px = s.px;
-      px.fill(pack(pal.background));
+      px.fill(packRgba(pal.background));
       const ns = sigma * 2.2;
       for (let v = -half; v <= half; v += cell) {
         for (let u = -half; u <= half; u += cell) {

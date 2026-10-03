@@ -13,21 +13,10 @@
 // Three of them keep an offscreen canvas: what they draw is the history of the
 // feed, and no machine redraws an hour of history sixty times a second.
 
-import { scratch, toRgb } from './paint.js';
+import { scratch, toRgb, bufferFor } from './paint.js';
 import { burin, hatch, vignette, gradientTone } from '../engrave.js';
 
 const TAU = Math.PI * 2;
-
-/** The scene's buffer, cleared the first time it is asked for. */
-function canvasFor(api, key = 'buf', readBack = false) {
-  const cv = scratch(api, key, readBack);
-  const g = api.scene[key + 'Ctx'];
-  if (!api.scene[key + 'Clean']) {
-    g.clearRect(0, 0, cv.width, cv.height);
-    api.scene[key + 'Clean'] = true;
-  }
-  return g;
-}
 
 export const SYSTEM_SCENES = {
   coral: {
@@ -78,7 +67,7 @@ export const SYSTEM_SCENES = {
       const s = api.scene;
       if (!s.grid) return;
       const cv = scratch(api);
-      const g = canvasFor(api);
+      const g = bufferFor(api);
       if (!g) return;
       const { gw, gh, grid } = s;
       const cx = gw >> 1;
@@ -172,7 +161,7 @@ export const SYSTEM_SCENES = {
     frame(ctx, api) {
       const s = api.scene;
       const cv = scratch(api);
-      const g = canvasFor(api);
+      const g = bufferFor(api);
       if (!g) return;
 
       const decay = Math.pow(0.6, api.dt / 1000);

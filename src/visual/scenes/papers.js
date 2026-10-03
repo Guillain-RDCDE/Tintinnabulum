@@ -13,32 +13,8 @@
 // never redrawn, the transparent one keeps a pool with a hard ceiling.
 
 import { scratch } from './paint.js';
-import { lightnessOf, lighten, mixColors } from '../color.js';
-
-const TAU = Math.PI * 2;
-const ROLES = ['user', 'anon', 'bot', 'alert', 'default'];
-
-/**
- * The papers on the table.
- *
- * The palette's categories, plus the two the palette always implies: the
- * ground itself, and something close to black -- or to white on a dark
- * ground. A collage of this kind is mostly those two, with the colours used
- * sparingly, and getting that ratio right is most of the look.
- */
-export function papers(api) {
-  const bg = api.palette.background;
-  const pale = lightnessOf(bg) > 0.5;
-  const sheets = [];
-  for (const role of ROLES) {
-    const c = api.palette[role];
-    if (c) sheets.push(c);
-  }
-  const ink = pale ? mixColors(api.palette.text || '#111', '#000000', 0.45) : '#0e0e0e';
-  const card = pale ? lighten(bg, 0.06) : mixColors(bg, '#f2ece0', 0.9);
-  // Weighted: the two neutrals carry the picture, the colours punctuate it.
-  return { sheets, ink, card, pale };
-}
+import { lighten, mixColors } from '../color.js';
+import { TAU, papers, ambient } from './shared.js';
 
 /** One sheet, drawn as cut. Everything is inside the box it was given. */
 function cut(b, kind, x, y, w, h, turn) {
@@ -206,15 +182,7 @@ export const PAPER_SCENES = {
       // The blade works on its own only after a pause, and slowly. It used to
       // cut a piece every hundred and ten milliseconds whatever arrived, so
       // a silent minute put down as many pieces as a busy one.
-      if (api.now - (s.lastAt || 0) > 2500) {
-        s.ambient += api.dt;
-        if (s.ambient > 1800) {
-          s.ambient = 0;
-          lay(api, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, null);
-        }
-      } else {
-        s.ambient = 0;
-      }
+      ambient(s, api, 1800, () => lay(api, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, null));
       ctx.drawImage(buf, 0, 0);
     },
   },
@@ -707,17 +675,11 @@ function drawTotem(ctx, api) {
   const s = api.scene;
   if (!s.bands) return;
   // A triangle re-coloured now and then in silence, after a pause.
-  if (api.now - s.lastAt > 2500) {
-    s.ambient += api.dt;
-    if (s.ambient > 2600) {
-      s.ambient = 0;
-      const band = s.bands[(Math.random() * s.bands.length) | 0];
-      const t = (Math.random() * band.inks.length) | 0;
-      band.inks[t] = (band.inks[t] + 1 + ((Math.random() * 4) | 0)) % 5;
-    }
-  } else {
-    s.ambient = 0;
-  }
+  ambient(s, api, 2600, () => {
+    const band = s.bands[(Math.random() * s.bands.length) | 0];
+    const t = (Math.random() * band.inks.length) | 0;
+    band.inks[t] = (band.inks[t] + 1 + ((Math.random() * 4) | 0)) % 5;
+  });
   ctx.fillStyle = api.palette.background;
   ctx.fillRect(0, 0, api.w, api.h);
   for (const band of s.bands) {
@@ -879,18 +841,12 @@ function stepStairs(api, x, y, q, color) {
 function drawStairs(ctx, api) {
   const s = api.scene;
   if (!s.bars) return;
-  if (api.now - s.lastAt > 2500) {
-    s.ambient += api.dt;
-    // A whole bar is a lot of the sheet, so the quiet hand is slow.
-    if (s.ambient > 4500) {
-      s.ambient = 0;
-      const b = s.bars[(Math.random() * s.bars.length) | 0];
-      b.color = stairInk(api, null);
-      b.born = api.now;
-    }
-  } else {
-    s.ambient = 0;
-  }
+  // A whole bar is a lot of the sheet, so the quiet hand is slow.
+  ambient(s, api, 4500, () => {
+    const b = s.bars[(Math.random() * s.bars.length) | 0];
+    b.color = stairInk(api, null);
+    b.born = api.now;
+  });
   const paper = papers(api);
   ctx.fillStyle = api.palette.background;
   ctx.fillRect(0, 0, api.w, api.h);
@@ -1069,18 +1025,12 @@ function dropSheet(api, x, y, q, p) {
 function drawSheets(ctx, api) {
   const s = api.scene;
   if (!s.sheets) return;
-  if (api.now - s.lastAt > 2500) {
-    s.ambient += api.dt;
-    if (s.ambient > 4000) {
-      s.ambient = 0;
-      const [fx, fy] = [s.ox + (Math.random() - 0.5) * api.w, s.oy + (Math.random() - 0.5) * api.h];
-      s.sheets.push(sheetOf(s, api, fx, fy, 0, Math.random() < 0.5 ? s.paper : s.dark));
-      if (s.sheets.length > 140) s.sheets.shift();
-      s.dirty = true;
-    }
-  } else {
-    s.ambient = 0;
-  }
+  ambient(s, api, 4000, () => {
+    const [fx, fy] = [s.ox + (Math.random() - 0.5) * api.w, s.oy + (Math.random() - 0.5) * api.h];
+    s.sheets.push(sheetOf(s, api, fx, fy, 0, Math.random() < 0.5 ? s.paper : s.dark));
+    if (s.sheets.length > 140) s.sheets.shift();
+    s.dirty = true;
+  });
   const buf = scratch(api, 'buf');
   const b = s.bufCtx;
   if (s.dirty) {

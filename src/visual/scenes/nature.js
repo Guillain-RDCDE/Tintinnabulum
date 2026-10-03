@@ -8,34 +8,10 @@
 // These scenes paint their own sky or ground, since a place has one; they
 // still take every colour from the palette. Collections are fixed and typed.
 
-import { scratch } from './paint.js';
+import { scratch, glow } from './paint.js';
 import { mixColors, lighten, lightnessOf } from '../color.js';
 import { noise2 } from './noise.js';
-
-const TAU = Math.PI * 2;
-
-function seeded(seed) {
-  let s = (seed || 1) >>> 0;
-  return () => {
-    s ^= s << 13; s >>>= 0;
-    s ^= s >>> 17;
-    s ^= s << 5; s >>>= 0;
-    return s / 4294967296;
-  };
-}
-
-/** A night sky from the palette: its ground, taken down towards ink. */
-const nightOf = (pal) => mixColors(pal.background, '#05080d', lightnessOf(pal.background) > 0.5 ? 0.86 : 0.45);
-
-/** A soft round light, drawn as a radial gradient. */
-function glow(ctx, x, y, r, colour, alpha) {
-  const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-  g.addColorStop(0, colour);
-  g.addColorStop(1, 'rgba(0,0,0,0)');
-  ctx.globalAlpha = alpha;
-  ctx.fillStyle = g;
-  ctx.fillRect(x - r, y - r, r * 2, r * 2);
-}
+import { TAU, seeded, nightOf } from './shared.js';
 
 /**
  * A one-pixel-wide column of light fading upward, kept per colour for the life

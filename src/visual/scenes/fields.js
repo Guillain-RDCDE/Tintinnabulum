@@ -2,6 +2,7 @@
 
 import { noise2 } from './noise.js';
 import { cap } from './budget.js';
+import { ambient, kick } from './shared.js';
 
 const TAU = Math.PI * 2;
 
@@ -328,7 +329,7 @@ function currentEvent(p, api) {
       if (q > 0.6 && Math.random() < 0.3 * k) s.on[i] = s.on[i] ? 0 : 1;
     }
   }
-  s.drive = Math.min(1.6, s.drive + 0.3);
+  kick(s);
   s.lastAt = api.now;
 }
 
@@ -343,16 +344,10 @@ function currentFrame(ctx, api) {
   const step = api.dt * (0.02 + s.drive) / 1000;
   const settle = Math.exp(-step * 1.6);
   const fade = Math.exp(-step * 3);
-  if (api.now - s.lastAt > 2500) {
-    s.ambient += api.dt;
-    if (s.ambient > 3200) {
-      s.ambient = 0;
-      const i = (Math.random() * s.ink.length) | 0;
-      s.ink[i] = (Math.random() * 5) | 0;
-    }
-  } else {
-    s.ambient = 0;
-  }
+  ambient(s, api, 3200, () => {
+    const i = (Math.random() * s.ink.length) | 0;
+    s.ink[i] = (Math.random() * 5) | 0;
+  });
   ctx.fillStyle = pal.background;
   ctx.fillRect(0, 0, api.w, api.h);
   ctx.save();
