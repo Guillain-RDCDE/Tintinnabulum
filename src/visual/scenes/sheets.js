@@ -55,7 +55,9 @@ export function sheets({ label, note, how, positional, preview, list, dial = 'fi
   return {
     label,
     note,
-    how: how || hows.join(' '),
+    // Left undefined when nobody wrote one, so the catalogue falls back to
+    // the note as it does for every other scene.
+    how: how || (hows.length ? hows.join(' ') : undefined),
     positional,
     preview,
     params: merged,
@@ -79,7 +81,7 @@ export function sheets({ label, note, how, positional, preview, list, dial = 'fi
 }
 
 /** The name of the sheet a scene is on for these dial values, or '' for a scene with one. */
-export function sheetOf(scene, params = {}) {
+export function sheetNameOf(scene, params = {}) {
   if (!scene || !scene.sheets) return '';
   const spec = scene.params.figure;
   const v = Math.round(Number(params.figure ?? spec.default) || 0);

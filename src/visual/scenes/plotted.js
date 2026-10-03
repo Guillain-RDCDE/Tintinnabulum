@@ -548,12 +548,13 @@ export const PLOTTED_SCENES = {
   // --- orbs ------------------------------------------------------------------------------
   orbs: {
     label: 'Hatched orbs',
+    sheets: ['construction', 'horizon'],
     note: 'Discs drawn by a plotter in two pens, black and vermilion: the black ones ruled with level lines, the red ones crossed into a fine mesh, and where two overlap a third texture that neither pen drew. On the first sheet they hang on a few ruled construction lines, centred on a line or on a crossing, the largest sometimes cut in half by the line it hangs from. On the second they are planets over a horizon of reeds and slow water, with one heavy hexagon in the middle of the sky. Every event is a disc: small ones in red, large ones in black.',
     how: 'A disc is a run of chords, each drawn as a pen line that wanders a hair either side and whose ends fall where the circle is, give or take a nib, instead of being clipped -- that is the fray at the edge of a plotted disc. Crossed discs add the vertical chords. When the piece is sounding, a short window of the waveform is added to the wander, so a disc drawn on a loud note trembles. The construction, or the reeds and the water, is drawn once at the start and again after every wash; the sheet is washed back a little when it has taken enough discs, and never in silence.',
     positional: true,
     preview: { frames: 180, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: construction, horizon', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
+      figure: { label: 'Which sheet', options: ['construction', 'horizon'], min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       pitch: { label: 'How close the hatching', min: 0.6, max: 2, step: 0.05, default: 1 },
       tremor: { label: 'How much the pen wanders', min: 0, max: 2, step: 0.05, default: 1 },
       colour: { label: 'How much of the red pen', min: 0, max: 1, step: 0.02, default: 0.6 },
@@ -617,12 +618,13 @@ export const PLOTTED_SCENES = {
   // --- tartan ----------------------------------------------------------------------------
   tartan: {
     label: 'Woven cells',
+    sheets: ['cut', 'ruled', 'quilt'],
     note: 'A sheet woven like cloth from columns and rows of unequal width, wide ones with a thin one between, and every cell the crossing of the two: a column of diagonal ruling crossed by a row of level lines comes out as a mesh, a black stripe crossing anything stays black. On the first sheet the cells are cut apart by narrow gutters and printed in one black on cream, some punched through with a white disc. On the second they are laid edge to edge on lines that run on past the grid, in flat colour, black and fine stripes, with dots set in them. A small event punches a disc, a middling one re-treats its cell, a large one re-dyes a whole column or row.',
     how: 'Column widths and row heights are drawn from a few sizes, never two thin ones together, and normalised to the sheet. Each column and each row carries a treatment of its own -- which line families it adds, or whether it is solid -- and a cell is the union of the two, unless an event has overridden it. The ruled sheet crosses its threads the way a weave does: blank lets the other through, two colours make black, stripes lie over whatever is under them. The quilt is a third sheet: every patch dyed its own colour and mottled like cloth, set in a dark frame with thin dark seams, a few patches white with black dots, and black wires run across it with a round dot at every end. A small event runs a new wire, a middling one dyes a patch again, a large one a row or a column. A cell is struck onto a buffer only when it changes, a few a frame, so a re-dyed column draws itself down the sheet in a fraction of a second.',
     positional: true,
     preview: { frames: 160, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: cut, ruled, quilt', min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
+      figure: { label: 'Which sheet', options: ['cut', 'ruled', 'quilt'], min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
       columns: { label: 'How many columns', min: 4, max: 12, step: 1, default: 7, rebuild: true },
       pitch: { label: 'How close the ruling', min: 0.6, max: 2, step: 0.05, default: 1, rebuild: true },
       holes: { label: 'How many discs', min: 0, max: 1, step: 0.02, default: 0.45 },

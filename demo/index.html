@@ -312,6 +312,10 @@
   .dial { display: block; margin: 0 0 .9rem; }
   .dial-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; font-size: .8125rem; margin-bottom: .35rem; }
   .dial-head span:last-child { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dial-options { display: flex; flex-wrap: wrap; gap: .3rem; }
+  .dial-options button { border: 1px solid var(--line); background: transparent; color: var(--muted); border-radius: 999px; padding: .22rem .7rem; font: inherit; font-size: .78rem; cursor: pointer; }
+  .dial-options button:hover { color: var(--fg); border-color: var(--line-strong); }
+  .dial-options button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); border-color: transparent; }
   #scene-params:empty::after { content: "This one has no settings of its own."; color: var(--muted); font-size: .8125rem; }
   #scene-params .reset { font-size: .78rem; color: var(--muted); background: none; border: 0; padding: .2rem 0; cursor: pointer; text-decoration: underline; }
   .check { display: flex; align-items: center; gap: .6rem; font-size: .875rem; color: var(--fg); min-height: 40px; cursor: pointer; }
@@ -483,6 +487,7 @@
   .st-dial { display: grid; gap: .3rem; }
   .st-dial .lab { display: flex; justify-content: space-between; gap: .6rem; font-size: .8rem; color: var(--muted); }
   .st-dial output { color: var(--fg); font-variant-numeric: tabular-nums; font-weight: 600; }
+  .st-options { display: flex; flex-wrap: wrap; gap: .3rem; }
   #studio input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; height: 22px; background: transparent; cursor: pointer; margin: 0; }
   #studio input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 4px;
     background: linear-gradient(to right, var(--accent) var(--pct, 50%), rgba(255,255,255,.14) var(--pct, 50%)); }

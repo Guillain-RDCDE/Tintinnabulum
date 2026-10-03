@@ -14,7 +14,8 @@
 
 import { scratch } from './paint.js';
 import { lighten, mixColors } from '../color.js';
-import { TAU, papers, ambient } from './shared.js';
+import { TAU, papers, ambient, sizeOf } from './shared.js';
+import { sheets } from './sheets.js';
 
 /** One sheet, drawn as cut. Everything is inside the box it was given. */
 function cut(b, kind, x, y, w, h, turn) {
@@ -92,112 +93,116 @@ const KINDS = ['plain', 'plain', 'plain', 'half', 'quarter', 'disc', 'stadium', 
 
 export const PAPER_SCENES = {
   // --- cutpaper ---------------------------------------------------------------------------
-  cutpaper: {
+  cutpaper: sheets({
     label: 'Cut paper',
     note: 'Shapes cut out of coloured paper with a blade and butted up against one another until there is no ground left showing. Everything is flat -- no shadow, no edge, no depth of any kind -- so the picture holds together by how the pieces pack rather than by what is in front of what, and a face or a bird appears now and then out of nothing more than a half disc landing above two dots. Every event cuts one more piece and lays it down over whatever was there, which means the picture is the whole history of the cutting and the oldest of it is buried. The second sheet is a totem: a standing figure cut in bands, every band a strip of triangles between two ragged edges, in red, blue, yellow, cream and black on a coloured ground, its outline jutting out in points here and there. A small event re-colours the triangle it falls on, a middling one its whole band, and a large one re-cuts the band so the figure changes shape. The third sheet is a collage of large sheets: rectangles cut from charcoal and a few colours, laid over one another on a module and turned together through an angle, the ground-coloured ones on top cutting the dark into frames and elbows. Every event lays one more sheet in the colour of its kind, so the commonest kind of event is the charcoal that carries the picture.',
     how: 'Every cut is aligned to a module, so pieces meet exactly and the mosaic never shows a seam of ground. A piece is a flat field of one colour, and on better than half of them a second shape -- half disc, quarter, wedge, stem -- is cut into the same box in another. The two neutrals of the palette carry most of the area and the categories punctuate it, which is the ratio the thing is built on. Struck onto a buffer and never redrawn.',
     preview: { frames: 220, dt: 45 },
-    params: {
-      figure: { label: 'Which sheet: collage, totem, sheets', min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
-      tilt: { label: 'How far the sheets are turned', min: 0, max: 40, step: 1, default: 16, rebuild: true },
-      scatter: { label: 'How freely each sheet is thrown', min: 0, max: 1, step: 0.02, default: 0, rebuild: true },
-      dark: { label: 'Ground: paper or dark', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
-      edge: { label: 'How much the scissors wander', min: 0, max: 1, step: 0.02, default: 0.35, rebuild: true },
-      scale: { label: 'Size of a piece', min: 0.5, max: 2.4, step: 0.05, default: 1, rebuild: true },
-      colour: { label: 'How much colour against the neutrals', min: 0, max: 1, step: 0.02, default: 0.4 },
-      faces: { label: 'How often an eye', min: 0, max: 1, step: 0.02, default: 0.22 },
-      wear: { label: 'Wear on the paper', min: 0, max: 1, step: 0.02, default: 0.35 },
-    },
-    init(api) {
-      const s = api.scene;
-      s.figure = Math.max(0, Math.min(2, Math.round(api.param('figure') || 0)));
-      if (s.figure === 1) {
-        raiseTotem(api);
-        return;
-      }
-      if (s.figure === 2) {
-        laySheets(api);
-        return;
-      }
-      const m = Math.min(api.w, api.h);
-      s.module = Math.max(8, (m / 11) * api.param('scale'));
-      s.cols = Math.max(2, Math.ceil(api.w / s.module));
-      s.rows = Math.max(2, Math.ceil(api.h / s.module));
-      s.cleared = false;
-      s.ambient = 0;
-      s.lastAt = 0;
-    },
-    event(p, api) {
-      const s = api.scene;
-      if (s.figure === 1) {
-        if (s.levels) recutTotem(api, p.x, p.y, Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34))));
-        return;
-      }
-      if (s.figure === 2) {
-        if (s.sheets) dropSheet(api, p.x, p.y, Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34))), p);
-        return;
-      }
-      if (!s.module || !s.bufCtx) return;
-      // A few pieces round where it fell, more for a larger event: one piece
-      // alone is lost in a collage of hundreds.
-      const q = Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34)));
-      const col = Math.floor(p.x / s.module);
-      const row = Math.floor(p.y / s.module);
-      const n = 1 + Math.round(q * 3);
-      for (let i = 0; i < n; i++) {
-        lay(api, col + ((Math.random() * 3) | 0) - 1, row + ((Math.random() * 3) | 0) - 1, i === 0 ? p.color : null);
-      }
-      s.lastAt = api.now;
-    },
-    frame(ctx, api) {
-      const s = api.scene;
-      if (s.figure === 1) {
-        drawTotem(ctx, api);
-        return;
-      }
-      if (s.figure === 2) {
-        drawSheets(ctx, api);
-        return;
-      }
-      const buf = scratch(api, 'buf');
-      const b = s.bufCtx;
-      if (!s.cleared) {
-        // The table is laid before anything is cut: alternating neutrals on
-        // the module, so a still is a collage rather than a blank ground with
-        // three shapes on it.
-        const paper = papers(api);
-        b.fillStyle = api.palette.background;
-        b.fillRect(0, 0, api.w, api.h);
-        for (let r = 0; r < s.rows; r++) {
-          for (let c = 0; c < s.cols; c++) {
-            b.fillStyle = (c + r) % 2 ? paper.card : paper.ink;
-            b.fillRect(c * s.module, r * s.module, s.module + 1, s.module + 1);
+    list: [
+      {
+        name: 'collage',
+        params: {
+          scale: { label: 'Size of a piece', min: 0.5, max: 2.4, step: 0.05, default: 1, rebuild: true },
+          colour: { label: 'How much colour against the neutrals', min: 0, max: 1, step: 0.02, default: 0.4 },
+          faces: { label: 'How often an eye', min: 0, max: 1, step: 0.02, default: 0.22 },
+          wear: { label: 'Wear on the paper', min: 0, max: 1, step: 0.02, default: 0.35 },
+        },
+        init(api) {
+          const s = api.scene;
+          const m = Math.min(api.w, api.h);
+          s.module = Math.max(8, (m / 11) * api.param('scale'));
+          s.cols = Math.max(2, Math.ceil(api.w / s.module));
+          s.rows = Math.max(2, Math.ceil(api.h / s.module));
+          s.cleared = false;
+          s.ambient = 0;
+          s.lastAt = 0;
+        },
+        event(p, api) {
+          const s = api.scene;
+          if (!s.module || !s.bufCtx) return;
+          // A few pieces round where it fell, more for a larger event: one piece
+          // alone is lost in a collage of hundreds.
+          const q = sizeOf(p, api);
+          const col = Math.floor(p.x / s.module);
+          const row = Math.floor(p.y / s.module);
+          const n = 1 + Math.round(q * 3);
+          for (let i = 0; i < n; i++) {
+            lay(api, col + ((Math.random() * 3) | 0) - 1, row + ((Math.random() * 3) | 0) - 1, i === 0 ? p.color : null);
           }
-        }
-        s.cleared = true;
-        for (let i = 0; i < 90; i++) {
-          lay(api, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, null);
-        }
-      }
-      // The blade works on its own only after a pause, and slowly. It used to
-      // cut a piece every hundred and ten milliseconds whatever arrived, so
-      // a silent minute put down as many pieces as a busy one.
-      ambient(s, api, 1800, () => lay(api, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, null));
-      ctx.drawImage(buf, 0, 0);
-    },
-  },
+          s.lastAt = api.now;
+        },
+        frame(ctx, api) {
+          const s = api.scene;
+          const buf = scratch(api, 'buf');
+          const b = s.bufCtx;
+          if (!s.cleared) {
+            // The table is laid before anything is cut: alternating neutrals on
+            // the module, so a still is a collage rather than a blank ground with
+            // three shapes on it.
+            const paper = papers(api);
+            b.fillStyle = api.palette.background;
+            b.fillRect(0, 0, api.w, api.h);
+            for (let r = 0; r < s.rows; r++) {
+              for (let c = 0; c < s.cols; c++) {
+                b.fillStyle = (c + r) % 2 ? paper.card : paper.ink;
+                b.fillRect(c * s.module, r * s.module, s.module + 1, s.module + 1);
+              }
+            }
+            s.cleared = true;
+            for (let i = 0; i < 90; i++) {
+              lay(api, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, null);
+            }
+          }
+          // The blade works on its own only after a pause, and slowly. It used to
+          // cut a piece every hundred and ten milliseconds whatever arrived, so
+          // a silent minute put down as many pieces as a busy one.
+          ambient(s, api, 1800, () => lay(api, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, null));
+          ctx.drawImage(buf, 0, 0);
+        },
+      },
+      // The second sheet: a standing totem cut in bands of triangles.
+      {
+        name: 'totem',
+        init: raiseTotem,
+        event(p, api) {
+          if (!api.scene.levels) return;
+          recutTotem(api, p.x, p.y, sizeOf(p, api));
+        },
+        frame: drawTotem,
+      },
+      // The third sheet: large sheets of charcoal and colour laid over one
+      // another and turned together, each the colour of the kind of event that
+      // laid it.
+      {
+        name: 'sheets',
+        params: {
+          tilt: { label: 'How far the sheets are turned', min: 0, max: 40, step: 1, default: 16, rebuild: true },
+          scatter: { label: 'How freely each sheet is thrown', min: 0, max: 1, step: 0.02, default: 0, rebuild: true },
+          dark: { label: 'Ground', options: ['paper', 'dark'], min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
+          edge: { label: 'How much the scissors wander', min: 0, max: 1, step: 0.02, default: 0.35, rebuild: true },
+        },
+        init: laySheets,
+        event(p, api) {
+          if (!api.scene.sheets) return;
+          dropSheet(api, p.x, p.y, sizeOf(p, api), p);
+        },
+        frame: drawSheets,
+      },
+    ],
+  }),
 
   // --- planes -----------------------------------------------------------------------------
   planes: {
     label: 'Planes',
+    sheets: ['planes', 'scatter', 'stairs'],
     note: 'Half a dozen very large shapes at a time, laid over one another on a sheet of paper, and every one of them transparent. Where two cross, the colour belongs to neither: a black wash over a green disc is a green nobody mixed, and most of what you see in this picture is that. A few forms are hard-edged and printed; the rest are wet, and their edges have run. Each event brings one more plane in and pushes the oldest out, so the composition is never still and never crowded. The second sheet is a scatter: many smaller slabs tilted every way in three colours that darken where they cross, among as many pieces only drawn round in graphite, all gathered into a band across the sheet. The third sheet is stairs: long bars laid one after another in a progression -- a drift up the diagonal, two flights meeting at a corner, a slope, or two halves turned on the diagonal either side of a gap -- each bar either a veil of colour or ruled fine across its length, so that where they cross the colours multiply. Every event lays a step again.',
     how: 'A bounded pool of forms, redrawn whole every frame -- affordable precisely because there are so few -- and combined with multiply on a pale ground or screen on a dark one, which is how transparent pigment behaves and what makes the crossings their own colours. A wash is the same form struck four or five times at a low opacity with its edges nudged, which is cheaper than a blur and looks more like water.',
     positional: true,
     preview: { frames: 160, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: planes, scatter, stairs', min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
-      layout: { label: 'How the stairs are laid: drift, corner, slope, split', min: 0, max: 3, step: 1, default: 0, rebuild: true, vary: false },
-      cool: { label: 'How much of the cool ink, on the stairs', min: 0, max: 1, step: 0.02, default: 0.12 },
+      figure: { label: 'Which sheet', options: ['planes', 'scatter', 'stairs'], min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
+      layout: { label: 'How the stairs are laid', options: ['drift', 'corner', 'slope', 'split'], min: 0, max: 3, step: 1, default: 0, rebuild: true, vary: false, sheets: ['stairs'] },
+      cool: { label: 'How much of the cool ink', min: 0, max: 1, step: 0.02, default: 0.12, sheets: ['stairs'] },
       count: { label: 'How many planes', min: 2, max: 18, step: 1, default: 10 },
       scale: { label: 'How large', min: 0.4, max: 1.6, step: 0.05, default: 1 },
       wash: { label: 'How much is wet', min: 0, max: 1, step: 0.02, default: 0.45 },

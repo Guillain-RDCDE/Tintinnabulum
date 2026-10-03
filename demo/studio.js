@@ -434,10 +434,43 @@ export function setupStudio({
       host.append(p);
       return;
     }
+    // Which sheet the tool is on, so only that sheet's dials are drawn: a
+    // dial for the stripes is noise beside a sheet of meshes.
+    const choice = scene.params.figure && scene.params.figure.options ? scene.params.figure : null;
+    const onSheet = choice ? choice.options[Math.round(state.params.figure)] : null;
+    host.dataset.sheet = onSheet || '';
     for (const [name, spec] of specs) {
+      if (spec.sheets && onSheet && !spec.sheets.includes(onSheet)) continue;
       const wrap = document.createElement('div');
       wrap.className = 'st-dial';
+      wrap.dataset.param = name;
       const id = `st-dial-${name}`;
+      if (spec.options) {
+        // A choice -- which sheet, which layout -- is a row of named chips,
+        // not a slider that reads 0, 1, 2.
+        wrap.innerHTML = '<div class="lab"><span></span><output></output></div><div class="st-options" role="group"></div>';
+        wrap.querySelector('span').textContent = spec.label;
+        const row = wrap.querySelector('.st-options');
+        spec.options.forEach((option, i) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'st-chip';
+          b.textContent = option;
+          b.dataset.param = name;
+          b.dataset.value = String(i);
+          b.addEventListener('click', () => {
+            state.params[name] = i;
+            writeAddress();
+            // Another sheet has other dials.
+            buildDials();
+            refreshAll();
+            scheduleRebuild();
+          });
+          row.append(b);
+        });
+        host.append(wrap);
+        continue;
+      }
       wrap.innerHTML = `<div class="lab"><label for="${id}"></label><output></output></div><input type="range" id="${id}">`;
       wrap.querySelector('label').textContent = spec.label;
       const input = wrap.querySelector('input');
@@ -478,9 +511,22 @@ export function setupStudio({
 
   function refreshAll() {
     el('seed').value = String(state.seed);
+    // The sheet may have changed under the panel -- a reset, a picture
+    // opened from a link -- and another sheet has other dials.
+    const specs = SCENES[state.tool].params || {};
+    const choice = specs.figure && specs.figure.options ? specs.figure : null;
+    const onSheet = choice ? choice.options[Math.round(state.params.figure)] : '';
+    if (el('dials').dataset.sheet !== (onSheet || '')) buildDials();
     for (const input of el('dials').querySelectorAll('input[type="range"]')) {
       input.value = state.params[input.dataset.param];
       showDial(input);
+    }
+    for (const b of el('dials').querySelectorAll('.st-options button')) {
+      const spec = specs[b.dataset.param];
+      const v = Math.round(state.params[b.dataset.param]);
+      b.setAttribute('aria-pressed', String(v === Number(b.dataset.value)));
+      const out = b.closest('.st-dial').querySelector('output');
+      if (out && spec) out.textContent = spec.options[v] || '';
     }
     refreshInks();
     for (const b of el('finishes').querySelectorAll('.st-chip')) b.setAttribute('aria-pressed', String(b.dataset.finish === state.finish));

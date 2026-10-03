@@ -471,8 +471,11 @@ export const MATERIAL_SCENES = {
       }
       // Now and then a patch of stones is set by itself, in one of the
       // palette's colours, and a soft light travels slowly across the floor.
+      // Every two to three seconds, not two to five: the floor's own life is
+      // what it has when the feed is quiet, and at the longer gap a still of
+      // two and a half seconds could catch nothing but the light.
       if (s.built && api.now >= (s.patchAt || 0)) {
-        s.patchAt = api.now + 2500 + Math.random() * 3000;
+        s.patchAt = api.now + 1800 + Math.random() * 1400;
         const ink = inks(pal)[Math.floor(Math.random() * 4)];
         MATERIAL_SCENES.tesserae.event({ x: Math.random() * api.w, y: Math.random() * api.h, r: 30 + Math.random() * 40, color: ink }, api);
       }

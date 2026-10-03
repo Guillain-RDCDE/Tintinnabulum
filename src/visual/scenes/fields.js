@@ -3,6 +3,7 @@
 import { noise2 } from './noise.js';
 import { cap } from './budget.js';
 import { ambient, kick } from './shared.js';
+import { sheets } from './sheets.js';
 
 const TAU = Math.PI * 2;
 
@@ -87,93 +88,96 @@ export const FIELD_SCENES = {
     },
   },
 
-  grid: {
+  grid: sheets({
     label: 'Grid',
     positional: false,
     note: 'An ordered grid that each event knocks out of true, settling back over time. After Vera Molnár. The second sheet is a current: solid squares in a few inks on a coloured ground, upright in one corner and turned further and further across the sheet until they stand on their points, drifting so they crowd and part, with cells left empty. Every event turns and re-inks the squares round where it falls.',
     // `rebuild` says a change re-runs init(): a grid cannot resize its cells
     // without being built again, where a line width can just be read.
-    params: {
-      figure: { label: 'Which sheet: outlines, current', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
-      cell: { label: 'Cell size', min: 16, max: 90, step: 1, default: 40, rebuild: true },
-      square: { label: 'Square size', min: 0.25, max: 0.95, step: 0.01, default: 0.62 },
-      fill: { label: 'How full the current is', min: 0.3, max: 1, step: 0.02, default: 0.82, rebuild: true },
-      turn: { label: 'How far the current turns them', min: 0, max: 1.5, step: 0.05, default: 1 },
-    },
-    init(api) {
-      api.scene.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
-      if (api.scene.figure === 1) {
-        currentInit(api);
-        return;
-      }
-      const cell = api.param('cell');
-      const cols = Math.max(1, Math.floor(api.w / cell));
-      const rows = Math.max(1, Math.floor(api.h / cell));
-      api.scene.cell = cell;
-      api.scene.cols = cols;
-      api.scene.rows = rows;
-      api.scene.heat = new Float32Array(cols * rows);
-      api.scene.turn = new Float32Array(cols * rows);
-    },
-    event(p, api) {
-      const s = api.scene;
-      if (s.figure === 1) {
-        currentEvent(p, api);
-        return;
-      }
-      if (!s.heat) return;
-      const cx = Math.floor((p.x / api.w) * s.cols);
-      const cy = Math.floor((p.y / api.h) * s.rows);
-      const i = Math.max(0, Math.min(s.cols * s.rows - 1, cy * s.cols + cx));
-      s.heat[i] = Math.min(1.6, s.heat[i] + 0.5 + p.r / 120);
-      s.turn[i] += (Math.random() - 0.5) * 1.4;
-      s.lastColor = p.color;
-      s.lastRim = p.rim;
-    },
-    frame(ctx, api) {
-      const s = api.scene;
-      if (s.figure === 1) {
-        currentFrame(ctx, api);
-        return;
-      }
-      if (!s.heat) return;
-      const decay = Math.min(0.06, api.dt / 1000) * 0.55;
-      const w = api.w / s.cols;
-      const h = api.h / s.rows;
-      const side = Math.min(w, h) * api.param('square');
-      ctx.lineWidth = 1.2;
-      for (let y = 0; y < s.rows; y++) {
-        for (let x = 0; x < s.cols; x++) {
-          const i = y * s.cols + x;
-          s.heat[i] = Math.max(0, s.heat[i] - decay);
-          s.turn[i] *= 1 - decay * 0.9;
-          const heat = s.heat[i];
-          const cx = (x + 0.5) * w;
-          const cy = (y + 0.5) * h;
-          ctx.save();
-          ctx.translate(cx, cy);
-          ctx.rotate(s.turn[i]);
-          ctx.globalAlpha = 0.12 + Math.min(0.8, heat * 0.6);
-          ctx.strokeStyle = heat > 0.05 ? s.lastColor || api.palette.default : api.palette.default;
-          ctx.strokeRect(-side / 2, -side / 2, side, side);
-          if (heat > 0.55) {
-            ctx.globalAlpha = Math.min(0.55, (heat - 0.55) * 0.9);
-            ctx.fillStyle = ctx.strokeStyle;
-            ctx.fillRect(-side / 2, -side / 2, side, side);
-            // A lit top and left edge on the hottest cells, so a struck square
-            // looks raised out of the grid rather than merely tinted.
-            if (api.depth) {
-              ctx.globalAlpha = Math.min(0.8, (heat - 0.55) * 1.4);
-              ctx.fillStyle = s.lastRim || ctx.strokeStyle;
-              ctx.fillRect(-side / 2, -side / 2, side, 1.5);
-              ctx.fillRect(-side / 2, -side / 2, 1.5, side);
+    list: [
+      {
+        name: 'outlines',
+        params: {
+          cell: { label: 'Cell size', min: 16, max: 90, step: 1, default: 40, rebuild: true },
+          square: { label: 'Square size', min: 0.25, max: 0.95, step: 0.01, default: 0.62 },
+        },
+        init(api) {
+          const cell = api.param('cell');
+          const cols = Math.max(1, Math.floor(api.w / cell));
+          const rows = Math.max(1, Math.floor(api.h / cell));
+          api.scene.cell = cell;
+          api.scene.cols = cols;
+          api.scene.rows = rows;
+          api.scene.heat = new Float32Array(cols * rows);
+          api.scene.turn = new Float32Array(cols * rows);
+        },
+        event(p, api) {
+          const s = api.scene;
+          if (!s.heat) return;
+          const cx = Math.floor((p.x / api.w) * s.cols);
+          const cy = Math.floor((p.y / api.h) * s.rows);
+          const i = Math.max(0, Math.min(s.cols * s.rows - 1, cy * s.cols + cx));
+          s.heat[i] = Math.min(1.6, s.heat[i] + 0.5 + p.r / 120);
+          s.turn[i] += (Math.random() - 0.5) * 1.4;
+          s.lastColor = p.color;
+          s.lastRim = p.rim;
+        },
+        frame(ctx, api) {
+          const s = api.scene;
+          if (!s.heat) return;
+          const decay = Math.min(0.06, api.dt / 1000) * 0.55;
+          const w = api.w / s.cols;
+          const h = api.h / s.rows;
+          const side = Math.min(w, h) * api.param('square');
+          ctx.lineWidth = 1.2;
+          for (let y = 0; y < s.rows; y++) {
+            for (let x = 0; x < s.cols; x++) {
+              const i = y * s.cols + x;
+              s.heat[i] = Math.max(0, s.heat[i] - decay);
+              s.turn[i] *= 1 - decay * 0.9;
+              const heat = s.heat[i];
+              const cx = (x + 0.5) * w;
+              const cy = (y + 0.5) * h;
+              ctx.save();
+              ctx.translate(cx, cy);
+              ctx.rotate(s.turn[i]);
+              ctx.globalAlpha = 0.12 + Math.min(0.8, heat * 0.6);
+              ctx.strokeStyle = heat > 0.05 ? s.lastColor || api.palette.default : api.palette.default;
+              ctx.strokeRect(-side / 2, -side / 2, side, side);
+              if (heat > 0.55) {
+                ctx.globalAlpha = Math.min(0.55, (heat - 0.55) * 0.9);
+                ctx.fillStyle = ctx.strokeStyle;
+                ctx.fillRect(-side / 2, -side / 2, side, side);
+                // A lit top and left edge on the hottest cells, so a struck square
+                // looks raised out of the grid rather than merely tinted.
+                if (api.depth) {
+                  ctx.globalAlpha = Math.min(0.8, (heat - 0.55) * 1.4);
+                  ctx.fillStyle = s.lastRim || ctx.strokeStyle;
+                  ctx.fillRect(-side / 2, -side / 2, side, 1.5);
+                  ctx.fillRect(-side / 2, -side / 2, 1.5, side);
+                }
+              }
+              ctx.restore();
             }
           }
-          ctx.restore();
-        }
-      }
-    },
-  },
+        },
+      },
+      // The second sheet: a current of solid squares, upright in one corner and
+      // on their points across the rest.
+      {
+        name: 'current',
+        params: {
+          cell: { label: 'Cell size', min: 16, max: 90, step: 1, default: 40, rebuild: true },
+          fill: { label: 'How full the current is', min: 0.3, max: 1, step: 0.02, default: 0.82, rebuild: true },
+          turn: { label: 'How far the current turns them', min: 0, max: 1.5, step: 0.05, default: 1 },
+          square: { label: 'Square size', min: 0.25, max: 0.95, step: 0.01, default: 0.62 },
+        },
+        init: currentInit,
+        event: currentEvent,
+        frame: currentFrame,
+      },
+    ],
+  }),
 
   truchet: {
     label: 'Truchet',

@@ -727,6 +727,10 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
     for (const [dial, v] of Object.entries(w.dials || {})) {
       const sp = specs[dial];
       if (!sp || !(v >= sp.min && v <= sp.max)) broken.push(`${name}.dials.${dial}=${v}`);
+      // And on one of its steps: a slider cannot show a value between two
+      // of its notches, so the Look panel would display a different number
+      // from the one the work actually hangs at.
+      else if (sp.step && Math.abs((v - sp.min) / sp.step - Math.round((v - sp.min) / sp.step)) > 1e-6) broken.push(`${name}.dials.${dial}=${v} is off its step of ${sp.step}`);
     }
   }
   ok('every work names things that exist', broken.length === 0, broken.join(', ') || `${Object.keys(WORKS).length} works`);
@@ -903,6 +907,32 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
     .filter(([, s]) => !(s.shelf !== 'Other' && s.note.length > 30 && s.how.length > 60 && typeof s.frame === 'function'))
     .map(([name, s]) => `${name} (${s.shelf})`);
   ok('every scene is catalogued and has something to say', unsaid.length === 0, unsaid.join(', ') || `${Object.keys(m.SCENES).length} scenes`);
+
+  // A scene with several sheets: one choice, named and never varied, that
+  // sends init, event and frame to the sheet chosen; every other dial tagged
+  // with the sheets it belongs to.
+  const { sheets: makeSheets, sheetNameOf } = await import('../src/visual/scenes/sheets.js');
+  const k = { label: 'k', min: 0, max: 1, step: 0.1, default: 0.5 };
+  const twin = makeSheets({ label: 'Twin', note: 'two sheets', list: [
+    { name: 'a', params: { k }, init(api) { api.scene.hit = 'a'; }, frame() {} },
+    { name: 'b', params: { k, j: { label: 'j', min: 1, max: 9, step: 1, default: 3 } }, init(api) { api.scene.hit = 'b'; }, event(p, api) { api.scene.ev = 'b'; }, frame() {} },
+  ] });
+  const fakeApi = (figure) => ({ scene: {}, param: (n) => (n === 'figure' ? figure : twin.params[n].default) });
+  const onA = fakeApi(0);
+  twin.init(onA);
+  twin.event({}, onA);
+  const onB = fakeApi(1);
+  twin.init(onB);
+  twin.event({}, onB);
+  ok('sheets() sends init and event to the sheet chosen', onA.scene.hit === 'a' && onA.scene.ev === undefined && onB.scene.hit === 'b' && onB.scene.ev === 'b');
+  ok('sheets() names its choice, rebuilds on it and never varies it',
+     JSON.stringify(twin.params.figure.options) === '["a","b"]' && twin.params.figure.vary === false && twin.params.figure.rebuild === true);
+  ok('sheets() tags every dial with its sheets', JSON.stringify(twin.params.k.sheets) === '["a","b"]' && JSON.stringify(twin.params.j.sheets) === '["b"]');
+  ok('sheetNameOf names the sheet a scene is on', sheetNameOf(twin, { figure: 1 }) === 'b' && sheetNameOf(twin) === 'a' && sheetNameOf(m.SCENES.bloom) === '');
+  const unnamed = Object.entries(m.SCENES)
+    .filter(([, s]) => Object.values(s.params || {}).some((sp) => sp.vary === false && !(sp.options && sp.options.length === sp.max - sp.min + 1)))
+    .map(([n]) => n);
+  ok('every choice dial names its options', unnamed.length === 0, unnamed.join(', ') || 'all named');
   ok('dither is a finish with a note of its own', m.FINISH_ORDER.includes('dither') && m.FINISHES.dither.note.length > 30);
 }
 

@@ -17,6 +17,8 @@
 // against the catalogues, so a renamed scene or palette fails loudly here
 // instead of producing a work that silently falls back to the defaults.
 
+import { sheetNameOf } from './visual/scenes/sheets.js';
+
 export const WORK_ROOMS = ['Dawn', 'Daylight', 'Dusk', 'Night'];
 
 export const WORK_ROOM_NOTES = {
@@ -269,9 +271,10 @@ export const WORKS = {
 
   // --- the printed room ------------------------------------------------------------
   //
-  // Five pieces that are documents before they are pictures: a plate of type,
-  // a sentence losing its sense, a sheet of plotter drawings, a collage and a
-  // set of transparent planes.
+  // Pieces that are documents before they are pictures: a plate of type, a
+  // sentence losing its sense, a sheet of plotter drawings, a collage, a set
+  // of transparent planes, a seismograph, a hand-filled form, a skein and a
+  // printer's sheet.
   specimen: work('Daylight', 'calm', 'Specimen sheet', {
     scene: 'sorts', palette: 'newsprint', kit: 'musicbox', space: 'room',
     ground: 'hotpress', mat: 'gallery', finish: 'lino', pace: UNHURRIED,
@@ -349,8 +352,8 @@ export const WORKS = {
     cartel: 'A landscape drawn with a hundred level lines and nothing else. Where the ground rises the line is lifted with it and hides the lines behind, so a block is a block and its near face is a dark wall of the lines climbing it. Every event raises something -- a cube, a faceted crystal, a rounded mass -- and when the sheet is crowded the oldest sink back into the plain. Clay and wood, for the pen setting down.',
   }),
 
-  // Three pieces for the pen: discs in two inks, a woven sheet, and bells
-  // struck in grain.
+  // Three pieces for the pen: discs in two inks, a woven sheet, and a square
+  // cut and ruled in stripes.
   twopens: work('Daylight', 'calm', 'Two pens on a grid', {
     scene: 'orbs', palette: 'newsprint', kit: 'glassy', space: 'room',
     ground: 'hotpress', mat: 'gallery', pace: UNHURRIED,
@@ -401,7 +404,7 @@ export const WORKS = {
   }),
   network: work('Daylight', 'lively', 'Molecule on yellow', {
     scene: 'constellation', palette: 'citron', kit: 'marimba', space: 'room',
-    grain: true, pace: REAL_TIME, dials: { figure: 1, bonds: 0.75 },
+    grain: true, pace: REAL_TIME, dials: { figure: 1, bonds: 0.76 },
     cartel: 'A whole network of targets in pink, violet, navy, orange and leaf green on lemon yellow, bonded by black lines and dotted ones in the colours of their two ends. The feed keeps adding atoms and the oldest let go.',
   }),
   confetti: work('Dawn', 'lively', 'Confetti molecule', {
@@ -418,7 +421,7 @@ export const WORKS = {
   }),
   primaries: work('Night', 'lively', 'Turned primaries', {
     scene: 'grid', palette: 'ink', kit: 'steelpan', space: 'room',
-    pace: REAL_TIME, dials: { figure: 1, fill: 0.95, square: 0.8 },
+    pace: REAL_TIME, dials: { figure: 1, fill: 0.96, square: 0.8 },
     cartel: 'The same current packed so close the squares lock into one another, in red, blue, gold, teal and white on black. Every event stirs the patch it falls on and leaves it turned.',
   }),
   scattered: work('Daylight', 'calm', 'Squares, scattered', {
@@ -475,7 +478,7 @@ export const WORKS = {
     pace: SLOW, dials: { figure: 1, dress: 4 },
     cartel: 'The digits set in words of eight and blocks of four lines, with whole blocks left empty. An event fills the block it falls in; a large one empties another somewhere else, so the page is always partly blank.',
   }),
-  // Five pictures hung on the second sheet of a scene already on the wall.
+  // Five pictures hung on another sheet of a scene already on the wall.
   stack: work('Daylight', 'calm', 'A stack of hatched bands', {
     scene: 'spindles', palette: 'bone', kit: 'strings', space: 'room',
     ground: 'hotpress', mat: 'gallery', pace: UNHURRIED, dials: { figure: 1, colour: 0 },
@@ -584,8 +587,11 @@ export function mediumOf(work, catalogues) {
   const w = typeof work === 'string' ? WORKS[work] : work;
   if (!w) return '';
   const { SCENES, PALETTES, FINISHES, GROUNDS, MATS, KITS, SPACES, LIVING } = catalogues;
+  const sheet = sheetNameOf(SCENES[w.scene], w.dials || {});
   return [
-    SCENES[w.scene].label,
+    // The scene, and which of its sheets when it has several: "Cut paper"
+    // said nothing about three works that look nothing like one another.
+    sheet ? `${SCENES[w.scene].label} (${sheet})` : SCENES[w.scene].label,
     `${PALETTES[w.palette].label} palette`,
     w.finish === 'none' ? '' : FINISHES[w.finish].label,
     w.ground === 'none' ? '' : `on ${GROUNDS[w.ground].label.toLowerCase()}`,

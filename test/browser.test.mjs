@@ -4035,7 +4035,12 @@ ok('stepping back finds the same picture',
 const pgDials = await pg.evaluate(async () => {
   const { SCENES } = await import('../src/index.js');
   const tool = window.son.studio.state.tool;
-  const inputs = [...document.querySelectorAll('#st-dials input[type="range"]')];
+  // Every dial of the sheet on view, as a slider or a row of named buttons;
+  // the dials of the scene's other sheets are rightly not here.
+  const specs = SCENES[tool].params;
+  const choice = specs.figure && specs.figure.options ? specs.figure : null;
+  const onSheet = choice ? choice.options[Math.round(window.son.studio.state.params.figure)] : null;
+  const inputs = [...document.querySelectorAll('#st-dials .st-dial[data-param]')];
   const first = document.querySelector('#st-dials input[type="range"][id^="st-dial-"]');
   const dial = first.id.replace('st-dial-', '');
   // To the far end from where the variation left it. A variation number
@@ -4049,7 +4054,7 @@ const pgDials = await pg.evaluate(async () => {
   return {
     tool, dial,
     count: inputs.length,
-    expected: Object.keys(SCENES[tool].params).length,
+    expected: Object.values(specs).filter((sp) => !(sp.sheets && onSheet && !sp.sheets.includes(onSheet))).length,
     value: window.son.studio.state.params[dial],
     max: to,
   };

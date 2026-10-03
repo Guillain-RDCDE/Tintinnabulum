@@ -22,7 +22,8 @@
 // never be mistaken for the feed.
 
 import { scratch } from './paint.js';
-import { TAU, seeded, hashOf, sizeOf, inkOf, clampTo, enqueue, drain, ambient } from './shared.js';
+import { TAU, seeded, hashOf, sizeOf, inkOf, clampTo, enqueue, drain, ambient, nearestRect } from './shared.js';
+import { sheets } from './sheets.js';
 
 const SAMPLES = 48;
 
@@ -75,172 +76,177 @@ function profileOf(rnd, api, line, listen) {
 
 export const RULED_SCENES = {
   // --- spindles ---------------------------------------------------------------------------
-  spindles: {
+  spindles: sheets({
     label: 'Spindle lines',
     note: 'A sheet divided into cells, and every cell filled with lines drawn from one edge to the other -- lines that swell and thin along their length like thread wound unevenly on a spindle, so that a cell of them reads as a woven thing rather than a ruled one. Some cells are struck solid black, some are drawn so lightly they are only grain, and some are left bare. Behind them, when you want it, the ruled construction the sheet was laid out on, running past the cells into the margin. Every event takes a cell and fills it again: a small one as grain, a middling one as lines, a large one solid. The second sheet is a stack: bands of upright pen lines laid one on another in a leaning column, each solid at one end and breaking into dashes at the other, with a dark crossed triangle or half disc hanging from its top edge; an event re-hatches its band, and a large one shifts it along.',
     how: 'The sheet is tiled by columns, each cell spanning one to three rows and now and then left out, and the rules are the edges of that tiling drawn end to end. A line is forty-eight short strokes at a width read off a profile; the profile is a few bumps placed by the event\'s own number, or, when the piece is sounding, the waveform of the note at the instant it was struck, a different window of it for each line. Grain is the same line drawn dashed and pale. A cell is re-struck only when it changes, one a frame, so the picture costs what has just been redrawn and not what is on it.',
     positional: true,
     preview: { frames: 200, dt: 50 },
-    params: {
-      figure: { label: 'Which sheet: cells, stack', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
-      columns: { label: 'How many columns', min: 3, max: 10, step: 1, default: 7, rebuild: true },
-      hatch: { label: 'How close the lines', min: 0.5, max: 2, step: 0.05, default: 1 },
-      rules: { label: 'How much of the ruled grid shows', min: 0, max: 1, step: 0.02, default: 0.5 },
-      colour: { label: 'How much colour against the black', min: 0, max: 1, step: 0.02, default: 0.12 },
-      listen: { label: 'How much the sound shapes the line', min: 0, max: 1, step: 0.02, default: 0.7 },
-    },
-    init(api) {
-      const s = api.scene;
-      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
-      if (s.figure === 1) {
-        stackUp(s, api);
-        return;
-      }
-      const m = Math.min(api.w, api.h);
-      const cols = Math.max(2, Math.min(12, Math.round(api.param('columns'))));
-      const margin = m * 0.1;
-      const spanW = Math.max(1, api.w - margin * 2);
-      const spanH = Math.max(1, api.h - margin * 2);
-      const rows = Math.max(3, Math.min(14, Math.round((cols * spanH) / spanW * 1.15)));
-      const gutter = Math.min(spanW / cols, spanH / rows) * 0.12;
-      const cw = (spanW - gutter * (cols - 1)) / cols;
-      const ch = (spanH - gutter * (rows - 1)) / rows;
-      s.xs = [];
-      s.ys = [];
-      for (let c = 0; c < cols; c++) {
-        const x = margin + c * (cw + gutter);
-        s.xs.push(x, x + cw);
-      }
-      for (let r = 0; r < rows; r++) {
-        const y = margin + r * (ch + gutter);
-        s.ys.push(y, y + ch);
-      }
-      s.cells = [];
-      // Tiled by columns, so a tall cell is a cell that spans rows, which is
-      // what the drawings do; a column left out now and then is what keeps
-      // the sheet from reading as a chequerboard.
-      for (let c = 0; c < cols; c++) {
-        let r = 0;
-        while (r < rows) {
-          const pick = Math.random();
-          const span = Math.min(rows - r, pick < 0.7 ? 1 : pick < 0.92 ? 2 : 3);
-          if (Math.random() < 0.14) {
-            r += span;
-            continue;
+    list: [
+      {
+        name: 'cells',
+        params: {
+          columns: { label: 'How many columns', min: 3, max: 10, step: 1, default: 7, rebuild: true },
+          hatch: { label: 'How close the lines', min: 0.5, max: 2, step: 0.05, default: 1 },
+          rules: { label: 'How much of the ruled grid shows', min: 0, max: 1, step: 0.02, default: 0.5 },
+          colour: { label: 'How much colour against the black', min: 0, max: 1, step: 0.02, default: 0.12 },
+          listen: { label: 'How much the sound shapes the line', min: 0, max: 1, step: 0.02, default: 0.7 },
+        },
+        init(api) {
+          const s = api.scene;
+          const m = Math.min(api.w, api.h);
+          const cols = Math.max(2, Math.min(12, Math.round(api.param('columns'))));
+          const margin = m * 0.1;
+          const spanW = Math.max(1, api.w - margin * 2);
+          const spanH = Math.max(1, api.h - margin * 2);
+          const rows = Math.max(3, Math.min(14, Math.round((cols * spanH) / spanW * 1.15)));
+          const gutter = Math.min(spanW / cols, spanH / rows) * 0.12;
+          const cw = (spanW - gutter * (cols - 1)) / cols;
+          const ch = (spanH - gutter * (rows - 1)) / rows;
+          s.xs = [];
+          s.ys = [];
+          for (let c = 0; c < cols; c++) {
+            const x = margin + c * (cw + gutter);
+            s.xs.push(x, x + cw);
           }
-          const x = margin + c * (cw + gutter);
-          const y = margin + r * (ch + gutter);
-          s.cells.push({
-            x, y, w: cw, h: ch * span + gutter * (span - 1),
-            kind: 'blank', vertical: true, color: null, profiles: null, done: true, wobble: 0,
+          for (let r = 0; r < rows; r++) {
+            const y = margin + r * (ch + gutter);
+            s.ys.push(y, y + ch);
+          }
+          s.cells = [];
+          // Tiled by columns, so a tall cell is a cell that spans rows, which is
+          // what the drawings do; a column left out now and then is what keeps
+          // the sheet from reading as a chequerboard.
+          for (let c = 0; c < cols; c++) {
+            let r = 0;
+            while (r < rows) {
+              const pick = Math.random();
+              const span = Math.min(rows - r, pick < 0.7 ? 1 : pick < 0.92 ? 2 : 3);
+              if (Math.random() < 0.14) {
+                r += span;
+                continue;
+              }
+              const x = margin + c * (cw + gutter);
+              const y = margin + r * (ch + gutter);
+              s.cells.push({
+                x, y, w: cw, h: ch * span + gutter * (span - 1),
+                kind: 'blank', vertical: true, color: null, profiles: null, done: true, wobble: 0,
+              });
+              r += span;
+            }
+          }
+          s.top = margin * 0.35;
+          s.foot = api.h - margin * 0.35;
+          s.left = margin * 0.35;
+          s.right = api.w - margin * 0.35;
+          // A first sheet, dressed by hand so the picture is not bare before the
+          // first event.
+          const ink = inkOf(api);
+          const hand = seeded(Math.floor(Math.random() * 1e9));
+          for (const cell of s.cells) {
+            const pick = hand();
+            cell.kind = pick < 0.1 ? 'blank' : pick < 0.32 ? 'grain' : pick < 0.86 ? 'lines' : 'solid';
+            cell.vertical = hand() < 0.55;
+            cell.color = ink;
+            cell.profiles = [];
+            cell.seed = Math.floor(hand() * 1e9);
+            cell.done = false;
+          }
+          s.cleared = false;
+          s.lastAt = 0;
+          s.ambient = 0;
+        },
+        event(p, api) {
+          const s = api.scene;
+          if (!s.cells || !s.cells.length) return;
+          // The cell it landed in, or the nearest when it landed in a gutter or a
+          // gap: every event must take a place on the sheet.
+          const cell = s.cells[nearestRect(s.cells, p.x, p.y)];
+          const q = sizeOf(p, api);
+          cell.kind = q < 0.22 ? 'grain' : q < 0.66 ? 'lines' : 'solid';
+          cell.vertical = (p.pick === undefined ? Math.random() : p.pick) < 0.55;
+          cell.color = Math.random() < api.param('colour') ? p.color : inkOf(api);
+          cell.seed = hashOf(p, { fine: true });
+          cell.profiles = null;
+          cell.heard = api.sound && api.sound.wave ? api.param('listen') : 0;
+          cell.done = false;
+          s.lastAt = api.now;
+        },
+        frame(ctx, api) {
+          const s = api.scene;
+          if (!s.cells) return;
+          const buf = scratch(api, 'buf');
+          const b = s.bufCtx;
+          if (!s.cleared) {
+            b.fillStyle = api.palette.background;
+            b.fillRect(0, 0, api.w, api.h);
+            s.cleared = true;
+            rules(b, s, api);
+          }
+          // A hand goes on filling cells when nothing arrives, and only then: at
+          // any real rate the feed has the sheet to itself.
+          ambient(s, api, 1600, () => {
+            const cell = s.cells[(Math.random() * s.cells.length) | 0];
+            const pick = Math.random();
+            cell.kind = pick < 0.12 ? 'blank' : pick < 0.36 ? 'grain' : pick < 0.86 ? 'lines' : 'solid';
+            cell.vertical = Math.random() < 0.55;
+            cell.color = inkOf(api);
+            cell.seed = Math.floor(Math.random() * 1e9);
+            cell.profiles = null;
+            cell.heard = 0;
+            cell.done = false;
           });
-          r += span;
-        }
-      }
-      s.top = margin * 0.35;
-      s.foot = api.h - margin * 0.35;
-      s.left = margin * 0.35;
-      s.right = api.w - margin * 0.35;
-      // A first sheet, dressed by hand so the picture is not bare before the
-      // first event.
-      const ink = inkOf(api);
-      const hand = seeded(Math.floor(Math.random() * 1e9));
-      for (const cell of s.cells) {
-        const pick = hand();
-        cell.kind = pick < 0.1 ? 'blank' : pick < 0.32 ? 'grain' : pick < 0.86 ? 'lines' : 'solid';
-        cell.vertical = hand() < 0.55;
-        cell.color = ink;
-        cell.profiles = [];
-        cell.seed = Math.floor(hand() * 1e9);
-        cell.done = false;
-      }
-      s.cleared = false;
-      s.lastAt = 0;
-      s.ambient = 0;
-    },
-    event(p, api) {
-      const s = api.scene;
-      if (!s.cells || !s.cells.length) return;
-      // The cell it landed in, or the nearest when it landed in a gutter or a
-      // gap: every event must take a place on the sheet.
-      let cell = null;
-      let best = Infinity;
-      for (const c of s.cells) {
-        const dx = p.x < c.x ? c.x - p.x : p.x > c.x + c.w ? p.x - c.x - c.w : 0;
-        const dy = p.y < c.y ? c.y - p.y : p.y > c.y + c.h ? p.y - c.y - c.h : 0;
-        const d = dx * dx + dy * dy;
-        if (d < best) {
-          best = d;
-          cell = c;
-        }
-      }
-      if (!cell) return;
-      const q = sizeOf(p, api);
-      if (s.figure === 1) {
-        restack(s, api, cell, q, Math.random() < api.param('colour') ? p.color : inkOf(api));
-        s.lastAt = api.now;
-        return;
-      }
-      cell.kind = q < 0.22 ? 'grain' : q < 0.66 ? 'lines' : 'solid';
-      cell.vertical = (p.pick === undefined ? Math.random() : p.pick) < 0.55;
-      cell.color = Math.random() < api.param('colour') ? p.color : inkOf(api);
-      cell.seed = hashOf(p, { fine: true });
-      cell.profiles = null;
-      cell.heard = api.sound && api.sound.wave ? api.param('listen') : 0;
-      cell.done = false;
-      s.lastAt = api.now;
-    },
-    frame(ctx, api) {
-      const s = api.scene;
-      if (!s.cells) return;
-      const buf = scratch(api, 'buf');
-      const b = s.bufCtx;
-      if (s.figure === 1) {
-        // The stack: blocks lie over one another, so a changed block cannot
-        // be struck alone without cutting into its neighbours. The whole
-        // stack is struck again instead, and at most a few times a second.
-        ambient(s, api, 2600, () => restack(s, api, s.cells[(Math.random() * s.cells.length) | 0], 0.1, inkOf(api)));
-        if (s.dirty && api.now - s.struckAt > 140) {
-          b.fillStyle = api.palette.background;
-          b.fillRect(0, 0, api.w, api.h);
-          for (const cell of s.cells) strikeStacked(b, cell, s, api);
-          s.dirty = false;
-          s.struckAt = api.now;
-        }
-        ctx.drawImage(buf, 0, 0);
-        return;
-      }
-      if (!s.cleared) {
-        b.fillStyle = api.palette.background;
-        b.fillRect(0, 0, api.w, api.h);
-        s.cleared = true;
-        rules(b, s, api);
-      }
-      // A hand goes on filling cells when nothing arrives, and only then: at
-      // any real rate the feed has the sheet to itself.
-      ambient(s, api, 1600, () => {
-        const cell = s.cells[(Math.random() * s.cells.length) | 0];
-        const pick = Math.random();
-        cell.kind = pick < 0.12 ? 'blank' : pick < 0.36 ? 'grain' : pick < 0.86 ? 'lines' : 'solid';
-        cell.vertical = Math.random() < 0.55;
-        cell.color = inkOf(api);
-        cell.seed = Math.floor(Math.random() * 1e9);
-        cell.profiles = null;
-        cell.heard = 0;
-        cell.done = false;
-      });
-      // One cell a frame: a cell is a thousand strokes and a burst is a dozen
-      // cells, and a dozen thousand strokes in one frame is a spike with no
-      // reason to exist. A burst still shows within a few frames.
-      for (const cell of s.cells) {
-        if (cell.done) continue;
-        strike(b, cell, s, api);
-        cell.done = true;
-        break;
-      }
-      ctx.drawImage(buf, 0, 0);
-    },
-  },
+          // One cell a frame: a cell is a thousand strokes and a burst is a dozen
+          // cells, and a dozen thousand strokes in one frame is a spike with no
+          // reason to exist. A burst still shows within a few frames.
+          for (const cell of s.cells) {
+            if (cell.done) continue;
+            strike(b, cell, s, api);
+            cell.done = true;
+            break;
+          }
+          ctx.drawImage(buf, 0, 0);
+        },
+      },
+      // The second sheet: bands of hatching laid one on another in a leaning
+      // column, each solid at one end and breaking into dashes at the other.
+      {
+        name: 'stack',
+        params: {
+          hatch: { label: 'How close the lines', min: 0.5, max: 2, step: 0.05, default: 1 },
+          colour: { label: 'How much colour against the black', min: 0, max: 1, step: 0.02, default: 0.12 },
+        },
+        init(api) {
+          stackUp(api.scene, api);
+        },
+        event(p, api) {
+          const s = api.scene;
+          if (!s.cells || !s.cells.length) return;
+          const cell = s.cells[nearestRect(s.cells, p.x, p.y)];
+          restack(s, api, cell, sizeOf(p, api), Math.random() < api.param('colour') ? p.color : inkOf(api));
+          s.lastAt = api.now;
+        },
+        frame(ctx, api) {
+          const s = api.scene;
+          if (!s.cells) return;
+          const buf = scratch(api, 'buf');
+          const b = s.bufCtx;
+          // Blocks lie over one another, so a changed block cannot be struck
+          // alone without cutting into its neighbours. The whole stack is struck
+          // again instead, and at most a few times a second.
+          ambient(s, api, 2600, () => restack(s, api, s.cells[(Math.random() * s.cells.length) | 0], 0.1, inkOf(api)));
+          if (s.dirty && api.now - s.struckAt > 140) {
+            b.fillStyle = api.palette.background;
+            b.fillRect(0, 0, api.w, api.h);
+            for (const cell of s.cells) strikeStacked(b, cell, s, api);
+            s.dirty = false;
+            s.struckAt = api.now;
+          }
+          ctx.drawImage(buf, 0, 0);
+        },
+      },
+    ],
+  }),
 
   // --- lattice ----------------------------------------------------------------------------
   lattice: {
@@ -390,12 +396,13 @@ export const RULED_SCENES = {
   // --- desordres --------------------------------------------------------------------------
   desordres: {
     label: 'Squares, disordered',
+    sheets: ['squares', 'letters', 'mesh'],
     note: 'A plotter drawing the same square over and over on a grid of nine, and never quite in the same place: each pass is turned a few degrees and moved a hair, so a square drawn ten times is a nest of squares and one drawn fifty times is a scribble with a square in it. Every event picks a cell and draws it again, a small event neatly and a large one wildly, so the sheet is a record of how disorderly the day was, cell by cell. Or the same hand at a different task: a scatter of small letters thickening towards the middle of the page, or a mesh of short crossed strokes filling a square until it is a fabric.',
     how: 'One figure, redrawn with two errors: a rotation and an offset, both drawn at random from a range the event\'s size sets and the dial scales. That is the whole of it, and it is Molnar\'s (Dés)Ordres of 1974, done by a machine because a hand cannot be that nearly right that many times. A cell that has been drawn too often is wiped and begun again, so the sheet accumulates without ever going black. The letters and the mesh are the same machine with a different figure: a serifed I, or two short strokes crossed, placed where the event fell. Strokes are queued and struck a few dozen a frame onto a buffer.',
     positional: true,
     preview: { frames: 200, dt: 50 },
     params: {
-      figure: { label: 'Which figure: squares, letters, mesh', min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
+      figure: { label: 'Which figure', options: ['squares', 'letters', 'mesh'], min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
       grid: { label: 'How many squares across', min: 1, max: 6, step: 1, default: 3, rebuild: true },
       passes: { label: 'How many times an event draws it', min: 1, max: 12, step: 1, default: 5 },
       disorder: { label: 'How far out of true', min: 0.2, max: 3, step: 0.05, default: 1 },

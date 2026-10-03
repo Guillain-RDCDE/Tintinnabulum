@@ -14,6 +14,7 @@ import { cap } from './budget.js';
 import { mixColors, lighten, lightnessOf } from '../color.js';
 import { noise2 } from './noise.js';
 import { TAU, seeded, mostOf, kick, tempo } from './shared.js';
+import { sheets } from './sheets.js';
 
 /** The palette's four inks, in a fixed order. */
 const inks = (pal) => [pal.user, pal.anon, pal.alert, pal.default];
@@ -191,65 +192,73 @@ export const PAINTER_SCENES = {
   },
 
   // --- Rothko ---------------------------------------------------------------
-  fields: {
+  fields: sheets({
     label: 'Colour fields',
     positional: false,
     note: "In the spirit of Mark Rothko's colour-field paintings: two or three soft rectangles hovering on a coloured ground, their edges feathered so they seem to breathe rather than sit. Busy moments brighten a field; quiet ones let it sink back. The second sheet is a single great field in pastel on pale paper, a cooler colour rubbed in low across it where events fall, and the titles of the last few typed underneath like a poem.",
-    params: {
-      figure: { label: 'Which sheet: fields, pastel', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
-      bands: { label: 'Fields', min: 2, max: 3, step: 1, default: 2 },
-      soft: { label: 'Softness', min: 2, max: 40, step: 1, default: 16 },
-    },
-    init(api) {
-      api.scene.glow = new Float32Array(3);
-      api.scene.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
-      api.scene.smudges = [];
-      api.scene.lines = [];
-    },
-    event(p, api) {
-      if (api.scene.figure === 1) {
-        pastelEvent(p, api);
-        return;
-      }
-      const bands = Math.round(api.param('bands'));
-      const i = Math.min(bands - 1, Math.floor((p.y / api.h) * bands));
-      api.scene.glow[i] = Math.min(1, api.scene.glow[i] + 0.22);
-    },
-    frame(ctx, api) {
-      const s = api.scene;
-      if (s.figure === 1) {
-        pastelFrame(ctx, api);
-        return;
-      }
-      const pal = api.palette;
-      const bands = Math.round(api.param('bands'));
-      const soft = api.param('soft');
-      // The ground is a colour too: that is half of what these paintings are.
-      ctx.fillStyle = mixColors(pal.alert, pal.background, 0.55);
-      ctx.fillRect(0, 0, api.w, api.h);
-      const mx = api.w * 0.1;
-      const my = api.h * 0.08;
-      const gap = api.h * 0.05;
-      const bh = (api.h - my * 2 - gap * (bands - 1)) / bands;
-      const colours = [pal.user, pal.anon, pal.default];
-      const breathe = 0.5 + 0.5 * Math.sin(api.now / 5200);
-      for (let i = 0; i < bands; i++) {
-        s.glow[i] = Math.max(0, s.glow[i] - api.dt / 9000);
-        const c = lighten(mixColors(colours[i % 3], pal.background, 0.25), s.glow[i] * 0.2 + breathe * 0.03);
-        const y = my + i * (bh + gap);
-        // Feathered by stacking translucent copies inward, which is roughly what
-        // thin glazes of paint do and costs a handful of rectangles.
-        const layers = 7;
-        for (let l = 0; l < layers; l++) {
-          const inset = (soft * (layers - l)) / layers;
-          ctx.globalAlpha = 0.2;
-          ctx.fillStyle = c;
-          ctx.fillRect(mx + inset - soft / 2, y + inset - soft / 2, api.w - mx * 2 - inset * 2 + soft, bh - inset * 2 + soft);
-        }
-      }
-      ctx.globalAlpha = 1;
-    },
-  },
+    list: [
+      {
+        name: 'fields',
+        params: {
+          bands: { label: 'Fields', min: 2, max: 3, step: 1, default: 2 },
+          soft: { label: 'Softness', min: 2, max: 40, step: 1, default: 16 },
+        },
+        init(api) {
+          api.scene.glow = new Float32Array(3);
+        },
+        event(p, api) {
+          const bands = Math.round(api.param('bands'));
+          const i = Math.min(bands - 1, Math.floor((p.y / api.h) * bands));
+          api.scene.glow[i] = Math.min(1, api.scene.glow[i] + 0.22);
+        },
+        frame(ctx, api) {
+          const s = api.scene;
+          const pal = api.palette;
+          const bands = Math.round(api.param('bands'));
+          const soft = api.param('soft');
+          // The ground is a colour too: that is half of what these paintings are.
+          ctx.fillStyle = mixColors(pal.alert, pal.background, 0.55);
+          ctx.fillRect(0, 0, api.w, api.h);
+          const mx = api.w * 0.1;
+          const my = api.h * 0.08;
+          const gap = api.h * 0.05;
+          const bh = (api.h - my * 2 - gap * (bands - 1)) / bands;
+          const colours = [pal.user, pal.anon, pal.default];
+          const breathe = 0.5 + 0.5 * Math.sin(api.now / 5200);
+          for (let i = 0; i < bands; i++) {
+            s.glow[i] = Math.max(0, s.glow[i] - api.dt / 9000);
+            const c = lighten(mixColors(colours[i % 3], pal.background, 0.25), s.glow[i] * 0.2 + breathe * 0.03);
+            const y = my + i * (bh + gap);
+            // Feathered by stacking translucent copies inward, which is roughly what
+            // thin glazes of paint do and costs a handful of rectangles.
+            const layers = 7;
+            for (let l = 0; l < layers; l++) {
+              const inset = (soft * (layers - l)) / layers;
+              ctx.globalAlpha = 0.2;
+              ctx.fillStyle = c;
+              ctx.fillRect(mx + inset - soft / 2, y + inset - soft / 2, api.w - mx * 2 - inset * 2 + soft, bh - inset * 2 + soft);
+            }
+          }
+          ctx.globalAlpha = 1;
+        },
+      },
+      // The second sheet: one great field in pastel, a cooler colour rubbed in
+      // low across it, and the titles of the last few events typed underneath.
+      {
+        name: 'pastel',
+        params: {
+          soft: { label: 'Softness', min: 2, max: 40, step: 1, default: 16 },
+        },
+        init(api) {
+          api.scene.glow = new Float32Array(3);
+          api.scene.smudges = [];
+          api.scene.lines = [];
+        },
+        event: pastelEvent,
+        frame: pastelFrame,
+      },
+    ],
+  }),
 
   // --- Matisse --------------------------------------------------------------
   cutouts: {

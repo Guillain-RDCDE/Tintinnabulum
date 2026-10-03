@@ -18,6 +18,7 @@
 import { scratch } from './paint.js';
 import { mixColors, lighten } from '../color.js';
 import { TAU, sizeOf, inkOf, clampTo, papers, ambient } from './shared.js';
+import { sheets } from './sheets.js';
 
 // --- meshes -------------------------------------------------------------------------------
 
@@ -218,119 +219,131 @@ function freeNear(s, i, j) {
 
 export const STITCHED_SCENES = {
   // --- lanes -----------------------------------------------------------------------------
-  lanes: {
+  lanes: sheets({
     label: 'Dropped stitches',
     note: 'White bars ruled across a black field, one above another like the rows of a knitting chart, and every so often a bar steps down half its height for the space of one stitch and carries on, leaving a black notch above and a white tooth below. Every event drops a stitch where it falls; a large one drops a run of them, each a step further along and a row further down, a staircase through the field. As the field fills, the oldest stitches are picked up again and the bars run straight. The second sheet is bunting: the rows bent into a slow wave and cut into runs of small triangles in five colours, coarse in one run and fine as teeth in the next, with gaps between; an event re-cuts the run it falls on, and a large one a stretch of its row.',
     how: 'A lattice of units: each row a bar one unit high with a gap of one unit under it. A dropped stitch is two units of bar taken out and one unit put back in the gap below, on the second of the two, which is the whole figure of the drawing it is modelled on. Stitches are a list, capped by the renderer\'s budget and by the dial; the field is redrawn every frame as a few hundred rectangles, which costs less than remembering what changed. A new stitch shows for a moment in the colour of its event before it settles into the bar.',
     positional: true,
     preview: { frames: 120, dt: 50 },
-    params: {
-      figure: { label: 'Which sheet: stitches, bunting', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
-      rows: { label: 'How many rows', min: 12, max: 60, step: 1, default: 36, rebuild: true },
-      keep: { label: 'How many stitches before the oldest are picked up', min: 10, max: 200, step: 1, default: 60 },
-      run: { label: 'How long a staircase a large event drops', min: 1, max: 8, step: 1, default: 3 },
-      colour: { label: 'How long a new stitch keeps its colour', min: 0, max: 1, step: 0.02, default: 0.3 },
-    },
-    init(api) {
-      const s = api.scene;
-      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
-      if (s.figure === 1) {
-        hangBunting(s, api);
-        return;
-      }
-      const m = Math.min(api.w, api.h);
-      const rows = Math.max(8, Math.min(80, Math.round(api.param('rows'))));
-      const margin = m * 0.02;
-      // A row is a bar and a gap, two units; the columns are the same unit.
-      s.unit = Math.max(2, (api.h - margin * 2) / (rows * 2));
-      s.rows = rows;
-      s.cols = Math.max(8, Math.floor((api.w - margin * 2) / s.unit));
-      s.x0 = (api.w - s.cols * s.unit) / 2;
-      s.y0 = (api.h - rows * 2 * s.unit) / 2;
-      s.stitches = [];
-      s.lastAt = 0;
-      s.ambient = 0;
-      s.gone = 0;
-    },
-    event(p, api) {
-      const s = api.scene;
-      if (s.figure === 1) {
-        if (!s.bands) return;
-        rebunt(s, api, p.x, p.y, sizeOf(p, api), Math.random() < api.param('colour') ? p.color : null);
-        s.lastAt = api.now;
-        return;
-      }
-      if (!s.stitches) return;
-      const q = sizeOf(p, api);
-      const col = clampTo(Math.floor((p.x - s.x0) / s.unit), 0, s.cols - 2);
-      const row = clampTo(Math.floor((p.y - s.y0) / (s.unit * 2)), 0, s.rows - 1);
-      const n = q > 0.6 ? Math.max(1, Math.round(api.param('run') * (0.5 + q))) : 1;
-      for (let k = 0; k < n && row + k < s.rows; k++) {
-        drop(s, api, row + k, Math.min(s.cols - 2, col + k), p.color);
-      }
-      s.lastAt = api.now;
-    },
-    frame(ctx, api) {
-      const s = api.scene;
-      if (s.figure === 1) {
-        if (!s.bands) return;
-        ambient(s, api, 2600, () => rebunt(s, api, Math.random() * api.w, Math.random() * api.h, 0.1, null));
-        drawBunting(ctx, s, api);
-        return;
-      }
-      if (!s.stitches) return;
-      const ink = inkOf(api);
-      // A stitch now and then in silence, after a pause; never while the
-      // feed is working.
-      ambient(s, api, 2400, () => drop(s, api, (Math.random() * s.rows) | 0, (Math.random() * (s.cols - 1)) | 0, null));
-      const keep = Math.max(4, Math.min(Math.round(api.param('keep')), Math.floor((api.budget || 800) * 0.6)));
-      while (s.stitches.length > keep) s.stitches.shift();
+    list: [
+      {
+        name: 'stitches',
+        params: {
+          rows: { label: 'How many rows', min: 12, max: 60, step: 1, default: 36, rebuild: true },
+          keep: { label: 'How many stitches before the oldest are picked up', min: 10, max: 200, step: 1, default: 60 },
+          run: { label: 'How long a staircase a large event drops', min: 1, max: 8, step: 1, default: 3 },
+          colour: { label: 'How long a new stitch keeps its colour', min: 0, max: 1, step: 0.02, default: 0.3 },
+        },
+        init(api) {
+          const s = api.scene;
+          const m = Math.min(api.w, api.h);
+          const rows = Math.max(8, Math.min(80, Math.round(api.param('rows'))));
+          const margin = m * 0.02;
+          // A row is a bar and a gap, two units; the columns are the same unit.
+          s.unit = Math.max(2, (api.h - margin * 2) / (rows * 2));
+          s.rows = rows;
+          s.cols = Math.max(8, Math.floor((api.w - margin * 2) / s.unit));
+          s.x0 = (api.w - s.cols * s.unit) / 2;
+          s.y0 = (api.h - rows * 2 * s.unit) / 2;
+          s.stitches = [];
+          s.lastAt = 0;
+          s.ambient = 0;
+          s.gone = 0;
+        },
+        event(p, api) {
+          const s = api.scene;
+          if (!s.stitches) return;
+          const q = sizeOf(p, api);
+          const col = clampTo(Math.floor((p.x - s.x0) / s.unit), 0, s.cols - 2);
+          const row = clampTo(Math.floor((p.y - s.y0) / (s.unit * 2)), 0, s.rows - 1);
+          const n = q > 0.6 ? Math.max(1, Math.round(api.param('run') * (0.5 + q))) : 1;
+          for (let k = 0; k < n && row + k < s.rows; k++) {
+            drop(s, api, row + k, Math.min(s.cols - 2, col + k), p.color);
+          }
+          s.lastAt = api.now;
+        },
+        frame(ctx, api) {
+          const s = api.scene;
+          if (!s.stitches) return;
+          const ink = inkOf(api);
+          // A stitch now and then in silence, after a pause; never while the
+          // feed is working.
+          ambient(s, api, 2400, () => drop(s, api, (Math.random() * s.rows) | 0, (Math.random() * (s.cols - 1)) | 0, null));
+          const keep = Math.max(4, Math.min(Math.round(api.param('keep')), Math.floor((api.budget || 800) * 0.6)));
+          while (s.stitches.length > keep) s.stitches.shift();
 
-      const u = s.unit;
-      ctx.fillStyle = ink;
-      ctx.fillRect(s.x0 - u, s.y0 - u, s.cols * u + u * 2, s.rows * 2 * u + u);
-      const ground = api.palette.background;
-      // Each row's notches, left to right, so the bar is drawn as runs.
-      const byRow = new Map();
-      for (const st of s.stitches) {
-        if (!byRow.has(st.row)) byRow.set(st.row, []);
-        byRow.get(st.row).push(st);
-      }
-      const hold = 300 + 2400 * api.param('colour');
-      for (let r = 0; r < s.rows; r++) {
-        const y = Math.round(s.y0 + r * 2 * u);
-        const yh = Math.round(s.y0 + (r * 2 + 1) * u) - y;
-        const notches = (byRow.get(r) || []).slice().sort((a, b) => a.col - b.col);
-        let at = 0;
-        ctx.fillStyle = ground;
-        for (const st of notches) {
-          if (st.col > at) ctx.fillRect(Math.round(s.x0 + at * u), y, Math.round(s.x0 + st.col * u) - Math.round(s.x0 + at * u), yh);
-          at = Math.max(at, st.col + 2);
-        }
-        if (at < s.cols) ctx.fillRect(Math.round(s.x0 + at * u), y, Math.round(s.x0 + s.cols * u) - Math.round(s.x0 + at * u), yh);
-        for (const st of notches) {
-          const age = api.now - st.born;
-          ctx.fillStyle = st.color && age < hold ? st.color : ground;
-          const x = Math.round(s.x0 + (st.col + 1) * u);
-          ctx.fillRect(x, y + yh, Math.round(s.x0 + (st.col + 2) * u) - x, yh);
-        }
-      }
-    },
-  },
+          const u = s.unit;
+          ctx.fillStyle = ink;
+          ctx.fillRect(s.x0 - u, s.y0 - u, s.cols * u + u * 2, s.rows * 2 * u + u);
+          const ground = api.palette.background;
+          // Each row's notches, left to right, so the bar is drawn as runs.
+          const byRow = new Map();
+          for (const st of s.stitches) {
+            if (!byRow.has(st.row)) byRow.set(st.row, []);
+            byRow.get(st.row).push(st);
+          }
+          const hold = 300 + 2400 * api.param('colour');
+          for (let r = 0; r < s.rows; r++) {
+            const y = Math.round(s.y0 + r * 2 * u);
+            const yh = Math.round(s.y0 + (r * 2 + 1) * u) - y;
+            const notches = (byRow.get(r) || []).slice().sort((a, b) => a.col - b.col);
+            let at = 0;
+            ctx.fillStyle = ground;
+            for (const st of notches) {
+              if (st.col > at) ctx.fillRect(Math.round(s.x0 + at * u), y, Math.round(s.x0 + st.col * u) - Math.round(s.x0 + at * u), yh);
+              at = Math.max(at, st.col + 2);
+            }
+            if (at < s.cols) ctx.fillRect(Math.round(s.x0 + at * u), y, Math.round(s.x0 + s.cols * u) - Math.round(s.x0 + at * u), yh);
+            for (const st of notches) {
+              const age = api.now - st.born;
+              ctx.fillStyle = st.color && age < hold ? st.color : ground;
+              const x = Math.round(s.x0 + (st.col + 1) * u);
+              ctx.fillRect(x, y + yh, Math.round(s.x0 + (st.col + 2) * u) - x, yh);
+            }
+          }
+        },
+      },
+      // The second sheet: the rows bent into a slow wave and cut into runs of
+      // small triangles, coarse in one run and fine as teeth in the next.
+      {
+        name: 'bunting',
+        params: {
+          rows: { label: 'How many rows', min: 12, max: 60, step: 1, default: 36, rebuild: true },
+          colour: { label: 'How long a new stitch keeps its colour', min: 0, max: 1, step: 0.02, default: 0.3 },
+        },
+        init(api) {
+          hangBunting(api.scene, api);
+        },
+        event(p, api) {
+          const s = api.scene;
+          if (!s.bands) return;
+          rebunt(s, api, p.x, p.y, sizeOf(p, api), Math.random() < api.param('colour') ? p.color : null);
+          s.lastAt = api.now;
+        },
+        frame(ctx, api) {
+          const s = api.scene;
+          if (!s.bands) return;
+          ambient(s, api, 2600, () => rebunt(s, api, Math.random() * api.w, Math.random() * api.h, 0.1, null));
+          drawBunting(ctx, s, api);
+        },
+      },
+    ],
+  }),
 
   // --- meshes ----------------------------------------------------------------------------
   meshes: {
     label: 'Cut meshes',
+    sheets: ['meshes', 'stripes'],
     note: 'A square cut into blocks and the blocks cut again, every one ruled with a mesh of its own: a coarse grid, a fine grid, a grid crossed with diagonals into stars, laid over tints of stone, sand, chalk and dark umber, with a square of orange somewhere to keep the eye moving. Every event cuts the block it falls in and gives the pieces new meshes; a block already as small as the sheet allows is re-ruled instead, and a large event lays out a whole quarter afresh. The second sheet keeps the cuts and drops the meshes: every block drawn round in a heavy line and left bare, laid in a flat colour or in black, or ruled with upright or level lines, fine or wide, all in one family of inks -- or in nothing but the line, when the colour is turned down.',
     how: 'A lattice of units over a square, and a list of blocks, each a rectangle of whole units with a tint, a mesh pitch and a flag for the diagonals. The first sheet is cut recursively a few levels deep. An event finds its block and splits it in two or four at a point between a third and two thirds of the way, or re-dresses it if it is a single unit; a large event takes every block in its quarter away and cuts the quarter again. The blocks are struck onto a buffer only when they change, a few a frame, so the sheet costs what was just cut.',
     positional: true,
     preview: { frames: 140, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: meshes, stripes', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
+      figure: { label: 'Which sheet', options: ['meshes', 'stripes'], min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       lattice: { label: 'How fine the lattice of blocks', min: 6, max: 20, step: 1, default: 12, rebuild: true },
-      fill: { label: 'How much flat colour, on the stripes', min: 0, max: 1, step: 0.02, default: 0.55, rebuild: true },
-      black: { label: 'How much black, on the stripes', min: 0, max: 1, step: 0.02, default: 0.25, rebuild: true },
-      tone: { label: 'Lines in ink or in the colour, on the stripes', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
+      fill: { label: 'How much flat colour', min: 0, max: 1, step: 0.02, default: 0.55, rebuild: true, sheets: ['stripes'] },
+      black: { label: 'How much black', min: 0, max: 1, step: 0.02, default: 0.25, rebuild: true, sheets: ['stripes'] },
+      tone: { label: 'The lines', options: ['ink', 'colour'], min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false, sheets: ['stripes'] },
       mesh: { label: 'How fine the mesh', min: 0.5, max: 2, step: 0.05, default: 1, rebuild: true },
       accent: { label: 'How much of the accent colour', min: 0, max: 1, step: 0.02, default: 0.3 },
       colour: { label: 'How much colour from the event', min: 0, max: 1, step: 0.02, default: 0 },

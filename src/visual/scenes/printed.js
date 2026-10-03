@@ -17,6 +17,7 @@
 import { scratch } from './paint.js';
 import { lightnessOf, lighten, mixColors } from '../color.js';
 import { TAU, seeded, hashOf, mostOf, ambient, kick } from './shared.js';
+import { sheets } from './sheets.js';
 
 const ROLES = ['user', 'anon', 'bot', 'default', 'alert'];
 
@@ -297,140 +298,142 @@ export const PRINTED_SCENES = {
   },
 
   // --- emergence --------------------------------------------------------------------------
-  emergence: {
+  emergence: sheets({
     label: 'Emergence',
     note: 'The same case of type, and a sentence in it coming apart. Line after line repeats whatever the feed last said, and across a band that drifts through the page the words lose their footing: letters drop out, ornaments take their place, and for a few lines there is a field of pure sign with no sense left in it at all. Below the band the sentence finds itself again. Every event throws a stone into the page and the words break up around where it landed -- so the picture is a sentence being read at exactly the rate the world will let it be read. The second sheet is a grid of hexadecimal digits, and every event writes its own fingerprint into it where it falls, lit for a moment and then settled; dressed plain, with runs of one digit marked in red, every digit on a chip of its own colour, a field of colour with a dark square ring through it, or broken into words with empty blocks between.',
     how: 'A printing head walks the cells of a monospaced grid in reading order, several hundred a frame, and never stops: each cell is cleared and re-set from a disorder field, high inside the drifting band and around each recent event, low everywhere else. Below the threshold the cell takes the next character of the sentence, above it a sort from the case or nothing at all. Two colours and no more, as the thing it is quoting has.',
     positional: true,
     preview: { frames: 200, dt: 45 },
-    params: {
-      figure: { label: 'Which sheet: sentence, hex', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
-      dress: { label: 'How the hex is dressed: plain, repeats, chips, shape, blocks', min: 0, max: 4, step: 1, default: 0, rebuild: true, vary: false },
-      size: { label: 'Size of the type', min: 0.5, max: 2.5, step: 0.05, default: 1, rebuild: true },
-      band: { label: 'How wide the breakdown', min: 0.05, max: 1, step: 0.02, default: 0.3 },
-      drift: { label: 'How fast the band moves', min: 0, max: 3, step: 0.05, default: 1 },
-      voice: { label: 'How much an event colours its own', min: 0, max: 1, step: 0.02, default: 0.15 },
-    },
-    init(api) {
-      const s = api.scene;
-      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
-      if (s.figure === 1) {
-        hexInit(api);
-        return;
-      }
-      const m = Math.min(api.w, api.h);
-      s.em = Math.max(6, m * 0.022 * api.param('size'));
-      s.cw = s.em * 0.62;
-      s.ch = s.em * 1.18;
-      s.cols = Math.max(8, Math.floor(api.w / s.cw));
-      s.rows = Math.max(6, Math.floor(api.h / s.ch));
-      s.head = 0;
-      s.band = s.rows * 0.5;
-      s.dir = 1;
-      s.phrase = 'emergence and signification   ';
-      s.blobs = [];
-      s.cleared = false;
-    },
-    event(p, api) {
-      const s = api.scene;
-      if (s.figure === 1) {
-        hexEvent(p, api);
-        return;
-      }
-      if (!s.cols) return;
-      // The sentence is whatever the world last said, reduced to something a
-      // press could set: the page is then a reading of the feed rather than a
-      // decoration with a feed behind it.
-      const said = String(p.label || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
-      if (said.length >= 6) s.phrase = said.slice(0, 64) + '   ';
-      s.blobs.push({
-        col: (p.x / s.cw) | 0,
-        row: (p.y / s.ch) | 0,
-        r: 3 + Math.random() * 6,
-        life: 1,
-        color: p.color,
-      });
-      // A ceiling, as everywhere: a page that kept every stone ever thrown
-      // would cost more to print with every event that arrived.
-      if (s.blobs.length > 48) s.blobs.shift();
-      s.drive = Math.min(1.4, (s.drive || 0) + 0.16);
-    },
-    frame(ctx, api) {
-      const s = api.scene;
-      if (s.figure === 1) {
-        hexFrame(ctx, api);
-        return;
-      }
-      if (!s.cols) return;
-      const buf = scratch(api, 'buf');
-      const b = s.bufCtx;
-      const ink = pressInk(api);
-      if (!s.cleared) {
-        b.fillStyle = api.palette.background;
-        b.fillRect(0, 0, api.w, api.h);
-        s.cleared = true;
-      }
+    list: [
+      {
+        name: 'sentence',
+        params: {
+          size: { label: 'Size of the type', min: 0.5, max: 2.5, step: 0.05, default: 1, rebuild: true },
+          band: { label: 'How wide the breakdown', min: 0.05, max: 1, step: 0.02, default: 0.3 },
+          drift: { label: 'How fast the band moves', min: 0, max: 3, step: 0.05, default: 1 },
+          voice: { label: 'How much an event colours its own', min: 0, max: 1, step: 0.02, default: 0.15 },
+        },
+        init(api) {
+          const s = api.scene;
+          const m = Math.min(api.w, api.h);
+          s.em = Math.max(6, m * 0.022 * api.param('size'));
+          s.cw = s.em * 0.62;
+          s.ch = s.em * 1.18;
+          s.cols = Math.max(8, Math.floor(api.w / s.cw));
+          s.rows = Math.max(6, Math.floor(api.h / s.ch));
+          s.head = 0;
+          s.band = s.rows * 0.5;
+          s.dir = 1;
+          s.phrase = 'emergence and signification   ';
+          s.blobs = [];
+          s.cleared = false;
+        },
+        event(p, api) {
+          const s = api.scene;
+          if (!s.cols) return;
+          // The sentence is whatever the world last said, reduced to something a
+          // press could set: the page is then a reading of the feed rather than a
+          // decoration with a feed behind it.
+          const said = String(p.label || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+          if (said.length >= 6) s.phrase = said.slice(0, 64) + '   ';
+          s.blobs.push({
+            col: (p.x / s.cw) | 0,
+            row: (p.y / s.ch) | 0,
+            r: 3 + Math.random() * 6,
+            life: 1,
+            color: p.color,
+          });
+          // A ceiling, as everywhere: a page that kept every stone ever thrown
+          // would cost more to print with every event that arrived.
+          if (s.blobs.length > 48) s.blobs.shift();
+          s.drive = Math.min(1.4, (s.drive || 0) + 0.16);
+        },
+        frame(ctx, api) {
+          const s = api.scene;
+          if (!s.cols) return;
+          const buf = scratch(api, 'buf');
+          const b = s.bufCtx;
+          const ink = pressInk(api);
+          if (!s.cleared) {
+            b.fillStyle = api.palette.background;
+            b.fillRect(0, 0, api.w, api.h);
+            s.cleared = true;
+          }
 
-      // The band walks up and down the page and turns at the edges.
-      const drift = api.param('drift');
-      s.band += s.dir * drift * (api.dt / 1000) * s.rows * 0.08;
-      if (s.band > s.rows * 0.92) { s.band = s.rows * 0.92; s.dir = -1; }
-      if (s.band < s.rows * 0.08) { s.band = s.rows * 0.08; s.dir = 1; }
-      const spread = Math.max(1.2, s.rows * api.param('band') * 0.5);
-      for (const blob of s.blobs) blob.life -= api.dt / 9000;
-      while (s.blobs.length && s.blobs[0].life <= 0) s.blobs.shift();
+          // The band walks up and down the page and turns at the edges.
+          const drift = api.param('drift');
+          s.band += s.dir * drift * (api.dt / 1000) * s.rows * 0.08;
+          if (s.band > s.rows * 0.92) { s.band = s.rows * 0.92; s.dir = -1; }
+          if (s.band < s.rows * 0.08) { s.band = s.rows * 0.08; s.dir = 1; }
+          const spread = Math.max(1.2, s.rows * api.param('band') * 0.5);
+          for (const blob of s.blobs) blob.life -= api.dt / 9000;
+          while (s.blobs.length && s.blobs[0].life <= 0) s.blobs.shift();
 
-      // The head advances at the feed's rate, with a slow floor so a silent
-      // page still breathes. A fixed rate meant the page was re-set just as
-      // fast in a silent minute as in a busy one, and the only thing the feed
-      // changed was where the breakdown was -- which is too subtle to read as
-      // an answer at all.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 900);
-      const total = s.cols * s.rows;
-      const cells = Math.max(24, Math.min(2400, Math.round(total * (0.012 + 0.06 * Math.min(1, s.drive)))));
-      const voice = api.param('voice');
-      b.textBaseline = 'alphabetic';
-      b.font = `${Math.max(5, Math.round(s.em))}px ${MONO}`;
-      for (let n = 0; n < cells; n++) {
-        const i = s.head;
-        s.head = (s.head + 1) % total;
-        const col = i % s.cols;
-        const row = (i / s.cols) | 0;
-        const x = col * s.cw;
-        const y = row * s.ch;
-        b.fillStyle = api.palette.background;
-        b.fillRect(x, y, s.cw + 1, s.ch + 1);
+          // The head advances at the feed's rate, with a slow floor so a silent
+          // page still breathes. A fixed rate meant the page was re-set just as
+          // fast in a silent minute as in a busy one, and the only thing the feed
+          // changed was where the breakdown was -- which is too subtle to read as
+          // an answer at all.
+          s.drive = Math.max(0, (s.drive || 0) - api.dt / 900);
+          const total = s.cols * s.rows;
+          const cells = Math.max(24, Math.min(2400, Math.round(total * (0.012 + 0.06 * Math.min(1, s.drive)))));
+          const voice = api.param('voice');
+          b.textBaseline = 'alphabetic';
+          b.font = `${Math.max(5, Math.round(s.em))}px ${MONO}`;
+          for (let n = 0; n < cells; n++) {
+            const i = s.head;
+            s.head = (s.head + 1) % total;
+            const col = i % s.cols;
+            const row = (i / s.cols) | 0;
+            const x = col * s.cw;
+            const y = row * s.ch;
+            b.fillStyle = api.palette.background;
+            b.fillRect(x, y, s.cw + 1, s.ch + 1);
 
-        const away = (row - s.band) / spread;
-        let d = Math.exp(-(away * away));
-        let tint = null;
-        for (const blob of s.blobs) {
-          const dx = (col - blob.col) / (blob.r * 1.6);
-          const dy = (row - blob.row) / blob.r;
-          const near = Math.exp(-(dx * dx + dy * dy)) * Math.max(0, blob.life);
-          if (near > 0.08 && near > d * 0.5 && Math.random() < voice) tint = blob.color;
-          d = Math.max(d, near);
-        }
+            const away = (row - s.band) / spread;
+            let d = Math.exp(-(away * away));
+            let tint = null;
+            for (const blob of s.blobs) {
+              const dx = (col - blob.col) / (blob.r * 1.6);
+              const dy = (row - blob.row) / blob.r;
+              const near = Math.exp(-(dx * dx + dy * dy)) * Math.max(0, blob.life);
+              if (near > 0.08 && near > d * 0.5 && Math.random() < voice) tint = blob.color;
+              d = Math.max(d, near);
+            }
 
-        b.fillStyle = tint || ink;
-        if (Math.random() > d) {
-          const ch = s.phrase[(col + row * 5) % s.phrase.length];
-          if (ch !== ' ') b.fillText(ch, x, y + s.em * 0.86);
-          continue;
-        }
-        // Inside the breakdown: mostly nothing, and now and then a sort with
-        // no sentence left to belong to.
-        if (Math.random() < 0.62) continue;
-        const rnd = Math.random;
-        const pick = pickSort(rnd, 0.55);
-        b.save();
-        b.strokeStyle = b.fillStyle;
-        setSort(b, pick, x - s.cw * 0.1, y, s.em * (0.7 + Math.random() * 0.7));
-        b.restore();
-      }
-      ctx.drawImage(buf, 0, 0);
-    },
-  },
+            b.fillStyle = tint || ink;
+            if (Math.random() > d) {
+              const ch = s.phrase[(col + row * 5) % s.phrase.length];
+              if (ch !== ' ') b.fillText(ch, x, y + s.em * 0.86);
+              continue;
+            }
+            // Inside the breakdown: mostly nothing, and now and then a sort with
+            // no sentence left to belong to.
+            if (Math.random() < 0.62) continue;
+            const rnd = Math.random;
+            const pick = pickSort(rnd, 0.55);
+            b.save();
+            b.strokeStyle = b.fillStyle;
+            setSort(b, pick, x - s.cw * 0.1, y, s.em * (0.7 + Math.random() * 0.7));
+            b.restore();
+          }
+          ctx.drawImage(buf, 0, 0);
+        },
+      },
+      // The second sheet: a screen of hexadecimal digits that every event writes
+      // its fingerprint into, dressed five ways.
+      {
+        name: 'hex',
+        params: {
+          dress: { label: 'How the hex is dressed', options: ['plain', 'repeats', 'chips', 'shape', 'blocks'], min: 0, max: 4, step: 1, default: 0, rebuild: true, vary: false },
+          size: { label: 'Size of the type', min: 0.5, max: 2.5, step: 0.05, default: 1, rebuild: true },
+        },
+        init: hexInit,
+        event: hexEvent,
+        frame: hexFrame,
+      },
+    ],
+  }),
 
   // --- nodes ------------------------------------------------------------------------------
   nodes: {

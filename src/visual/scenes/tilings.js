@@ -16,7 +16,6 @@
 //   Op waves  Op art of the 1960s: bands that swell and turn.
 
 import { cap } from './budget.js';
-import { scratch } from './paint.js';
 
 const TAU = Math.PI * 2;
 

@@ -3,6 +3,7 @@
 import { drawShape, isHollow } from '../shapes.js';
 import { lightnessOf, mixColors } from '../color.js';
 import { ambient } from './shared.js';
+import { sheets } from './sheets.js';
 
 const TAU = Math.PI * 2;
 
@@ -52,70 +53,71 @@ export const MARK_SCENES = {
     },
   },
 
-  constellation: {
+  constellation: sheets({
     label: 'Constellation',
     note: 'Events become stars and join to their neighbours. Bursts of activity draw themselves as clusters. The second sheet is a molecule: targets of two or three nested colours, some with a thin halo, set apart from one another and joined by solid or dotted bonds -- a few pairs, or a whole network. Every event re-colours a target, sets a new one down and bonds it, or rings one with a halo.',
-    params: {
-      figure: { label: 'Which sheet: stars, molecule', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
-      count: { label: 'How many targets', min: 30, max: 160, step: 1, default: 72, rebuild: true },
-      bonds: { label: 'How many bonds', min: 0, max: 1, step: 0.02, default: 0.6 },
-      halos: { label: 'How many halos', min: 0, max: 1, step: 0.02, default: 0.24 },
-    },
-    init(api) {
-      api.scene.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
-      if (api.scene.figure === 1) moleculeInit(api);
-    },
-    event(p, api) {
-      if (api.scene.figure === 1) moleculeEvent(p, api);
-    },
-    frame(ctx, api) {
-      if (api.scene.figure === 1) {
-        moleculeFrame(ctx, api);
-        return;
-      }
-      const ps = api.particles;
-      const reach = Math.min(api.w, api.h) * 0.22;
-      // Links first, so the stars sit on top of their own web.
-      ctx.lineWidth = 1;
-      for (let i = 0; i < ps.length; i++) {
-        const a = ps[i];
-        const fa = 1 - (api.now - a.born) / a.life;
-        for (let j = i + 1; j < ps.length; j++) {
-          const b = ps[j];
-          const dx = a.x - b.x;
-          const dy = a.y - b.y;
-          const d2 = dx * dx + dy * dy;
-          if (d2 > reach * reach) continue;
-          const fb = 1 - (api.now - b.born) / b.life;
-          const near = 1 - Math.sqrt(d2) / reach;
-          ctx.globalAlpha = near * fa * fb * 0.42;
-          ctx.strokeStyle = a.color;
-          ctx.beginPath();
-          ctx.moveTo(a.x, a.y);
-          ctx.lineTo(b.x, b.y);
-          ctx.stroke();
-        }
-      }
-      for (const p of ps) {
-        const fade = 1 - (api.now - p.born) / p.life;
-        const r = Math.max(1.5, p.r * 0.22);
-        // A star is a point of light, so depth here is a glow rather than an
-        // outline: at this size an outline would be the whole star.
-        if (api.depth) {
-          ctx.globalAlpha = Math.min(1, fade) * 0.18;
-          ctx.fillStyle = p.color;
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, r * 3.4, 0, TAU);
-          ctx.fill();
-        }
-        ctx.globalAlpha = Math.min(1, fade * 1.2);
-        ctx.fillStyle = api.depth ? p.rim : p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, r, 0, TAU);
-        ctx.fill();
-      }
-    },
-  },
+    list: [
+      {
+        name: 'stars',
+        frame(ctx, api) {
+          const ps = api.particles;
+          const reach = Math.min(api.w, api.h) * 0.22;
+          // Links first, so the stars sit on top of their own web.
+          ctx.lineWidth = 1;
+          for (let i = 0; i < ps.length; i++) {
+            const a = ps[i];
+            const fa = 1 - (api.now - a.born) / a.life;
+            for (let j = i + 1; j < ps.length; j++) {
+              const b = ps[j];
+              const dx = a.x - b.x;
+              const dy = a.y - b.y;
+              const d2 = dx * dx + dy * dy;
+              if (d2 > reach * reach) continue;
+              const fb = 1 - (api.now - b.born) / b.life;
+              const near = 1 - Math.sqrt(d2) / reach;
+              ctx.globalAlpha = near * fa * fb * 0.42;
+              ctx.strokeStyle = a.color;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+          for (const p of ps) {
+            const fade = 1 - (api.now - p.born) / p.life;
+            const r = Math.max(1.5, p.r * 0.22);
+            // A star is a point of light, so depth here is a glow rather than an
+            // outline: at this size an outline would be the whole star.
+            if (api.depth) {
+              ctx.globalAlpha = Math.min(1, fade) * 0.18;
+              ctx.fillStyle = p.color;
+              ctx.beginPath();
+              ctx.arc(p.x, p.y, r * 3.4, 0, TAU);
+              ctx.fill();
+            }
+            ctx.globalAlpha = Math.min(1, fade * 1.2);
+            ctx.fillStyle = api.depth ? p.rim : p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, r, 0, TAU);
+            ctx.fill();
+          }
+        },
+      },
+      // The second sheet: a molecule of nested targets, bonded into pairs or a
+      // whole network.
+      {
+        name: 'molecule',
+        params: {
+          count: { label: 'How many targets', min: 30, max: 160, step: 1, default: 72, rebuild: true },
+          bonds: { label: 'How many bonds', min: 0, max: 1, step: 0.02, default: 0.6 },
+          halos: { label: 'How many halos', min: 0, max: 1, step: 0.02, default: 0.24 },
+        },
+        init: moleculeInit,
+        event: moleculeEvent,
+        frame: moleculeFrame,
+      },
+    ],
+  }),
 
   ripples: {
     label: 'Ripples',
