@@ -10,16 +10,16 @@ Open the sandbox and change one thing at a time.
 
 | | |
 |---|---|
-| **Sound → Water** | The same events as drops in a cavity. Seventeen of the twenty-two kits are pure synthesis, with no audio files at all. |
+| **Sound → Water** | The same events as drops in a cavity. Most of the kits are pure synthesis, with no audio files at all. |
 | **Sound → Gongs** | Pair it with Earthquakes. Long, slow, inharmonic. |
 | **Sound → Scale → pentatonic** | Notes snap to five. It stops sounding arbitrary and starts sounding composed. |
 | **Sound → Restraint** | Space between notes. On a fast feed, only the most significant event in each gap sounds, and the rest are passed over. |
 | **Coinbase** | Buys ring, sells pluck. The one feed where direction means something on its own. |
 | **Several Wikipedias at once** | Pick them from the flag grid. Four together are denser than one, and more musical. |
-| **Gallery** | Forty-three finished pieces in four rooms named for their light: dawn, daylight, dusk and night. One click sets the picture, the palette, the sound, the room, the finish, the paper, the frame, the pace and the living colour. A filter for calm or lively, and an exhibition mode that moves on every few minutes. Try **A drop in the glass**, then **Lanterns on the lake**. |
+| **Gallery** | Finished pieces in four rooms named for their light: dawn, daylight, dusk and night. One click sets the picture, the palette, the sound, the room, the finish, the paper, the frame, the pace and the living colour. A filter for calm or lively, and an exhibition mode that moves on every few minutes. Try **A drop in the glass**, then **Lanterns on the lake**. |
 | **Create** | Every visualisation as a small tool. Space for a new variation, then change the inks, the texture and the frame, hear it, keep it, take it away as a picture or a video with its sound, or play it live. The variation's number is the picture. |
 | **Paper** | Nine papers to print on, from cotton rag and cold-pressed watercolour to washi, black card and lime plaster, each a lit relief rather than a texture. Try **Gouache currents**, then **The mould at night**. |
-| **Studio** | A hundred and fourteen visualisations on eight shelves, fourteen finishes, nine papers and eighty palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
+| **Look** | Every visualisation on eight shelves, some with several sheets to choose from; the finishes, the papers and the palettes. The palette can drift by itself, follow the time of day, or follow the mood of the feed. |
 | **Record** | Captures what you are hearing to an audio file. |
 | **Untick "Large events sound low"** | Inverts the mapping. Large edits turn shrill. Worse, and instructive. |
 
@@ -601,8 +601,8 @@ vision.
 
 ### Letting it change on its own
 
-Forty palettes is thirty-nine nobody sees, because choosing one is a decision
-and watching is not. Left to itself the piece walks through them at random, at
+Every palette but the one chosen is a palette nobody sees, because choosing one
+is a decision and watching is not. Left to itself the piece walks through them at random, at
 one of seven intervals from forty-five seconds to three hours — long enough at
 the top end for a screen that is opened in the morning and closed at night.
 
@@ -616,11 +616,13 @@ Each step is a `fadePalette`, not a `setPalette`. The difference is the whole
 point of the feature: a cut announces itself and interrupts, and a four-second
 walk in OKLab is something you notice having happened rather than something you
 watch happen. The rest of the panel — the scene cards, the swatches — follows
-once the walk has arrived, because repainting forty preview canvases five times
-a second for a colour change nobody is looking at is not a thing to do.
+once the walk has arrived, because repainting a hundred preview canvases five
+times a second for a colour change nobody is looking at is not a thing to do.
+A walk never comes straight back to where it started: the palette on show is
+left out of the shuffle, so a step away is not followed by a step home.
 
-**The visualisation rotates too, on its own interval.** Forty scenes is
-thirty-nine nobody sees, for the same reason. It is the same mechanism with one
+**The visualisation rotates too, on its own interval.** Every scene but one is
+a scene nobody sees, for the same reason. It is the same mechanism with one
 difference, and the difference is how it arrives.
 
 A palette can be *walked* to because colours interpolate. Two scenes cannot: a
@@ -796,7 +798,7 @@ son.setKit('bells');            // and silences it again
 
 ### Visualisations
 
-A scene decides what a moment of data looks like. A hundred and fourteen ship.
+A scene decides what a moment of data looks like. More than a hundred ship.
 They sit on eight shelves named for what is on them -- *Painting*, *Paper and
 print*, *Nature*, *Water*, *Night*, *Materials*, *Pattern* and *Forms and
 numbers* -- each scene with one line saying what it feels like, and the
@@ -1048,9 +1050,29 @@ crossing into the grid and makes the solver find its way round it.
 | **Digital rain** | Columns of characters falling down a black screen, and the title each event carries falling in a column of its own, letter by letter. Nothing is redrawn: each column writes one character as its head reaches a new row, onto a buffer darkened a little every frame, so a few hundred characters are written a second rather than thousands a frame. Green on black, or the palette's own colours. |
 | **Paper forest** | Layers of paper trees, palest at the back, each casting a shadow on the one behind, swaying in the wind; events send a paper bird across. |
 
+#### Sheets
+
+A scene may have learned a second way of drawing -- a sheet of cells and a
+stack of bands, a sentence and a screen of digits, a collage, a totem and a
+pile of cut sheets. Those are sheets of one scene rather than scenes of their
+own, assembled by `sheets()` in `scenes/sheets.js`: each sheet brings its own
+`init`, `event`, `frame` and dials, and the scene gets one `figure` dial that
+names them. That dial is a choice, not a slider. It carries `options`, it
+rebuilds the scene, and a variation never moves it -- another sheet is another
+picture, not a variation of this one. Every other dial is tagged with the
+sheets it belongs to, so a panel shows only the dials of the sheet on view, and
+a work that hangs on a second sheet says so in its `dials`.
+
+```js
+import { sheets } from './src/index.js';
+grid: sheets({ label: 'Grid', note: '...', list: [OUTLINES, CURRENT] }),
+SCENES.grid.params.figure.options;   // ['outlines', 'current']
+SCENES.grid.params.fill.sheets;      // ['current']
+```
+
 #### Dials
 
-Twenty-eight scenes declare their own controls -- a hundred and three dials
+Nearly every scene declares its own controls -- more than three hundred dials
 between them -- and the panel draws whatever it finds --
 adding a visualisation with three sliders needs no interface change. A dial is
 a range with a default; values are clamped, held per scene, and forgotten only
@@ -1104,7 +1126,7 @@ Three further rules make that affordable, and each of them was added after
 something measurable went wrong.
 
 **A card below the fold is not painted either.** Skipping the folded panels was
-only half the doctrine: forty cards do not fit on a screen, and the ones under
+only half the doctrine: a hundred cards do not fit on a screen, and the ones under
 it cost the same few hundred milliseconds each for a picture nobody is looking
 at. The margin is one screen either way, so scrolling finds them drawn rather
 than drawing them under the eye.
@@ -1117,11 +1139,11 @@ light up, so it reads as a click that did nothing and you click again. That is
 the whole of a bug reported as "I have to double-click now": nothing was wrong
 with the click handling, the page simply was not answering.
 
-**One card may not take longer than 120 ms.** Thirty-six of the forty draw in
-under fifty and never approach it. Four are simulations — a Clifford attractor,
+**One card may not take longer than 120 ms.** All but a handful draw in
+under fifty and never approach it. A few are simulations — a Clifford attractor,
 a burin field, a Chladni plate, a Gray-Scott reaction — and were costing
 between 400 and 1749 ms each on their own, which no amount of scheduling can
-hide. They stop early instead. That costs those four a less developed picture,
+hide. They stop early instead. That costs those few a less developed picture,
 not a wrong one: the frames that ran are the scene's own. `previewScene` takes
 `budgetMs: 0` to lift the ceiling.
 
@@ -1307,7 +1329,7 @@ invisible.
 The chosen palette stays the chosen one (`paletteName` does not move), marks
 already on screen follow, and the projection window follows. The colour
 functions are pure and tested without a canvas, including that no hour of the
-day turns any of the eighty grounds violet.
+day turns any ground violet.
 
 ```js
 sink.setLiving('daylight');                 // or 'drift', 'mood', 'still'
@@ -1333,8 +1355,13 @@ grow past its ceiling however much arrives.
 
 ### The Gallery
 
-A work is one finished combination -- scene, palette, kit, room, finish, frame,
-grain, pace and living colour -- with a title and a museum label.
+A work is one finished combination -- scene, palette, kit, room, finish, paper,
+frame, grain, pace and living colour, and the dials it turns away from where
+the scene ships, which is how a work hangs on a scene's second sheet -- with a
+title and a museum label. `workSettings(name, SCENES)` resolves all of it,
+every dial of the scene included, and is what the Gallery, its cards, the bench
+and the projected wall all hang: a wall that applied only a work's own dials
+used to keep the previous work's sheet under the new work's label.
 
 Works hang in four rooms named for their light: *Dawn*, *Daylight*, *Dusk* and
 *Night*. The first version named its rooms after a country, a group of
@@ -1377,13 +1404,14 @@ import { WORKS, WORK_ROOMS, WORK_ROOM_NOTES, worksIn } from './src/index.js';
 WORKS.glass;   // { room: 'Dawn', energy: 'calm', title: 'A drop in the glass', scene: 'inkwater', ... }
 ```
 
-The suite checks that every work names a scene, palette, kit, room, finish and
-frame that exist, so a rename fails loudly instead of quietly falling back.
+The suite checks that every work names a scene, palette, kit, room, finish,
+paper and frame that exist, and only dials its scene has, within their ranges,
+so a rename fails loudly instead of quietly falling back.
 
 ### Create
 
 The other four tabs set up how the world is heard and seen. **Create** is for
-making something: every visualisation, a hundred and fourteen of them, as a small
+making something: every visualisation, more than a hundred of them, as a small
 tool on a bench, one picture at a time. It is a tab rather than a page of its
 own because the Gallery and the bench are one place, and the way between them
 is always a picture. The bench opens on what was playing, or on the work or
@@ -1630,11 +1658,12 @@ different argument.
 | **Mosaics of eighteen blocks** | Twenty-two charts side by side are a quilt: no single card stands out. |
 
 The pool is the palette's own four category colours at six values each, which
-is twenty-four — more than the twenty-two kits, which matters. **The grid walks
-it in order rather than picking by a hash of the name**: a hash into
-twenty-four collides long before the twenty-second card is placed, and two kits
-sharing a colour is the one thing this grid must not do. Walking in order is
-also what makes the picker read as a colour chart rather than as twenty-two
+is twenty-four. **The grid walks it in order rather than picking by a hash of
+the name**: a hash into twenty-four collides long before the twentieth card is
+placed, and two kits sharing a colour is the one thing this grid must not do.
+(The kits have since outgrown the pool by two, and the walk wraps: the last two
+cards repeat the first two colours. A deeper pool is owed.) Walking in order is
+also what makes the picker read as a colour chart rather than as so many
 unrelated squares. The rooms start further along the pool and take every third
 colour, so the two panels are not the same sequence one above the other.
 
@@ -1679,13 +1708,29 @@ drift from what you actually get.
 ### Tests
 
 ```bash
-npm test              # core logic and the ingest server
+npm test              # core logic and the ingest server, in Node
 npm run test:browser  # headless Chromium, if playwright-core is installed
+npm run check         # both of the above
+npm run test:audio    # the two checks that depend on the audio device
+npm run test:perf     # the two checks that measure the machine's timing
+npm run test:feed     # every scene, every sheet and every work held to the feed rule
 ```
 
 The browser suite verifies audio by rendering instruments through an
 `OfflineAudioContext` and measuring peak amplitude, so a silent instrument
-fails rather than passing quietly.
+fails rather than passing quietly. Its cards are seeded, so two runs see the
+same pictures. The checks that depend on the machine rather than the code --
+whether a stopped audio context is brought back, whether the recorder captures
+sound, how long a paper's build or a palette change holds the page -- are in
+suites of their own, on their own exit codes, so a laptop whose sound card is
+in an error state does not read as a broken picture. All three browser suites
+share `test/harness.mjs`.
+
+The feed rule -- that a picture may move on its own but must do its work at
+the rate things arrive -- is held in the main suite for every sheet of every
+scene that has several and for everything on the Paper and print shelf; the
+whole catalogue, with every work's own dials, is `tools/follows-the-feed.mjs`,
+which `test:feed` runs with `--strict`.
 
 ### Layout
 
@@ -1719,7 +1764,7 @@ src/audio/
   ambiences.js          the three places, described as layers
   instruments.js        the barrel the rest of the library imports
   audio-sink.js         routing events to voices
-  recorder-sink.js      offline rendering to WAV
+  recorder-sink.js      the recorder: what you are hearing, captured to a file
 src/visual/
   canvas-sink.js        the canvas loop
   engrave.js            the burin: hatching, contour, stipple, white line
@@ -1731,12 +1776,17 @@ src/visual/
                         from inks; a scene's dials varied from a number
   finish.js             finishes, frames and film grain, on the finished frame
   space-art.js          the colour on each room card
-  scenes/               marks, fields, structures, physical, generative,
-                        fantasia (attractors, packings), automata (things
-                        that are run), tilings (tilings and fractals),
-                        geometry, recursive, systems, painters, nature,
-                        materials, water, air, graphic, grown, budget, paint; catalogue.js puts them
-                        on shelves and says what each looks like
+  scenes/               the families: marks, fields, generative, geometry,
+                        recursive, systems, fantasia (attractors, packings),
+                        automata (things that are run), tilings, painters,
+                        materials, nature, water, air, terminal, graphic,
+                        grown, spread, written, heard, printed, papers,
+                        drawn, worlds, ruled, plotted, stitched;
+                        shared.js is what they all use (the seeded generator,
+                        the quiet hand, the feed's clock), paint.js the
+                        buffers, sheets.js assembles a scene from several
+                        sheets, budget.js the ceilings; catalogue.js puts
+                        them on shelves and says what each looks like
   palettes.js           colour schemes
   color.js              OKLab shading, gamut fitting, per-event variation
   shapes.js             mark geometry
@@ -1750,9 +1800,17 @@ server/
   runner.mjs            drives descriptors: fetch or listen, de-duplicate, pace
 sounds/                 the original sampled banks, and:
   field/                real animal calls, public domain and CC0
+test/
+  harness.mjs           the tally, the server and the browser the suites share
+  *.test.mjs            the Node suites; browser.test.mjs, browser-audio.test.mjs
+                        and browser-perf.test.mjs need headless Chromium
 tools/
-  render.mjs            drive the real visualiser headless, out to PNG
-  contact-sheet.mjs     every scene on one sheet, to look at them
+  render.mjs            the server, the browser, the arguments and the harness
+                        page the tools share
+  contact-sheet.mjs     every scene on one sheet, to look at them (--set figure=1
+                        for another sheet)
+  follows-the-feed.mjs  does the picture follow the feed, or run by itself?
+                        --sheets, --works, --strict
   level-kits.mjs        measure every kit and write the loudness corrections
   audition.mjs          render a kit to a WAV, to hear it away from a browser
   make-social-preview.mjs  regenerate demo/social-preview.png, from the engine
