@@ -26,7 +26,7 @@
 
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { startServer, launch } from './render.mjs';
+import { parseArgs, withHarness } from './render.mjs';
 
 const OUT = fileURLToPath(new URL('../demo/social-preview.png', import.meta.url));
 
@@ -57,26 +57,17 @@ const HANGING = [
   { work: 'lanterns', x: 974, y: 56, w: 264, h: 198, mat: 14, seed: 8823 },
 ];
 
-const { srv, base } = await startServer(8892);
-const browser = await launch();
+const { flag } = parseArgs();
 
-try {
-  // Composed at twice the size and laid down at the card's own, so the
-  // pictures come out as clean as a print and the file stays small enough to
-  // be a social preview (GitHub takes a megabyte).
-  const page = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 1 });
+// Composed at twice the size and laid down at the card's own, so the pictures
+// come out as clean as a print and the file stays small enough to be a social
+// preview (GitHub takes a megabyte).
+const html = '<style>html,body{margin:0;background:#fff}canvas{display:block}</style>' +
+  `<canvas id="out" width="${W}" height="${H}"></canvas>`;
+
+const png = await withHarness({ port: Number(flag('port', 8892)), html, viewport: { width: W, height: H }, scale: 1 }, async (page) => {
   const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-
-  await page.route('**/social-harness.html', (route) =>
-    route.fulfill({
-      contentType: 'text/html',
-      body: '<style>html,body{margin:0;background:#fff}canvas{display:block}</style>' +
-        `<canvas id="out" width="${W}" height="${H}"></canvas>`,
-    })
-  );
-  await page.goto(base + '/social-harness.html');
 
   await page.evaluate(async (o) => {
     const {
@@ -172,12 +163,9 @@ try {
     fin.fillText(o.url, 70, 598);
   }, { w: W, h: H, stripe: STRIPE, brass: BRASS, cream: CREAM, muted: MUTED, hanging: HANGING, ...COPY });
 
-  if (errors.length) throw new Error('page errors: ' + errors.join(' | '));
+  if (errors.length) throw new Error('console errors: ' + errors.join(' | '));
+  return page.locator('#out').screenshot();
+});
 
-  const png = await page.locator('#out').screenshot();
-  fs.writeFileSync(OUT, png);
-  console.log(`wrote ${OUT}  (${png.length} bytes)`);
-} finally {
-  await browser.close();
-  srv.kill();
-}
+fs.writeFileSync(OUT, png);
+console.log(`wrote ${OUT}  (${png.length} bytes)`);

@@ -1,0 +1,16 @@
+# Text is stored with Unix line endings whatever the machine writes; see .editorconfig.
+* text=auto eol=lf
+
+# Sound and pictures are bytes.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.webm binary
+*.woff binary
+*.woff2 binary

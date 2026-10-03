@@ -10,6 +10,7 @@
 //   node tools/contact-sheet.mjs                     every scene
 //   node tools/contact-sheet.mjs frost voronoi       only these
 //   node tools/contact-sheet.mjs --palette ember --out sheet.png
+//   node tools/contact-sheet.mjs cutpaper --set figure=1   a scene's second sheet
 //
 // Each tile is a real CanvasSink fed the same seeded events, so two tiles
 // differ only in the scene. Events arrive spread over time rather than all at
@@ -24,15 +25,9 @@
 // sheet is worse than useless.
 
 import { writeFile } from 'node:fs/promises';
-import { startServer, launch } from './render.mjs';
+import { parseArgs, withHarness, FEED_EVENT_SOURCE } from './render.mjs';
 
-const argv = process.argv.slice(2);
-const flag = (name, fallback) => {
-  const i = argv.indexOf('--' + name);
-  return i >= 0 && argv[i + 1] ? argv[i + 1] : fallback;
-};
-const only = argv.filter((a, i) => !a.startsWith('--') && !(argv[i - 1] || '').startsWith('--'));
-
+const { flag, only, set } = parseArgs();
 const PALETTE = flag('palette', 'marine');
 const OUT = flag('out', 'contact-sheet.png');
 const TILE_W = Number(flag('width', 300));
@@ -40,46 +35,25 @@ const TILE_H = Number(flag('height', 190));
 const COLS = Number(flag('cols', 5));
 const SETTLE = Number(flag('settle', 4200));
 const COUNT = Number(flag('count', 110));
-// Small enough that every renderer in a batch gets its frames.
+// How many tiles run at once.
 const BATCH = Number(flag('batch', 6));
-// Dials to turn on every tile, as name=value pairs: `--set figure=1` shows a
-// scene's second sheet, which the defaults never would.
-const SET = Object.fromEntries(
-  String(flag('set', ''))
-    .split(',')
-    .filter((kv) => kv.includes('='))
-    .map((kv) => [kv.split('=')[0].trim(), Number(kv.split('=')[1])])
-);
-
 const port = Number(flag('port', 8894));
-const { srv, base } = await startServer(port);
-const browser = await launch();
-let failed = false;
 
-try {
-  const page = await browser.newPage({ deviceScaleFactor: 2 });
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
+const html = `<style>
+  html,body{margin:0;background:#111;font:11px ui-sans-serif,system-ui,sans-serif;color:#bbb}
+  #g{display:grid;grid-template-columns:repeat(${COLS},${TILE_W}px);gap:10px;padding:10px}
+  figure{margin:0}
+  canvas{display:block;width:${TILE_W}px;height:${TILE_H}px}
+  figcaption{padding:3px 1px 0;letter-spacing:.02em}
+</style><div id="g"></div>`;
 
-  await page.route('**/sheet-harness.html', (route) =>
-    route.fulfill({
-      contentType: 'text/html',
-      body: `<style>
-        html,body{margin:0;background:#111;font:11px ui-sans-serif,system-ui,sans-serif;color:#bbb}
-        #g{display:grid;grid-template-columns:repeat(${COLS},${TILE_W}px);gap:10px;padding:10px}
-        figure{margin:0}
-        canvas{display:block;width:${TILE_W}px;height:${TILE_H}px}
-        figcaption{padding:3px 1px 0;letter-spacing:.02em}
-      </style><div id="g"></div>`,
-    })
-  );
-  await page.goto(base + '/sheet-harness.html');
-
-  const names = await page.evaluate(async (opt) => {
+const names = await withHarness({ port, html, scale: 2 }, async (page) => {
+  const chosen = await page.evaluate(async (opt) => {
     const { CanvasSink } = await import('/src/visual/canvas-sink.js');
     const { SCENES } = await import('/src/visual/scenes/index.js');
     const { Mapper } = await import('/src/core/mapper.js');
     const { normalize, rngFrom } = await import('/src/core/event.js');
+    const feedEvent = eval(opt.feedEvent);
 
     const chosen = opt.only.length ? opt.only.filter((n) => SCENES[n]) : Object.keys(SCENES);
     const grid = document.getElementById('g');
@@ -99,10 +73,9 @@ try {
 
     // The same stream for every batch, from the same seed: two tiles differ
     // only in the scene, whichever batches they were drawn in.
-    const kinds = ['user', 'anon', 'bot', 'alert'];
     const steps = 22;
-    const run = async (names) => {
-      const sinks = names.map((name) =>
+    const run = async (batch) => {
+      const sinks = batch.map((name) =>
         // The sink's own defaults, deliberately. An earlier version set a
         // forty-second lifetime here and every tile came out three times as
         // crowded as anything that ships -- an instrument that made the thing
@@ -114,17 +87,10 @@ try {
       );
       const mapper = new Mapper({ mode: 'adaptive' });
       const rnd = rngFrom('contact-sheet');
+      let n = 0;
       for (let b = 0; b < steps; b++) {
         for (let i = 0; i < Math.ceil(opt.count / steps); i++) {
-          const magnitude = Math.round(Math.pow(rnd(), 3) * 9000) + 1;
-          const ev = normalize({
-            id: `e${b}-${i}`,
-            magnitude,
-            category: kinds[Math.floor(rnd() * kinds.length)],
-            label: 'event',
-            ts: Date.now(),
-          });
-          ev.map = mapper.map(magnitude);
+          const ev = feedEvent(mapper, normalize, rnd, n++);
           for (const s of sinks) s.handle(ev);
         }
         await new Promise((r) => setTimeout(r, opt.settle / steps));
@@ -138,18 +104,11 @@ try {
       await run(chosen.slice(i, i + opt.batch));
     }
     return chosen;
-  }, { palette: PALETTE, only, count: COUNT, settle: SETTLE, batch: BATCH, set: SET });
+  }, { palette: PALETTE, only, count: COUNT, settle: SETTLE, batch: BATCH, set, feedEvent: FEED_EVENT_SOURCE });
 
   const shot = await page.screenshot({ fullPage: true });
   await writeFile(OUT, shot);
-  console.log(`${names.length} scenes -> ${OUT}`);
-  if (errors.length) {
-    failed = true;
-    console.error('page errors:\n  ' + errors.join('\n  '));
-  }
-} finally {
-  await browser.close();
-  srv.kill();
-}
+  return chosen;
+});
 
-process.exit(failed ? 1 : 0);
+console.log(`${names.length} scenes -> ${OUT}`);

@@ -20,29 +20,20 @@
 
 import { writeFile, readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { startServer, launch } from './render.mjs';
+import { parseArgs, withHarness } from './render.mjs';
 
 const KITS_FILE = fileURLToPath(new URL('../src/audio/kits.js', import.meta.url));
 const TARGET_RMS = 0.16;
 // A peak over one is clipping. The margin leaves room for the room: the
 // convolution send adds on top of the dry path.
 const PEAK_CEILING = 0.72;
-const WRITE = process.argv.includes('--write');
+const { flag, has } = parseArgs(process.argv.slice(2), ['write']);
+const WRITE = has('write');
 
-const port = 8896;
-const { srv, base } = await startServer(port);
-const browser = await launch();
-let rows = [];
-
-try {
-  const page = await browser.newPage();
-  page.on('pageerror', (e) => console.error('page error:', e.message));
-  await page.route('**/lvl.html', (r) => r.fulfill({ contentType: 'text/html', body: '<title>x</title>' }));
-  await page.goto(base + '/lvl.html');
-
-  rows = await page.evaluate(async (origin) => {
-    const { KITS, makeKit } = await import(origin + '/src/audio/kits.js');
-    const { Mapper } = await import(origin + '/src/core/mapper.js');
+const rows = await withHarness({ port: Number(flag('port', 8896)), html: '<title>level</title>' }, (page) =>
+  page.evaluate(async () => {
+    const { KITS, makeKit } = await import('/src/audio/kits.js');
+    const { Mapper } = await import('/src/core/mapper.js');
     const out = [];
 
     for (const name of Object.keys(KITS)) {
@@ -104,11 +95,8 @@ try {
       });
     }
     return out;
-  }, base);
-} finally {
-  await browser.close();
-  srv.kill();
-}
+  })
+);
 
 const loudest = Math.max(...rows.map((r) => r.rms));
 console.log('kit           joues    crete       rms   x vs le plus fort   niveau -> nouveau');

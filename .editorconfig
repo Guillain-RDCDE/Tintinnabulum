@@ -1,0 +1,21 @@
+# One way of writing a file, whatever editor opens it. Thirty-eight tracked
+# files had Windows line endings and a hundred and thirty-seven Unix ones,
+# and a script that saved one as the other turned a change of eight hundred
+# lines into a change of five thousand.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{png,jpg,webp,wav,mp3,webm,ico}]
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset

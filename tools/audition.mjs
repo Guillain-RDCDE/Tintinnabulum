@@ -8,15 +8,13 @@
 // of events with the shape a real feed has -- mostly small, a few large, at
 // irregular intervals -- and written out as audio somebody can actually hear.
 
-import { writeFile } from 'node:fs/promises';
+import { writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { startServer, launch } from './render.mjs';
+import { parseArgs, withHarness } from './render.mjs';
 
-const args = process.argv.slice(2);
-const secondsArg = args.indexOf('--seconds');
-const SECONDS = secondsArg < 0 ? 30 : Number(args[secondsArg + 1]);
+const { flag, only: kits } = parseArgs();
+const SECONDS = Number(flag('seconds', 30));
 const OUT_DIR = process.env.AUDITION_DIR || fileURLToPath(new URL('../tmp-audition/', import.meta.url));
-const kits = args.filter((a, i) => !a.startsWith('--') && i !== secondsArg + 1);
 if (!kits.length) {
   console.error('usage: node tools/audition.mjs [--seconds N] <kit> [kit...]');
   process.exit(1);
@@ -47,21 +45,9 @@ function wav(left, right, rate) {
   return buf;
 }
 
-const { srv, base } = await startServer(8894);
-const browser = await launch();
+await mkdir(OUT_DIR, { recursive: true });
 
-try {
-  const page = await browser.newPage();
-  const errors = [];
-  page.on('pageerror', (e) => errors.push(String(e)));
-  await page.route('**/audition-harness.html', (route) =>
-    route.fulfill({ contentType: 'text/html', body: '<title>audition</title>' })
-  );
-  await page.goto(base + '/audition-harness.html');
-
-  const { mkdir } = await import('node:fs/promises');
-  await mkdir(OUT_DIR, { recursive: true });
-
+await withHarness({ port: Number(flag('port', 8895)), html: '<title>audition</title>' }, async (page) => {
   for (const kit of kits) {
     const got = await page.evaluate(async ({ kit, seconds }) => {
       const { Sonifier, makeKit } = await import('/src/index.js');
@@ -116,8 +102,4 @@ try {
     await writeFile(file, wav(got.left, got.right, got.rate));
     console.log(`${kit}: ${got.events} events, peak ${got.peak.toFixed(3)} -> ${file}`);
   }
-  if (errors.length) throw new Error(errors.join(' | '));
-} finally {
-  await browser.close();
-  srv.kill();
-}
+});
