@@ -1594,6 +1594,8 @@ export function setupStudio({
     state,
     TOOLS,
     toolLook,
+    /** The tools marked as new on the index, so a check can ask rather than repeat the list. */
+    newTools: [...NEW_TOOLS].sort(),
     get open() {
       return open;
     },

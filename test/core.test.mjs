@@ -897,11 +897,12 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('a dial that chooses a sheet is never varied, and keeps the sheet it is held on', choices > 0 && drifted === 0 && lost === 0, `${choices} choices, drifted=${drifted} lost=${lost}`);
   ok('the same number varies the dials the same way', unstable === 0);
 
-  for (const name of ['constellation', 'cutpaper', 'emergence', 'lanes', 'meshes', 'lineage', 'orbs', 'tartan', 'peals', 'scanlines', 'spindles', 'lattice', 'desordres', 'aura', 'worlds', 'benday', 'rise', 'frost', 'fracture', 'asemic', 'collapse', 'spectrogram', 'groove']) {
-    const s = m.SCENES[name];
-    ok(`the new scene "${name}" is catalogued and has something to say`,
-       s && s.shelf !== 'Other' && s.note.length > 30 && s.how.length > 60 && typeof s.frame === 'function', s ? s.shelf : 'missing');
-  }
+  // Every scene, not a list of the newest kept by hand: a scene on the last
+  // shelf, or without a note or a "how it's made", is one the catalogue forgot.
+  const unsaid = Object.entries(m.SCENES)
+    .filter(([, s]) => !(s.shelf !== 'Other' && s.note.length > 30 && s.how.length > 60 && typeof s.frame === 'function'))
+    .map(([name, s]) => `${name} (${s.shelf})`);
+  ok('every scene is catalogued and has something to say', unsaid.length === 0, unsaid.join(', ') || `${Object.keys(m.SCENES).length} scenes`);
   ok('dither is a finish with a note of its own', m.FINISH_ORDER.includes('dither') && m.FINISHES.dither.note.length > 30);
 }
 

@@ -10,81 +10,20 @@
 // instruments through an OfflineAudioContext and measure the peak amplitude, so
 // a silent instrument fails.
 
-import { spawn } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+// The checks that depend on the machine rather than the code -- the audio
+// device, wall-clock timings -- are in browser-audio.test.mjs and
+// browser-perf.test.mjs, on exit codes of their own.
 
-let chromium;
-try {
-  ({ chromium } = await import('playwright-core'));
-} catch {
-  try {
-    ({ chromium } = await import('playwright'));
-  } catch {
-    console.log('skipped - playwright-core is not installed');
-    console.log('  npm i -D playwright-core   then re-run');
-    process.exit(0);
-  }
-}
+import { tally, startServer, launchBrowser } from './harness.mjs';
+import { WORK_ROOMS } from '../src/works.js';
 
-const SERVER = fileURLToPath(new URL('../server/ingest.mjs', import.meta.url));
 const PORT = Number(process.env.TEST_PORT || 8793);
-const BASE = process.env.TEST_BASE || `http://127.0.0.1:${PORT}`;
 const USE_LOCAL_SERVER = !process.env.TEST_BASE;
+const { ok, finish } = tally();
 
-let fails = 0;
-const failedNames = [];
-const ok = (n, c, x = '') => {
-  if (!c) {
-    fails++; failedNames.push(n);
-    console.log('FAIL  ' + n + (x ? '  ' + x : ''));
-  } else console.log('ok    ' + n + (x ? '  ' + x : ''));
-};
-
-let srv = null;
-if (USE_LOCAL_SERVER) {
-  // --no-maglev is not a preference. On Node 25.9 the static server dies part
-  // way through this suite with a V8 internal assertion --
-  // "Check failed: ValueRepresentationIs(...)" -- which is a fault in the
-  // engine's mid-tier compiler, not in anything here. When it happens every
-  // sample bank afterwards reports itself silent, which looks exactly like
-  // seven broken kits. Remove this once the runtime stops doing it.
-  srv = spawn(process.execPath, ['--no-maglev', SERVER, '--port', String(PORT)], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
-  // If the server dies, everything that depended on it fails as something
-  // else: seven sample banks reported themselves silent and it took a
-  // connection-refused twenty checks later to reveal that nothing was
-  // serving them. Say it the moment it happens.
-  srv.stderr.on('data', (d) => process.stderr.write('[server] ' + d));
-  srv.on('exit', (code, signal) => {
-    if (code !== 0 && code !== null) {
-      process.stderr.write(`[server] exited with code ${code}
-`);
-    } else if (signal && signal !== 'SIGTERM') {
-      process.stderr.write(`[server] killed by ${signal}
-`);
-    }
-  });
-  for (let i = 0; i < 60; i++) {
-    try {
-      await fetch(BASE + '/health');
-      break;
-    } catch {
-      await new Promise((r) => setTimeout(r, 100));
-    }
-  }
-}
-
-async function launch() {
-  const args = ['--autoplay-policy=no-user-gesture-required'];
-  try {
-    return await chromium.launch({ headless: true, channel: 'chrome', args });
-  } catch {
-    return await chromium.launch({ headless: true, args });
-  }
-}
-
-const browser = await launch();
+const browser = await launchBrowser();
+if (!browser) process.exit(0);
+const { srv, base: BASE } = await startServer(PORT);
 // An explicit context rather than browser.newPage(). The projection check needs
 // a second window that shares this one's origin and storage -- that is what
 // BroadcastChannel talks across -- and the implicit context browser.newPage()
@@ -711,17 +650,28 @@ const answers = await page.evaluate(async () => {
     }
   };
   const out = {};
-  // The nine newest, and the twenty-one that were repaired.
-  for (const name of [
-    'orbs', 'tartan', 'peals', 'lanes', 'meshes', 'lineage', 'cutpaper',
-    'scanlines', 'spindles', 'lattice', 'desordres',
-    'worlds', 'sorts', 'nodes', 'skein', 'comb', 'emergence', 'cutpaper', 'planes', 'hatched',
-    'reaction', 'dragon', 'quasicrystal', 'moire', 'rule30', 'langton', 'mobile', 'lavalamp',
-    'murmuration', 'dunes', 'nightflight', 'inkwater', 'jellyfish', 'snowfall', 'paperforest',
-    'digitalrain', 'rise', 'physarum', 'stipple', 'topo', 'groove',
-  ]) {
+  // Which pictures, derived rather than listed: every sheet of every scene
+  // that has more than one -- a second sheet is a second picture, and until
+  // this ran only first sheets were ever held to the rule -- and every scene
+  // on the Paper and print shelf, where the newest pictures hang. The whole
+  // catalogue, with every work's own dials, is tools/follows-the-feed.mjs
+  // (`npm run test:feed`); at seven seconds a picture it does not fit here.
+  const { SCENES } = await import('../src/index.js');
+  const pictures = [];
+  for (const [name, scene] of Object.entries(SCENES)) {
+    const sheet = scene.params && scene.params.figure;
+    if (sheet) {
+      for (let v = sheet.min; v <= sheet.max; v += sheet.step || 1) pictures.push({ name, params: { figure: v } });
+    } else if (scene.shelf === 'Paper and print') {
+      pictures.push({ name, params: {} });
+    }
+  }
+  for (const { name, params } of pictures) {
     sink.clear();
     sink.setScene(name);
+    sink.resetParams(name);
+    sink.setParams(params, name);
+    const key = params.figure ? `${name}:${params.figure}` : name;
     feed(30, name + '-settle');
     // Long enough for the picture to come to rest, which is longer than it
     // sounds. "Planes" brings a form up over more than a second; and every
@@ -763,7 +713,8 @@ const answers = await page.evaluate(async () => {
     const w1 = snap();
     const here = moved(w0, w1, 'left');
     const away = moved(w0, w1, 'right');
-    out[name] = { drift, jolt, quiet, busy, here, away };
+    out[key] = { drift, jolt, quiet, busy, here, away };
+    sink.resetParams(name);
   }
   sink.setScene(was);
   sink.clear();
@@ -1089,7 +1040,9 @@ const scenePreviews = await page.evaluate(async () => {
     const ctx = cv.getContext('2d');
     let error = null;
     try {
-      previewScene(ctx, name, { w: 220, h: 120, palette, richness: 0.45, depth: true });
+      // The whole picture, not what fits in the card's time budget: this asks
+      // whether a scene paints, and a busy machine must not be able to say no.
+      previewScene(ctx, name, { w: 220, h: 120, palette, richness: 0.45, depth: true, budgetMs: 0 });
     } catch (e) {
       error = String(e && e.message ? e.message : e);
     }
@@ -1107,7 +1060,10 @@ const scenePreviews = await page.evaluate(async () => {
 const threw = scenePreviews.filter((p) => p.error);
 ok('no scene preview throws', threw.length === 0,
    threw.map((p) => `${p.name}: ${p.error}`).join(' | ') || `${scenePreviews.length} scenes`);
-const blankPreviews = scenePreviews.filter((p) => p.coverage < 0.02);
+// Half a percent of the card: a picture of thin lines on a pale ground --
+// roots, a plotter's hairlines -- honestly covers little, and the grown check
+// below holds those to a floor of their own.
+const blankPreviews = scenePreviews.filter((p) => p.coverage < 0.005);
 ok('every scene preview paints something', blankPreviews.length === 0,
    blankPreviews.map((p) => `${p.name} ${(p.coverage * 100).toFixed(1)}%`).join(', ') || `${scenePreviews.length} scenes`);
 
@@ -1133,7 +1089,8 @@ const previewFollows = await page.evaluate(async () => {
 // reach for what is scattered near them, so whether anything is drawn at all
 // depends on the draw: roots came out completely blank about one preview in
 // twenty-four -- a card promising a picture it does not have, and a card
-// nobody would think to look at twice.
+// nobody would think to look at twice. A preview is seeded now, so this is
+// six seeds rather than six throws of the same one.
 const grownPreviews = await page.evaluate(async () => {
   const { previewScene, PALETTES } = await import('../src/index.js');
   const palette = PALETTES.marine.colors;
@@ -1146,7 +1103,7 @@ const grownPreviews = await page.evaluate(async () => {
       cv.width = 220;
       cv.height = 120;
       const ctx = cv.getContext('2d');
-      previewScene(ctx, name, { w: 220, h: 120, palette, richness: 0.45, depth: true });
+      previewScene(ctx, name, { w: 220, h: 120, palette, richness: 0.45, depth: true, seed: 3 + run * 7, budgetMs: 0 });
       const { data } = ctx.getImageData(0, 0, 220, 120);
       const g = [data[0], data[1], data[2]];
       let inked = 0;
@@ -1348,12 +1305,9 @@ const grounds = await page.evaluate(async () => {
   // Judged on the steps as a whole: a single long one can be the garbage
   // collector stopping the page for its own reasons in the middle of a step,
   // which is not the paper's doing and is not in its power.
-  const t0 = performance.now();
+  // Built here so the checks below find every sheet ready; how long a step of
+  // the build holds the page is measured in browser-perf.test.mjs.
   for (const g of m.GROUND_ORDER) await m.prepareGround(g);
-  const buildMs = performance.now() - t0;
-  const all = Array.from(m.groundStats.times.slice(0, Math.min(m.groundStats.count, m.groundStats.times.length))).sort((a, b) => a - b);
-  const at = (q) => all[Math.min(all.length - 1, Math.floor(all.length * q))] || 0;
-  const worst = { median: at(0.5), p95: at(0.95), over100: all.filter((t) => t > 100).length, steps: all.length };
   const results = [];
   for (const g of m.GROUND_ORDER.filter((n) => n !== 'none')) {
     for (const pal of ['porcelain', 'marine']) {
@@ -1392,7 +1346,7 @@ const grounds = await page.evaluate(async () => {
       results.push({ g, pal, done, state, changed: changed / (after.length / 4), lo, hi, same });
     }
   }
-  return { worst, buildMs: Math.round(buildMs), results };
+  return { results };
 });
 const flatGround = grounds.results.filter((r) => !r.done || r.changed < 0.05).map((r) => `${r.g}/${r.pal} ${(r.changed * 100).toFixed(0)}%`);
 ok('every paper changes the picture it is laid under', flatGround.length === 0, flatGround.join(', ') || `${grounds.results.length} papers and palettes`);
@@ -1400,9 +1354,6 @@ const unprinted = grounds.results.filter((r) => r.lo < 10 || r.hi > 252).map((r)
 ok('a printed picture has no pure black and no pure white', unprinted.length === 0, unprinted.join(', ') || 'all within print');
 ok('a paper leaves the drawing state as it found it', grounds.results.every((r) => r.state));
 ok('the same paper is the same sheet every time', grounds.results.every((r) => r.same));
-ok('making a sheet never holds the page',
-   grounds.worst.steps > 50 && grounds.worst.median < 15 && grounds.worst.p95 < 45 && grounds.worst.over100 <= 2,
-   `${grounds.worst.steps} steps: median ${grounds.worst.median.toFixed(1)} ms, 95% under ${grounds.worst.p95.toFixed(1)} ms, ${grounds.worst.over100} over 100 ms; nine sheets in ${grounds.buildMs} ms`);
 
 const paperPanel = await page.evaluate(async () => {
   const son = window.son;
@@ -2044,21 +1995,8 @@ ok('and almost nothing is hard-clipped',
 ok('a quiet feed is left alone', ceiling.quiet.peak > 0.2 && ceiling.quiet.clip === 0,
    'peak ' + ceiling.quiet.peak.toFixed(3) + ', ' + ceiling.quiet.clip.toFixed(3) + '% clipped');
 
-// The other half of "the sound gives up": a context can stop while the tab is
-// in front, and nothing tells the page when it does.
-const recovered = await page.evaluate(async () => {
-  const son = window.son;
-  await son.unlock();
-  const before = son.engine.ctx.state;
-  await son.engine.ctx.suspend();
-  const stopped = son.engine.ctx.state;
-  await new Promise((r) => setTimeout(r, 3500));
-  return { before, stopped, after: son.engine.ctx.state, recoveries: son.engine.recoveries };
-});
-ok('a context that stops on its own is brought back',
-   recovered.stopped === 'suspended' && recovered.after === 'running' && recovered.recoveries >= 1,
-   recovered.before + ' -> ' + recovered.stopped + ' -> ' + recovered.after +
-   ', ' + recovered.recoveries + ' recovery');
+// The other half of "the sound gives up" -- a context that stops while the tab
+// is in front -- is in browser-audio.test.mjs: it depends on the audio device.
 
 ok('every kit that declares recordings actually carries them',
    field.sampledKits.length >= 3 && field.sampledKits.every((k) => k.banks > 0),
@@ -2853,20 +2791,8 @@ const midRepaint = await page.evaluate(async () => {
 ok('a single click still lands while the cards are repainting',
    midRepaint.length === 1 && midRepaint[0] === 'clay', midRepaint.join(', ') || 'nothing chosen');
 
-// The measurement behind it: no task may run long enough to swallow a click.
-// A hundred and fifty milliseconds is already a long time to be deaf; the
-// version this replaced measured 2562.
-const worstTask = await page.evaluate(async () => {
-  const tasks = [];
-  const obs = new PerformanceObserver((l) => { for (const e of l.getEntries()) tasks.push(e.duration); });
-  obs.observe({ entryTypes: ['longtask'] });
-  document.querySelector('#palettes [data-palette="ember"]').click();
-  await new Promise((r) => setTimeout(r, 5000));
-  obs.disconnect();
-  return Math.round(Math.max(0, ...tasks));
-});
-ok('a palette change never holds the page long enough to swallow a click',
-   worstTask < 300, `worst task ${worstTask} ms`);
+// The measurement behind it -- the longest task a palette change runs -- is
+// in browser-perf.test.mjs: it measures the machine as much as the code.
 
 // A newer repaint supersedes an older one, which is right: only the second
 // answer is wanted. What the first had not reached must not be dropped, and
@@ -3577,26 +3503,7 @@ ok('every new source builds and exposes the source interface',
    Object.values(factories).every((f) => f.hasStart && f.hasStop),
    JSON.stringify(factories));
 
-// --- recorder -----------------------------------------------------------
-await openMore('#more-sound');
-const rec = await page.evaluate(async () => {
-  const { Recorder } = await import('../src/audio/recorder-sink.js');
-  if (!Recorder.supported) return { supported: false };
-  const r = new Recorder(window.son.engine);
-  r.start();
-  for (let i = 0; i < 12; i++) window.son.emit({ magnitude: 400 * (i + 1), id: 'rec-' + i });
-  await new Promise((res) => setTimeout(res, 700));
-  const blob = await r.stop();
-  return { supported: true, size: blob.size, type: blob.type };
-});
-if (rec.supported) {
-  // An empty Opus container is about 300 bytes, so "non-empty" is not enough:
-  // require a size that can only come from actually captured audio.
-  ok('recorder captured real audio, not an empty container',
-     rec.size > 2000, `${rec.size} bytes ${rec.type}`);
-} else {
-  ok('recorder reports unsupported cleanly', true, 'MediaRecorder absent in this build');
-}
+// The recorder is checked in browser-audio.test.mjs: it depends on the audio device.
 
 // --- ingest server -> browser, end to end -------------------------------
 if (USE_LOCAL_SERVER) {
@@ -3696,7 +3603,7 @@ const rowMoved = await page.evaluate(async () => {
   const box = grid.getBoundingClientRect();
   return { moved, prevShown, atEnd: wrap.classList.contains('at-end'), lastInView: last.right <= box.right + 2 && last.left >= box.left - 2 };
 });
-ok('every room row has its arrows', rowStart.rows === 4, `${rowStart.rows} rows`);
+ok('every room row has its arrows', rowStart.rows === WORK_ROOMS.length, `${rowStart.rows} rows`);
 // Read as numbers: the arrows fade, and an opacity caught in the last
 // microseconds of its transition reads 1.9e-8 rather than 0.
 ok('at the start of a row only the forward arrow shows', Number(rowStart.prev) < 0.01 && Number(rowStart.next) > 0.99, JSON.stringify(rowStart));
@@ -3714,7 +3621,12 @@ const hoverLive = await page.evaluate(async () => {
   card.dispatchEvent(new PointerEvent('pointerenter'));
   const cv = card.querySelector('canvas');
   const g = cv.getContext('2d');
-  await new Promise((r) => setTimeout(r, 300));
+  // Until it has drawn a few frames, not for a fixed time: a loaded machine
+  // gives the card its frames late, and the frames are the point.
+  const since = performance.now();
+  while (!(window.son.works.live && window.son.works.live.frames > 5) && performance.now() - since < 4000) {
+    await new Promise((r) => setTimeout(r, 50));
+  }
   const a = g.getImageData(0, 0, cv.width, cv.height).data.slice();
   await new Promise((r) => setTimeout(r, 800));
   const b = g.getImageData(0, 0, cv.width, cv.height).data;
@@ -4081,13 +3993,15 @@ const pgIndex = await pg.evaluate(async () => {
     cards: document.querySelectorAll('.st-card').length,
     scenes: SCENE_NAMES.length,
     fresh: [...document.querySelectorAll('.st-card.new')].map((c) => c.dataset.tool).sort().join(','),
+    declared: window.son.studio.newTools.join(','),
+    real: window.son.studio.newTools.every((n) => SCENE_NAMES.includes(n)),
   };
 });
 await pg.waitForTimeout(800);
 const pgPainted = await pg.evaluate(() => document.querySelectorAll('.st-card[data-painted]').length);
 ok('Escape on the bench goes to all the tools', pgIndex.hash === '#create', pgIndex.hash);
 ok('every scene is a tool', pgIndex.cards === pgIndex.scenes, `${pgIndex.cards} tools, ${pgIndex.scenes} scenes`);
-ok('the new tools are marked as new', pgIndex.fresh === 'growth,physarum,ribbons,roots,stipple,topo', pgIndex.fresh);
+ok('the new tools are marked as new, and are real tools', pgIndex.fresh === pgIndex.declared && pgIndex.fresh.length > 0 && pgIndex.real, `${pgIndex.fresh} vs ${pgIndex.declared}`);
 ok('the tools in view are painted', pgPainted >= 8, `${pgPainted} painted`);
 
 await pg.keyboard.type('hatchwork');
@@ -4675,5 +4589,4 @@ await mobile.close();
 
 await browser.close();
 if (srv) srv.kill();
-console.log(fails ? `\n${fails} FAILURE(S): ${failedNames.join(' | ')}` : '\nall browser checks passed');
-process.exit(fails ? 1 : 0);
+finish('browser checks');

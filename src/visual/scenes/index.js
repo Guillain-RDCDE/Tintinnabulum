@@ -479,6 +479,20 @@ export function previewScene(
     s = (s * 1103515245 + 12345) & 0x7fffffff;
     return s / 0x7fffffff;
   };
+  // The scene's own chance is seeded too, as playScene seeds it: many scenes
+  // scatter with Math.random, and a card drawn from the page's generator was
+  // a different card every time -- roots came out blank one preview in
+  // twenty-four, and no two runs of the suite saw the same pictures.
+  const chance = rngOf((Math.imul(Number(seed) >>> 0, 2654435761) >>> 0) || 7);
+  const seeded = (fn) => {
+    const was = Math.random;
+    Math.random = chance;
+    try {
+      return fn();
+    } finally {
+      Math.random = was;
+    }
+  };
 
   const api = cardApi(scene, { w, h, palette, shape, dt, depth, richness, params });
   const darkGround = api.darkGround;
@@ -486,7 +500,7 @@ export function previewScene(
 
   ctx.fillStyle = palette.background;
   ctx.fillRect(0, 0, w, h);
-  if (scene.init) scene.init(api);
+  if (scene.init) seeded(() => scene.init(api));
 
   const born = [];
   for (let i = 0; i < 34; i++) {
@@ -515,14 +529,14 @@ export function previewScene(
       if (b.at !== f) continue;
       b.p.born = api.now;
       particles.push(b.p);
-      if (scene.event) scene.event(b.p, api);
+      if (scene.event) seeded(() => scene.event(b.p, api));
     }
     for (let i = particles.length - 1; i >= 0; i--) {
       if (api.now - particles[i].born >= particles[i].life) particles.splice(i, 1);
     }
     ctx.save();
     try {
-      scene.frame(ctx, api);
+      seeded(() => scene.frame(ctx, api));
     } catch (e) {
       ctx.restore();
       return false;

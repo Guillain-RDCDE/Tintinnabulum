@@ -20,6 +20,8 @@
 //   node tools/follows-the-feed.mjs                  every scene
 //   node tools/follows-the-feed.mjs comb hatched     only these
 //   node tools/follows-the-feed.mjs --worst 20       the twenty deafest
+//   node tools/follows-the-feed.mjs --sheets --works  every sheet and every work's dials too
+//   node tools/follows-the-feed.mjs --strict          exit 1 if any picture is deaf
 
 import { startServer, launch } from './render.mjs';
 
@@ -28,9 +30,18 @@ const flag = (name, fallback) => {
   const i = argv.indexOf('--' + name);
   return i >= 0 && argv[i + 1] ? argv[i + 1] : fallback;
 };
-const only = argv.filter((a, i) => !a.startsWith('--') && !(argv[i - 1] || '').startsWith('--'));
+// Flags that take no value, so a scene named after one is not taken for its value.
+const SWITCHES = new Set(['--sheets', '--works', '--strict']);
+const only = argv.filter((a, i) => !a.startsWith('--') && !((argv[i - 1] || '').startsWith('--') && !SWITCHES.has(argv[i - 1])));
 const WORST = Number(flag('worst', 0));
 const port = Number(flag('port', 8931));
+// --sheets measures every other sheet of a scene that has several; --works
+// measures every work's own dials; --strict exits non-zero if any picture is
+// deaf, which is what `npm run test:feed` runs.
+const SHEETS = argv.includes('--sheets');
+const WORKS_TOO = argv.includes('--works');
+const STRICT = argv.includes('--strict');
+let failed = false;
 // Dials to turn, as name=value pairs: `--set figure=1` measures a scene's
 // second sheet, which can answer the feed quite differently from its first.
 const SET = Object.fromEntries(
@@ -108,10 +119,37 @@ try {
     };
     const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
+    // Which pictures: the scenes named, or all of them; and on top, when
+    // asked, every other sheet of a scene that has several, and every work's
+    // own dials -- a second sheet is a second picture, and a work's dials can
+    // turn a scene into one the defaults never show.
+    const { SCENES, WORKS, workSettings } = await import('/src/index.js');
     const names = opt.only.length ? opt.only : SCENE_NAMES;
+    const pictures = names.map((name) => ({ key: name, name, params: opt.set }));
+    if (opt.sheets) {
+      for (const name of names) {
+        const sheet = SCENES[name] && SCENES[name].params && SCENES[name].params.figure;
+        if (!sheet) continue;
+        for (let v = sheet.min + (sheet.step || 1); v <= sheet.max; v += sheet.step || 1) {
+          pictures.push({ key: `${name}:${v}`, name, params: { ...opt.set, figure: v } });
+        }
+      }
+    }
+    if (opt.works) {
+      const seen = new Set(pictures.map((p) => p.name + JSON.stringify(p.params)));
+      for (const [work, w] of Object.entries(WORKS)) {
+        if (opt.only.length && !opt.only.includes(w.scene)) continue;
+        const s = workSettings(work, SCENES);
+        const turned = Object.fromEntries(Object.entries(s.params).filter(([k, v]) => SCENES[s.scene].params[k].default !== v));
+        const id = s.scene + JSON.stringify(turned);
+        if (seen.has(id)) continue;
+        seen.add(id);
+        pictures.push({ key: `${work} (${s.scene})`, name: s.scene, params: turned });
+      }
+    }
     const out = [];
-    for (const name of names) {
-      const sink = new CanvasSink(cv, { palette: 'marine', scene: name, showHud: false, showLabels: false, params: { [name]: opt.set } });
+    for (const { key, name, params } of pictures) {
+      const sink = new CanvasSink(cv, { palette: 'marine', scene: name, showHud: false, showLabels: false, params: { [name]: params } });
       sink.start();
       let n = 0;
       const feed = (count, side) => {
@@ -205,10 +243,10 @@ try {
       const here = movedIn(s0, s1, true);
       const away = movedIn(s0, s1, false);
       sink.stop();
-      out.push({ name, quiet, busy, drift, jolt, here, away, landed });
+      out.push({ name: key, quiet, busy, drift, jolt, here, away, landed });
     }
     return out;
-  }, { only, set: SET });
+  }, { only, set: SET, sheets: SHEETS, works: WORKS_TOO });
 
   if (errors.length) throw new Error('page errors: ' + errors.join(' | '));
 
@@ -222,31 +260,35 @@ try {
   scored.sort((a, b) => Math.max(a.answer, a.share, a.where) - Math.max(b.answer, b.share, b.where));
   const shown = WORST ? scored.slice(0, WORST) : scored;
   console.log('scene             share   answer    where    quiet/busy');
-  for (const r of shown) {
-    const deaf = r.answer < 1.3 && r.share < 2 && r.where < 1.3;
-    const mark = deaf ? '  <- deaf' : (r.answer < 2 && r.share < 2 && r.where < 2) ? '  <- faint' : '';
-    console.log(
-      `${r.name.padEnd(16)} ${r.share.toFixed(2).padStart(6)}  ${r.answer.toFixed(2).padStart(7)}` +
-      `  ${r.where.toFixed(2).padStart(7)}   ${String(r.quiet).padStart(6)}/${String(r.busy).padStart(6)}${mark}`
-    );
-  }
-  // Deaf on both readings, not on either.
+  // Deaf on all three readings, not on one. The same bar the browser suite
+  // holds its subset to, so the two can never disagree about a picture.
   //
   // A scene can fail one of them honestly. "Fields" fades a new rectangle in
   // over several seconds, so a quarter second after a burst holds nothing and
   // its answer reads 1.0 -- and yet it changes nothing at all when nothing
   // arrives, so its share is in the thousands. The reverse happens too: a
   // scene that repaints its whole ground every frame buries its share and
-  // still shows a burst at once. Only a scene that fails both is ignoring the
-  // feed.
-  const deaf = scored.filter((r) => r.answer < 1.3 && r.share < 2 && r.where < 1.3);
+  // still shows a burst at once. A diagram redrawn whole from every event
+  // changes everywhere at once and has no "where". Only a scene that fails
+  // all three is ignoring the feed.
+  const isDeaf = (r) => r.answer < 1.4 && r.share < 2 && r.where < 1.6;
+  for (const r of shown) {
+    const mark = isDeaf(r) ? '  <- deaf' : (r.answer < 2 && r.share < 2 && r.where < 2) ? '  <- faint' : '';
+    console.log(
+      `${r.name.padEnd(24)} ${r.share.toFixed(2).padStart(6)}  ${r.answer.toFixed(2).padStart(7)}` +
+      `  ${r.where.toFixed(2).padStart(7)}   ${String(r.quiet).padStart(6)}/${String(r.busy).padStart(6)}${mark}`
+    );
+  }
+  const deaf = scored.filter(isDeaf);
   console.log('');
-  console.log(`${scored.length} scenes; ${deaf.length} answer the feed on neither reading`);
+  console.log(`${scored.length} pictures; ${deaf.length} answer the feed on no reading`);
   if (deaf.length) console.log(deaf.map((r) => r.name).join(', '));
   console.log('share  = how much of a busy second is the feed rather than the scene running on');
   console.log('answer = how plainly a burst shows up at once, which a simulation can still do');
   console.log('where  = a burst into the left half: the change there against the change opposite');
+  failed = STRICT && deaf.length > 0;
 } finally {
   await browser.close();
   srv.kill();
 }
+if (failed) process.exit(1);
