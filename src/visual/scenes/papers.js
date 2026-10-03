@@ -122,10 +122,10 @@ export const PAPER_SCENES = {
     how: 'Every cut is aligned to a module, so pieces meet exactly and the mosaic never shows a seam of ground. A piece is a flat field of one colour, and on better than half of them a second shape -- half disc, quarter, wedge, stem -- is cut into the same box in another. The two neutrals of the palette carry most of the area and the categories punctuate it, which is the ratio the thing is built on. Struck onto a buffer and never redrawn.',
     preview: { frames: 220, dt: 45 },
     params: {
-      figure: { label: 'Which sheet: collage, totem, sheets', min: 0, max: 2, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: collage, totem, sheets', min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
       tilt: { label: 'How far the sheets are turned', min: 0, max: 40, step: 1, default: 16, rebuild: true },
       scatter: { label: 'How freely each sheet is thrown', min: 0, max: 1, step: 0.02, default: 0, rebuild: true },
-      dark: { label: 'Ground: paper or dark', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      dark: { label: 'Ground: paper or dark', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       edge: { label: 'How much the scissors wander', min: 0, max: 1, step: 0.02, default: 0.35, rebuild: true },
       scale: { label: 'Size of a piece', min: 0.5, max: 2.4, step: 0.05, default: 1, rebuild: true },
       colour: { label: 'How much colour against the neutrals', min: 0, max: 1, step: 0.02, default: 0.4 },
@@ -227,8 +227,8 @@ export const PAPER_SCENES = {
     positional: true,
     preview: { frames: 160, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: planes, scatter, stairs', min: 0, max: 2, step: 1, default: 0, rebuild: true },
-      layout: { label: 'How the stairs are laid: drift, corner, slope, split', min: 0, max: 3, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: planes, scatter, stairs', min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
+      layout: { label: 'How the stairs are laid: drift, corner, slope, split', min: 0, max: 3, step: 1, default: 0, rebuild: true, vary: false },
       cool: { label: 'How much of the cool ink, on the stairs', min: 0, max: 1, step: 0.02, default: 0.12 },
       count: { label: 'How many planes', min: 2, max: 18, step: 1, default: 10 },
       scale: { label: 'How large', min: 0.4, max: 1.6, step: 0.05, default: 1 },

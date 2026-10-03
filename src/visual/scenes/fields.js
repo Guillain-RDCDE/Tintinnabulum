@@ -93,7 +93,7 @@ export const FIELD_SCENES = {
     // `rebuild` says a change re-runs init(): a grid cannot resize its cells
     // without being built again, where a line width can just be read.
     params: {
-      figure: { label: 'Which sheet: outlines, current', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: outlines, current', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       cell: { label: 'Cell size', min: 16, max: 90, step: 1, default: 40, rebuild: true },
       square: { label: 'Square size', min: 0.25, max: 0.95, step: 0.01, default: 0.62 },
       fill: { label: 'How full the current is', min: 0.3, max: 1, step: 0.02, default: 0.82, rebuild: true },

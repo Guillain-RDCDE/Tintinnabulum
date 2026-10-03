@@ -18,7 +18,8 @@ import {
   SCENES, SCENE_SHELVES, WORKS, KITS, PALETTES, PALETTE_FAMILIES, familyOf, FINISHES, FINISH_ORDER, MATS, MAT_ORDER,
   GROUNDS, GROUND_ORDER, prepareGround,
   Sonifier, makeKit, previewScene, animateScene, playScene,
-  inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, isViolet,
+  inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, defaultParams, isViolet,
+  workSettings,
 } from '../src/index.js';
 import { lightnessOf, parseColor } from '../src/visual/color.js';
 import { accentFor } from './shell.js';
@@ -899,7 +900,9 @@ export function setupStudio({
 
   function setSeed(seed, { fromHistory = false } = {}) {
     state.seed = clamp(Math.round(seed), 1, 999999);
-    state.params = variedParams(SCENES[state.tool], state.seed);
+    // The dials that choose a sheet stay where they are: a new variation of
+    // this picture, not a different picture.
+    state.params = variedParams(SCENES[state.tool], state.seed, 1, state.params);
     if (!fromHistory) {
       history = history.slice(0, place + 1);
       history.push(state.seed);
@@ -933,13 +936,12 @@ export function setupStudio({
 
   function shuffleDials() {
     if (!SCENES[state.tool].params) return;
-    state.params = variedParams(SCENES[state.tool], randomSeed(), 1.4);
+    state.params = variedParams(SCENES[state.tool], randomSeed(), 1.4, state.params);
     changed();
   }
 
   function resetDials() {
-    const specs = SCENES[state.tool].params || {};
-    state.params = Object.fromEntries(Object.entries(specs).map(([k, s]) => [k, s.default]));
+    state.params = defaultParams(SCENES[state.tool]);
     changed();
   }
 
@@ -1297,17 +1299,17 @@ export function setupStudio({
   /** A work, as a picture for the bench: exactly as it hangs, with a variation number of its own. */
   function workPicture(name) {
     const w = WORKS[name];
-    const scene = SCENES[w.scene];
+    const s = workSettings(w, SCENES);
     return {
-      tool: w.scene,
+      tool: s.scene,
       seed: 1 + (hashOf(name) % 99999),
-      inks: inksOfPalette(w.palette).map(hex).filter((c) => !isViolet(c)),
-      dials: { ...Object.fromEntries(Object.entries(scene.params || {}).map(([k, d]) => [k, d.default])), ...(w.dials || {}) },
-      kit: w.kit,
-      finish: FINISHES[w.finish] ? w.finish : 'none',
-      grain: w.grain ? 0.18 : 0,
-      mat: MATS[w.mat] ? w.mat : 'none',
-      ground: GROUNDS[w.ground] ? w.ground : 'none',
+      inks: inksOfPalette(s.palette).map(hex).filter((c) => !isViolet(c)),
+      dials: s.params,
+      kit: s.kit,
+      finish: FINISHES[s.finish] ? s.finish : 'none',
+      grain: s.grain ? 0.18 : 0,
+      mat: MATS[s.mat] ? s.mat : 'none',
+      ground: GROUNDS[s.ground] ? s.ground : 'none',
       full: true,
       from: { kind: 'work', name, title: w.title },
     };

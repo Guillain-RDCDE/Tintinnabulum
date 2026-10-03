@@ -192,6 +192,13 @@ export function paletteFromInks(inks) {
 
 // --- a variation of a scene's dials ------------------------------------------------
 
+/** Every dial of a scene at the value it ships with. */
+export function defaultParams(scene) {
+  const out = {};
+  for (const [name, spec] of Object.entries((scene && scene.params) || {})) out[name] = spec.default;
+  return out;
+}
+
 /**
  * A scene's dials, varied from a number.
  *
@@ -203,15 +210,28 @@ export function paletteFromInks(inks) {
  * off rather than varied. Values are snapped to the dial's own step, so what
  * is shown is exactly what is drawn.
  *
+ * A dial marked `vary: false` is not a dial but a choice -- which sheet of a
+ * scene, which of its layouts -- and a different choice is a different picture
+ * rather than a variation of this one. Such a dial keeps the value it is
+ * `held` at, or ships with. Before this, a new variation of a picture on a
+ * scene's second sheet landed on its first one in six, and never reached a
+ * third.
+ *
  * @param {object} scene   a scene, with optional `params`
  * @param {number} seed
  * @param {number} [spread] 0 keeps the defaults, 1 is the usual reach
+ * @param {object} [held]   current values, for the dials that do not vary
  */
-export function variedParams(scene, seed, spread = 1) {
+export function variedParams(scene, seed, spread = 1, held = {}) {
   const out = {};
   const specs = (scene && scene.params) || {};
   const rnd = rngOf((Number(seed) ^ 0x5bd1e995) >>> 0);
   for (const [name, spec] of Object.entries(specs)) {
+    if (spec.vary === false) {
+      const h = Number(held[name]);
+      out[name] = Number.isFinite(h) ? Math.max(spec.min, Math.min(spec.max, h)) : spec.default;
+      continue;
+    }
     const range = spec.max - spec.min;
     const d = Math.max(spec.min, Math.min(spec.max, spec.default));
     const t = rnd() + rnd() - 1;

@@ -32,13 +32,10 @@ import {
   animateScene,
   paletteFromInks,
   mediumOf,
+  workSettings,
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { store } from './store.js';
-
-/** The Look panel's pace steps, as multipliers, by index. */
-const PACE = [0.25, 0.5, 0.75, 1, 1.3, 1.7];
-const PACE_WORDS = ['very slow', 'slow', 'unhurried', 'real time', 'lively', 'brisk'];
 
 const TOUR_NOTES = {
   0: 'Each work stays until you choose another.',
@@ -74,18 +71,18 @@ export function setupWorks({
   const heightOf = (card) => (card.classList.contains('featured') ? 168 : 116);
 
   const optionsFor = (w, cw, h) => {
-    const scene = SCENES[w.scene];
+    const s = workSettings(w, SCENES);
     return {
       w: cw,
       h,
-      palette: PALETTES[w.palette].colors,
+      palette: PALETTES[s.palette].colors,
       shape: canvas.shape,
       richness: canvas.richness,
       depth: canvas.depth,
-      params: { ...Object.fromEntries(Object.entries(scene.params || {}).map(([k, d]) => [k, d.default])), ...(w.dials || {}) },
-      finish: w.finish,
-      mat: w.mat,
-      ground: w.ground,
+      params: s.params,
+      finish: s.finish,
+      mat: s.mat,
+      ground: s.ground,
       pool,
     };
   };
@@ -402,21 +399,22 @@ export function setupWorks({
     if (!w) return;
     // A work is a fixed composition: left rotating, it would last until the
     // next change of palette or scene and then quietly stop being itself.
+    const s = workSettings(w, SCENES);
     look.selectRotate(0);
     look.selectSceneRotate(0);
-    look.selectScene(w.scene);
-    // The work's own dials, and only those: whatever was left turned on this
-    // scene by hand would otherwise hang inside somebody else's composition.
-    canvas.resetParams(w.scene);
-    for (const [k, v] of Object.entries(w.dials || {})) canvas.setParam(k, v, w.scene);
-    look.selectPalette(w.palette);
-    look.selectFinish(w.finish);
-    look.selectGround(w.ground);
-    look.selectMat(w.mat);
-    look.selectGrain(w.grain);
-    look.selectPace(w.pace);
-    look.selectLiving(w.living);
-    selectSpace(w.space);
+    look.selectScene(s.scene);
+    // Every dial of the scene, the work's own on top: whatever was left turned
+    // on this scene by hand would otherwise hang inside somebody else's
+    // composition. In one go, so the scene starts once.
+    canvas.setParams(s.params, s.scene);
+    look.selectPalette(s.palette);
+    look.selectFinish(s.finish);
+    look.selectGround(s.ground);
+    look.selectMat(s.mat);
+    look.selectGrain(s.grain);
+    look.selectPace(s.paceStep);
+    look.selectLiving(s.living);
+    selectSpace(s.space);
     store.set('work', name);
     refresh();
     onChange();
@@ -439,18 +437,22 @@ export function setupWorks({
 
   /** Which work, if any, the page is showing now. */
   function current() {
-    for (const [name, w] of Object.entries(WORKS)) {
+    for (const name of Object.keys(WORKS)) {
+      const s = workSettings(name, SCENES);
       if (
-        canvas.sceneName === w.scene &&
-        canvas.paletteName === w.palette &&
-        canvas.finish === w.finish &&
-        canvas.ground === w.ground &&
-        canvas.mat === w.mat &&
-        Boolean(canvas.grain) === Boolean(w.grain) &&
-        Math.abs(canvas.pace - PACE[w.pace]) < 1e-6 &&
-        canvas.living === w.living &&
-        getKit() === w.kit &&
-        getSpace() === w.space
+        canvas.sceneName === s.scene &&
+        canvas.paletteName === s.palette &&
+        canvas.finish === s.finish &&
+        canvas.ground === s.ground &&
+        canvas.mat === s.mat &&
+        Boolean(canvas.grain) === s.grain &&
+        Math.abs(canvas.pace - s.pace) < 1e-6 &&
+        canvas.living === s.living &&
+        getKit() === s.kit &&
+        getSpace() === s.space &&
+        // The dials too: a work on a scene's second sheet is not the work on
+        // its first, and a dial turned by hand is no longer the work.
+        Object.entries(s.params).every(([k, v]) => canvas.param(k, s.scene) === v)
       ) return name;
     }
     return null;

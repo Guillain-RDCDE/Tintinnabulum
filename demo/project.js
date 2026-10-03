@@ -30,7 +30,7 @@
 import { parseColor, lightnessOf } from '../src/visual/color.js';
 import { parseShow, parseHours, showAt, isOpen, untilOpen, formatClock } from '../src/show.js';
 import {
-  CanvasSink, PALETTES, WORKS, SCENES, Mapper, normalize, mediumOf, drawQr,
+  CanvasSink, PALETTES, WORKS, SCENES, Mapper, normalize, mediumOf, workSettings, drawQr,
   FINISHES, GROUNDS, MATS, KITS, LIVING,
   wikipedia, bitcoin, coinbase, earthquakes, bluesky, github, noaaAlerts, hackerNews, randomSource,
 } from '../src/index.js';
@@ -172,12 +172,15 @@ const toggleCartel = () => {
 function showWork(name) {
   const w = WORKS[name];
   if (!w || !SCENES[w.scene]) return false;
-  if (PALETTES[w.palette]) dressCartel(PALETTES[w.palette].colors);
+  const s = workSettings(w, SCENES);
+  if (PALETTES[s.palette]) dressCartel(PALETTES[s.palette].colors);
+  // Every dial of the scene, not only the work's own: on a programme that
+  // steps from one work to another on the same scene, the first work's sheet
+  // otherwise stayed up under the second work's label.
   applySettings({
-    scene: w.scene, palette: w.palette, finish: w.finish, ground: w.ground,
-    mat: w.mat, grain: Boolean(w.grain), living: w.living,
-    pace: [0.25, 0.5, 0.75, 1, 1.3, 1.7][w.pace] ?? 1,
-    params: { [w.scene]: { ...(w.dials || {}) } },
+    scene: s.scene, palette: s.palette, finish: s.finish, ground: s.ground,
+    mat: s.mat, grain: s.grain, living: s.living, pace: s.pace,
+    params: { [s.scene]: s.params },
   });
   return true;
 }
@@ -271,11 +274,8 @@ function applySettings(s) {
   if (typeof s.living === 'string' && s.living !== sink.living) sink.setLiving(s.living);
   if (s.palette && PALETTES[s.palette]) dressCartel(PALETTES[s.palette].colors);
   if (s.params) {
-    for (const [scene, dials] of Object.entries(s.params)) {
-      for (const [name, value] of Object.entries(dials)) sink.setParam(name, value, scene);
-    }
-    // A dial that rebuilds has to take effect on the scene that is showing.
-    sink._initScene();
+    // All of a scene's dials in one go, and one restart of the scene showing.
+    for (const [scene, dials] of Object.entries(s.params)) sink.setParams(dials, scene);
   }
 }
 

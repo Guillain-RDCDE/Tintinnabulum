@@ -115,7 +115,7 @@ export const RULED_SCENES = {
     positional: true,
     preview: { frames: 200, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: cells, stack', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: cells, stack', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       columns: { label: 'How many columns', min: 3, max: 10, step: 1, default: 7, rebuild: true },
       hatch: { label: 'How close the lines', min: 0.5, max: 2, step: 0.05, default: 1 },
       rules: { label: 'How much of the ruled grid shows', min: 0, max: 1, step: 0.02, default: 0.5 },
@@ -443,7 +443,7 @@ export const RULED_SCENES = {
     positional: true,
     preview: { frames: 200, dt: 50 },
     params: {
-      figure: { label: 'Which figure: squares, letters, mesh', min: 0, max: 2, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which figure: squares, letters, mesh', min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
       grid: { label: 'How many squares across', min: 1, max: 6, step: 1, default: 3, rebuild: true },
       passes: { label: 'How many times an event draws it', min: 1, max: 12, step: 1, default: 5 },
       disorder: { label: 'How far out of true', min: 0.2, max: 3, step: 0.05, default: 1 },

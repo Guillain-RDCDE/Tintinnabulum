@@ -236,7 +236,7 @@ export const PAINTER_SCENES = {
     positional: false,
     note: "In the spirit of Mark Rothko's colour-field paintings: two or three soft rectangles hovering on a coloured ground, their edges feathered so they seem to breathe rather than sit. Busy moments brighten a field; quiet ones let it sink back. The second sheet is a single great field in pastel on pale paper, a cooler colour rubbed in low across it where events fall, and the titles of the last few typed underneath like a poem.",
     params: {
-      figure: { label: 'Which sheet: fields, pastel', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: fields, pastel', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       bands: { label: 'Fields', min: 2, max: 3, step: 1, default: 2 },
       soft: { label: 'Softness', min: 2, max: 40, step: 1, default: 16 },
     },

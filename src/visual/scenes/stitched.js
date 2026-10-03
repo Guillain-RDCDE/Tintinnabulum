@@ -243,7 +243,7 @@ export const STITCHED_SCENES = {
     positional: true,
     preview: { frames: 120, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: stitches, bunting', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: stitches, bunting', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       rows: { label: 'How many rows', min: 12, max: 60, step: 1, default: 36, rebuild: true },
       keep: { label: 'How many stitches before the oldest are picked up', min: 10, max: 200, step: 1, default: 60 },
       run: { label: 'How long a staircase a large event drops', min: 1, max: 8, step: 1, default: 3 },
@@ -360,11 +360,11 @@ export const STITCHED_SCENES = {
     positional: true,
     preview: { frames: 140, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: meshes, stripes', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: meshes, stripes', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       lattice: { label: 'How fine the lattice of blocks', min: 6, max: 20, step: 1, default: 12, rebuild: true },
       fill: { label: 'How much flat colour, on the stripes', min: 0, max: 1, step: 0.02, default: 0.55, rebuild: true },
       black: { label: 'How much black, on the stripes', min: 0, max: 1, step: 0.02, default: 0.25, rebuild: true },
-      tone: { label: 'Lines in ink or in the colour, on the stripes', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      tone: { label: 'Lines in ink or in the colour, on the stripes', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       mesh: { label: 'How fine the mesh', min: 0.5, max: 2, step: 0.05, default: 1, rebuild: true },
       accent: { label: 'How much of the accent colour', min: 0, max: 1, step: 0.02, default: 0.3 },
       colour: { label: 'How much colour from the event', min: 0, max: 1, step: 0.02, default: 0 },

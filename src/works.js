@@ -538,6 +538,41 @@ export const WORK_PACE = [0.25, 0.5, 0.75, 1, 1.3, 1.7];
 const PACE_WORDS = ['very slow', 'slow', 'unhurried', 'real time', 'lively', 'brisk'];
 
 /**
+ * Everything a work sets, resolved, so that every place that hangs a work --
+ * the Gallery, its cards, the bench, the projected wall -- hangs the same one.
+ *
+ * The dials come back complete: every dial of the scene at its default, with
+ * the work's own on top. That matters more than it looks. A wall stepping from
+ * one work to the next on the same scene used to apply only the new work's
+ * dials, and so kept the old work's sheet under the new work's label.
+ *
+ * @param {object|string} work   a work, or its key
+ * @param {object} scenes        the scene registry, passed in as mediumOf has it
+ */
+export function workSettings(work, scenes) {
+  const w = typeof work === 'string' ? WORKS[work] : work;
+  if (!w) return null;
+  const scene = scenes[w.scene] || {};
+  const params = {};
+  for (const [name, spec] of Object.entries(scene.params || {})) params[name] = spec.default;
+  Object.assign(params, w.dials || {});
+  return {
+    scene: w.scene,
+    palette: w.palette,
+    kit: w.kit,
+    space: w.space,
+    finish: w.finish,
+    ground: w.ground,
+    mat: w.mat,
+    grain: Boolean(w.grain),
+    living: w.living,
+    paceStep: w.pace,
+    pace: WORK_PACE[w.pace] ?? 1,
+    params,
+  };
+}
+
+/**
  * The line under a title, the way a museum label gives the medium.
  *
  * It lives here rather than in the panel that first needed it, because the

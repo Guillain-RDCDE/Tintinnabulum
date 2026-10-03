@@ -611,7 +611,7 @@ export const PLOTTED_SCENES = {
     positional: true,
     preview: { frames: 180, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: construction, horizon', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: construction, horizon', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       pitch: { label: 'How close the hatching', min: 0.6, max: 2, step: 0.05, default: 1 },
       tremor: { label: 'How much the pen wanders', min: 0, max: 2, step: 0.05, default: 1 },
       colour: { label: 'How much of the red pen', min: 0, max: 1, step: 0.02, default: 0.6 },
@@ -688,7 +688,7 @@ export const PLOTTED_SCENES = {
     positional: true,
     preview: { frames: 160, dt: 50 },
     params: {
-      figure: { label: 'Which sheet: cut, ruled, quilt', min: 0, max: 2, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: cut, ruled, quilt', min: 0, max: 2, step: 1, default: 0, rebuild: true, vary: false },
       columns: { label: 'How many columns', min: 4, max: 12, step: 1, default: 7, rebuild: true },
       pitch: { label: 'How close the ruling', min: 0.6, max: 2, step: 0.05, default: 1, rebuild: true },
       holes: { label: 'How many discs', min: 0, max: 1, step: 0.02, default: 0.45 },

@@ -322,8 +322,8 @@ export const PRINTED_SCENES = {
     positional: true,
     preview: { frames: 200, dt: 45 },
     params: {
-      figure: { label: 'Which sheet: sentence, hex', min: 0, max: 1, step: 1, default: 0, rebuild: true },
-      dress: { label: 'How the hex is dressed: plain, repeats, chips, shape, blocks', min: 0, max: 4, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: sentence, hex', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
+      dress: { label: 'How the hex is dressed: plain, repeats, chips, shape, blocks', min: 0, max: 4, step: 1, default: 0, rebuild: true, vary: false },
       size: { label: 'Size of the type', min: 0.5, max: 2.5, step: 0.05, default: 1, rebuild: true },
       band: { label: 'How wide the breakdown', min: 0.05, max: 1, step: 0.02, default: 0.3 },
       drift: { label: 'How fast the band moves', min: 0, max: 3, step: 0.05, default: 1 },

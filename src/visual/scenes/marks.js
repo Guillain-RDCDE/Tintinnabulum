@@ -55,7 +55,7 @@ export const MARK_SCENES = {
     label: 'Constellation',
     note: 'Events become stars and join to their neighbours. Bursts of activity draw themselves as clusters. The second sheet is a molecule: targets of two or three nested colours, some with a thin halo, set apart from one another and joined by solid or dotted bonds -- a few pairs, or a whole network. Every event re-colours a target, sets a new one down and bonds it, or rings one with a halo.',
     params: {
-      figure: { label: 'Which sheet: stars, molecule', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: stars, molecule', min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       count: { label: 'How many targets', min: 30, max: 160, step: 1, default: 72, rebuild: true },
       bonds: { label: 'How many bonds', min: 0, max: 1, step: 0.02, default: 0.6 },
       halos: { label: 'How many halos', min: 0, max: 1, step: 0.02, default: 0.24 },

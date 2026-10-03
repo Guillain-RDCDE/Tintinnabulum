@@ -730,6 +730,19 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
     }
   }
   ok('every work names things that exist', broken.length === 0, broken.join(', ') || `${Object.keys(WORKS).length} works`);
+  // What every place that hangs a work hangs: the whole set of dials, so a
+  // work on a scene's first sheet never inherits the sheet of the one before.
+  const unresolved = [];
+  for (const [name, w] of Object.entries(WORKS)) {
+    const s = lib.workSettings(name, SCENES);
+    for (const k of Object.keys((SCENES[w.scene] && SCENES[w.scene].params) || {})) if (!(k in s.params)) unresolved.push(`${name} lacks ${k}`);
+    for (const [k, v] of Object.entries(w.dials || {})) if (s.params[k] !== v) unresolved.push(`${name}.${k}`);
+    if (Math.abs(s.pace - lib.WORK_PACE[w.pace]) > 1e-9) unresolved.push(`${name}.pace`);
+  }
+  ok('a work resolves to every dial of its scene, its own on top', unresolved.length === 0, unresolved.join(', ') || `${Object.keys(WORKS).length} works`);
+  const onSheet = lib.workSettings('totem', SCENES).params.figure;
+  const onFirst = lib.workSettings('atelier', SCENES).params.figure;
+  ok('two works on one scene resolve to their own sheets', onSheet === 1 && onFirst === 0, `totem ${onSheet}, atelier ${onFirst}`);
   // A room named for its light must hang works in that light: a night room on
   // a light palette, or a dawn room on a dark one, is a label that lies.
   const wrongLight = Object.entries(WORKS).filter(([, w]) => {
@@ -867,6 +880,21 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('every varied dial stays within its range', outside === 0, `outside=${outside}`);
   ok('every varied dial lands on its own step', unstepped === 0, `unstepped=${unstepped}`);
   ok('a variation never switches a dial off', switchedOff === 0, `switchedOff=${switchedOff}`);
+  // A dial that chooses a sheet is a different picture, not a variation.
+  let drifted = 0;
+  let lost = 0;
+  let choices = 0;
+  for (const scene of Object.values(m.SCENES)) {
+    for (const [k, spec] of Object.entries(scene.params || {})) {
+      if (spec.vary !== false) continue;
+      choices++;
+      for (let s = 1; s <= 40; s++) {
+        if (m.variedParams(scene, s)[k] !== spec.default) drifted++;
+        if (m.variedParams(scene, s, 1, { [k]: spec.max })[k] !== spec.max) lost++;
+      }
+    }
+  }
+  ok('a dial that chooses a sheet is never varied, and keeps the sheet it is held on', choices > 0 && drifted === 0 && lost === 0, `${choices} choices, drifted=${drifted} lost=${lost}`);
   ok('the same number varies the dials the same way', unstable === 0);
 
   for (const name of ['constellation', 'cutpaper', 'emergence', 'lanes', 'meshes', 'lineage', 'orbs', 'tartan', 'peals', 'scanlines', 'spindles', 'lattice', 'desordres', 'aura', 'worlds', 'benday', 'rise', 'frost', 'fracture', 'asemic', 'collapse', 'spectrogram', 'groove']) {

@@ -465,6 +465,28 @@ export class CanvasSink {
     return this;
   }
 
+  /**
+   * Turn several dials at once, and rebuild once.
+   *
+   * A work sets every dial of its scene. Set one at a time, each rebuild dial
+   * restarted the scene -- six starts for a work with four dials -- and the
+   * picture between starts was a composition nobody asked for.
+   */
+  setParams(values, sceneName = this.sceneName) {
+    const specs = (SCENES[sceneName] || {}).params || {};
+    let rebuild = false;
+    for (const [name, value] of Object.entries(values || {})) {
+      const spec = specs[name];
+      const n = Number(value);
+      if (!spec || !Number.isFinite(n)) continue;
+      if (!this._params[sceneName]) this._params[sceneName] = {};
+      this._params[sceneName][name] = Math.max(spec.min, Math.min(spec.max, n));
+      if (spec.rebuild) rebuild = true;
+    }
+    if (rebuild && sceneName === this.sceneName) this._initScene();
+    return this;
+  }
+
   /** Put a scene's dials back where they started. */
   resetParams(sceneName = this.sceneName) {
     delete this._params[sceneName];
