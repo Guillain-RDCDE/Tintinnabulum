@@ -118,11 +118,15 @@ export const PAPER_SCENES = {
   // --- cutpaper ---------------------------------------------------------------------------
   cutpaper: {
     label: 'Cut paper',
-    note: 'Shapes cut out of coloured paper with a blade and butted up against one another until there is no ground left showing. Everything is flat -- no shadow, no edge, no depth of any kind -- so the picture holds together by how the pieces pack rather than by what is in front of what, and a face or a bird appears now and then out of nothing more than a half disc landing above two dots. Every event cuts one more piece and lays it down over whatever was there, which means the picture is the whole history of the cutting and the oldest of it is buried. The second sheet is a totem: a standing figure cut in bands, every band a strip of triangles between two ragged edges, in red, blue, yellow, cream and black on a coloured ground, its outline jutting out in points here and there. A small event re-colours the triangle it falls on, a middling one its whole band, and a large one re-cuts the band so the figure changes shape.',
+    note: 'Shapes cut out of coloured paper with a blade and butted up against one another until there is no ground left showing. Everything is flat -- no shadow, no edge, no depth of any kind -- so the picture holds together by how the pieces pack rather than by what is in front of what, and a face or a bird appears now and then out of nothing more than a half disc landing above two dots. Every event cuts one more piece and lays it down over whatever was there, which means the picture is the whole history of the cutting and the oldest of it is buried. The second sheet is a totem: a standing figure cut in bands, every band a strip of triangles between two ragged edges, in red, blue, yellow, cream and black on a coloured ground, its outline jutting out in points here and there. A small event re-colours the triangle it falls on, a middling one its whole band, and a large one re-cuts the band so the figure changes shape. The third sheet is a collage of large sheets: rectangles cut from charcoal and a few colours, laid over one another on a module and turned together through an angle, the ground-coloured ones on top cutting the dark into frames and elbows. Every event lays one more sheet in the colour of its kind, so the commonest kind of event is the charcoal that carries the picture.',
     how: 'Every cut is aligned to a module, so pieces meet exactly and the mosaic never shows a seam of ground. A piece is a flat field of one colour, and on better than half of them a second shape -- half disc, quarter, wedge, stem -- is cut into the same box in another. The two neutrals of the palette carry most of the area and the categories punctuate it, which is the ratio the thing is built on. Struck onto a buffer and never redrawn.',
     preview: { frames: 220, dt: 45 },
     params: {
-      figure: { label: 'Which sheet: collage, totem', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      figure: { label: 'Which sheet: collage, totem, sheets', min: 0, max: 2, step: 1, default: 0, rebuild: true },
+      tilt: { label: 'How far the sheets are turned', min: 0, max: 40, step: 1, default: 16, rebuild: true },
+      scatter: { label: 'How freely each sheet is thrown', min: 0, max: 1, step: 0.02, default: 0, rebuild: true },
+      dark: { label: 'Ground: paper or dark', min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      edge: { label: 'How much the scissors wander', min: 0, max: 1, step: 0.02, default: 0.35, rebuild: true },
       scale: { label: 'Size of a piece', min: 0.5, max: 2.4, step: 0.05, default: 1, rebuild: true },
       colour: { label: 'How much colour against the neutrals', min: 0, max: 1, step: 0.02, default: 0.4 },
       faces: { label: 'How often an eye', min: 0, max: 1, step: 0.02, default: 0.22 },
@@ -130,9 +134,13 @@ export const PAPER_SCENES = {
     },
     init(api) {
       const s = api.scene;
-      s.figure = Math.max(0, Math.min(1, Math.round(api.param('figure') || 0)));
+      s.figure = Math.max(0, Math.min(2, Math.round(api.param('figure') || 0)));
       if (s.figure === 1) {
         raiseTotem(api);
+        return;
+      }
+      if (s.figure === 2) {
+        laySheets(api);
         return;
       }
       const m = Math.min(api.w, api.h);
@@ -147,6 +155,10 @@ export const PAPER_SCENES = {
       const s = api.scene;
       if (s.figure === 1) {
         if (s.levels) recutTotem(api, p.x, p.y, Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34))));
+        return;
+      }
+      if (s.figure === 2) {
+        if (s.sheets) dropSheet(api, p.x, p.y, Math.max(0, Math.min(1, p.r / (Math.min(api.w, api.h) * 0.34))), p);
         return;
       }
       if (!s.module || !s.bufCtx) return;
@@ -165,6 +177,10 @@ export const PAPER_SCENES = {
       const s = api.scene;
       if (s.figure === 1) {
         drawTotem(ctx, api);
+        return;
+      }
+      if (s.figure === 2) {
+        drawSheets(ctx, api);
         return;
       }
       const buf = scratch(api, 'buf');
@@ -916,4 +932,183 @@ function drawStairs(ctx, api) {
   ctx.restore();
   ctx.globalAlpha = 1;
   ctx.globalCompositeOperation = 'source-over';
+}
+
+// --- the sheets ---------------------------------------------------------------------------
+
+/**
+ * The colour a sheet is cut from. An event brings its own kind's colour from
+ * the palette, flat, so the picture is a census of the feed: the commonest
+ * kind is the charcoal that carries the sheet, the rare ones its accents.
+ */
+function sheetColour(s, api, p) {
+  if (Math.random() < 0.24) return s.paper;
+  const pal = api.palette;
+  // The commonest kind lays the charcoal; the rarer kinds their own colour,
+  // half the time, and charcoal otherwise -- so the accents stay accents
+  // even when the kinds arrive in equal numbers, and a real feed, where one
+  // kind dominates, comes out mostly dark with a few colours.
+  if (p && p.category && p.category !== 'user' && pal[p.category] && Math.random() < 0.5) return pal[p.category];
+  if (p) return s.dark;
+  return Math.random() < 0.8 ? s.dark : [pal.anon, pal.bot, pal.alert, pal.default][(Math.random() * 4) | 0] || s.dark;
+}
+
+/** A rectangle's outline, cut: points along each side nudged a hair in and out. */
+function cutOutline(x, y, w, h, wander, step) {
+  const pts = [];
+  const side = (x0, y0, x1, y1) => {
+    const len = Math.hypot(x1 - x0, y1 - y0);
+    const n = Math.max(1, Math.round(len / step));
+    const nx = -(y1 - y0) / (len || 1);
+    const ny = (x1 - x0) / (len || 1);
+    const phase = Math.random() * 6.28;
+    for (let i = 0; i < n; i++) {
+      const t = i / n;
+      const o = wander ? (Math.sin(phase + t * 9) * 0.6 + (Math.random() - 0.5) * 0.8) * wander : 0;
+      pts.push(x0 + (x1 - x0) * t + nx * o, y0 + (y1 - y0) * t + ny * o);
+    }
+  };
+  side(x, y, x + w, y);
+  side(x + w, y, x + w, y + h);
+  side(x + w, y + h, x, y + h);
+  side(x, y + h, x, y);
+  return pts;
+}
+
+/** A sheet of a size drawn from a few kinds: strip, block, slab, now and then a very large one. */
+function sheetOf(s, api, cx, cy, q, colour) {
+  const mod = s.mod;
+  const r = Math.random();
+  let w;
+  let h;
+  if (r < 0.25) {
+    // A strip: long and thin, lying or standing.
+    w = mod * (6 + Math.random() * 14);
+    h = mod * (0.4 + Math.random() * 1.6);
+  } else if (r < 0.85) {
+    w = mod * (3 + Math.random() * 7);
+    h = mod * (3 + Math.random() * 7);
+  } else {
+    w = mod * (9 + Math.random() * 10);
+    h = mod * (7 + Math.random() * 9);
+  }
+  // A colour is a smaller piece than the charcoal it punctuates.
+  const accent = colour !== s.dark && colour !== s.paper;
+  const grow = (0.6 + q * 1.1) * (accent ? 0.55 : 1);
+  w *= grow;
+  h *= grow;
+  if (r < 0.25 && Math.random() < 0.5) [w, h] = [h, w];
+  // On the module, so neighbouring sheets share their edges as the sheets do.
+  const snap = (v) => Math.round(v / mod) * mod;
+  w = Math.max(mod * 0.4, snap(w));
+  h = Math.max(mod * 0.4, snap(h));
+  const x = snap(cx - w / 2);
+  const y = snap(cy - h / 2);
+  const turn = s.scatter > 0 && Math.random() < s.scatter ? (Math.random() - 0.5) * 1.2 : 0;
+  return {
+    pts: cutOutline(x, y, w, h, s.wander, Math.max(6, mod * 0.9)),
+    cx: x + w / 2,
+    cy: y + h / 2,
+    turn,
+    colour,
+  };
+}
+
+/** Where a point of the canvas falls in the turned frame the sheets are laid in. */
+function toSheetFrame(s, x, y) {
+  const dx = x - s.ox;
+  const dy = y - s.oy;
+  const c = Math.cos(-s.angle);
+  const n = Math.sin(-s.angle);
+  return [s.ox + dx * c - dy * n, s.oy + dx * n + dy * c];
+}
+
+function laySheets(api) {
+  const s = api.scene;
+  const m = Math.min(api.w, api.h);
+  const pal = api.palette;
+  const darkGround = Math.round(api.param('dark')) === 1;
+  s.dark = darkGround ? pal.background : pal.user || pal.default;
+  s.paper = darkGround ? pal.user || pal.default : pal.background;
+  s.ground = darkGround ? pal.user || pal.default : pal.background;
+  // The dark ground is the charcoal itself; the paper laid on it is the
+  // palette's ground colour. Swapped, the same collage reads as its negative.
+  if (darkGround) {
+    s.ground = pal.user || pal.default;
+    s.dark = pal.background;
+  }
+  s.mod = m / 34;
+  const tilt = (api.param('tilt') * Math.PI) / 180;
+  s.angle = (Math.random() < 0.5 ? -1 : 1) * tilt;
+  s.scatter = api.param('scatter');
+  s.wander = api.param('edge') * m * 0.0035;
+  s.ox = api.w / 2;
+  s.oy = api.h / 2;
+  s.sheets = [];
+  const reach = Math.hypot(api.w, api.h) / 2;
+  for (let i = 0; i < 46; i++) {
+    const cx = s.ox + (Math.random() - 0.5) * reach * 2;
+    const cy = s.oy + (Math.random() - 0.5) * reach * 2;
+    s.sheets.push(sheetOf(s, api, cx, cy, Math.random() * 0.8, sheetColour(s, api, null)));
+  }
+  s.dirty = true;
+  s.lastAt = 0;
+  s.ambient = 0;
+}
+
+function dropSheet(api, x, y, q, p) {
+  const s = api.scene;
+  const [fx, fy] = toSheetFrame(s, x, y);
+  s.sheets.push(sheetOf(s, api, fx, fy, q, sheetColour(s, api, p)));
+  const most = Math.max(30, Math.min(140, Math.floor((api.budget || 800) / 3)));
+  if (s.sheets.length > most) s.sheets.splice(0, s.sheets.length - most);
+  s.dirty = true;
+  s.lastAt = api.now;
+}
+
+function drawSheets(ctx, api) {
+  const s = api.scene;
+  if (!s.sheets) return;
+  if (api.now - s.lastAt > 2500) {
+    s.ambient += api.dt;
+    if (s.ambient > 4000) {
+      s.ambient = 0;
+      const [fx, fy] = [s.ox + (Math.random() - 0.5) * api.w, s.oy + (Math.random() - 0.5) * api.h];
+      s.sheets.push(sheetOf(s, api, fx, fy, 0, Math.random() < 0.5 ? s.paper : s.dark));
+      if (s.sheets.length > 140) s.sheets.shift();
+      s.dirty = true;
+    }
+  } else {
+    s.ambient = 0;
+  }
+  const buf = scratch(api, 'buf');
+  const b = s.bufCtx;
+  if (s.dirty) {
+    b.save();
+    b.fillStyle = s.ground;
+    b.fillRect(0, 0, api.w, api.h);
+    b.translate(s.ox, s.oy);
+    b.rotate(s.angle);
+    b.translate(-s.ox, -s.oy);
+    for (const sh of s.sheets) {
+      b.save();
+      if (sh.turn) {
+        b.translate(sh.cx, sh.cy);
+        b.rotate(sh.turn);
+        b.translate(-sh.cx, -sh.cy);
+      }
+      b.fillStyle = sh.colour;
+      b.beginPath();
+      for (let i = 0; i < sh.pts.length; i += 2) {
+        if (i) b.lineTo(sh.pts[i], sh.pts[i + 1]);
+        else b.moveTo(sh.pts[i], sh.pts[i + 1]);
+      }
+      b.closePath();
+      b.fill();
+      b.restore();
+    }
+    b.restore();
+    s.dirty = false;
+  }
+  ctx.drawImage(buf, 0, 0);
 }

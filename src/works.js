@@ -371,6 +371,28 @@ export const WORKS = {
     grain: true, mat: 'gallery', pace: SLOW, dials: { figure: 1 },
     cartel: 'A standing figure cut in bands, every band a strip of triangles in red, blue, yellow, cream and black, its outline jutting out into points here and there, on a ground of ochre. A small event re-colours the triangle it falls on, a middling one its whole band, a large one cuts the band again and the figure changes shape.',
   }),
+  // Four collages of large cut sheets, each sheet the colour of the kind of
+  // event that laid it: the commonest kind is the charcoal.
+  pinned: work('Daylight', 'calm', 'Sheets pinned askew', {
+    scene: 'cutpaper', palette: 'atelier', kit: 'clay', space: 'room',
+    mat: 'gallery', pace: UNHURRIED, dials: { figure: 2, tilt: 16 },
+    cartel: 'Large sheets of charcoal laid over one another on cream and turned together a few degrees, the cream ones laid on top cutting the dark into frames and elbows, with small pieces of red, blue, yellow and sage. Every event lays one more sheet, cut from the colour of its kind: the commonest kind is the charcoal that carries the picture.',
+  }),
+  squared: work('Daylight', 'calm', 'Sheets laid square', {
+    scene: 'cutpaper', palette: 'salon', kit: 'koto', space: 'room',
+    mat: 'gallery', pace: SLOW, dials: { figure: 2, tilt: 0 },
+    cartel: 'The same collage laid square to the wall, charcoal and cream with old rose, sage and ochre, the sheets sharing their edges on a module. A quiet feed lays charcoal; a varied one brings its colours in.',
+  }),
+  steep: work('Dawn', 'lively', 'Sheets on the slant', {
+    scene: 'cutpaper', palette: 'atelier', kit: 'marimba', space: 'room',
+    mat: 'gallery', pace: REAL_TIME, dials: { figure: 2, tilt: 30 },
+    cartel: 'Charcoal and cream sheets turned steeply together, strips and slabs locking into one another along the slant, with the primaries in small pieces. Every event is a sheet, laid where it fell.',
+  }),
+  thrown: work('Dusk', 'lively', 'Sheets thrown', {
+    scene: 'cutpaper', palette: 'salon', kit: 'gongs', space: 'hall',
+    mat: 'gallery', pace: REAL_TIME, dials: { figure: 2, tilt: 0, scatter: 0.8, dark: 1 },
+    cartel: 'The negative: cream sheets thrown down at every angle on charcoal, with red and a little sage and ochre among them. Every event throws one more, in the colour of its kind.',
+  }),
   // Three molecules of nested targets, a few pairs bonded or a whole network.
   pairs: work('Night', 'calm', 'Targets in the dark', {
     scene: 'constellation', palette: 'ink', kit: 'glassy', space: 'room',
