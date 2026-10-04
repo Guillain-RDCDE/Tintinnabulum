@@ -528,10 +528,10 @@ ear is listening for, and on a long-ringing bell that is a beat you can count.
 
 ### Palettes
 
-Eighty, selectable at runtime and stored as plain data in
+Ninety-four, selectable at runtime and stored as plain data in
 [`src/visual/palettes.js`](../src/visual/palettes.js).
 
-Eighty swatches in a single grid is eighty swatches: you read the first row,
+Ninety-four swatches in a single grid is ninety-four swatches: you read the first row,
 decide it is a lot, and take the default. So they are offered **grouped, two
 ways**, because there are two questions anybody actually asks of a palette.
 
@@ -544,9 +544,9 @@ changed, offered fifteen times.
 
 | Band | |
 |---|---|
-| **Paper** — 20 | Daylight, Papyrus, Chalk, Linen, Porcelain, Mint, Blush, Newsprint, Vellum, Ice, Seafoam, Shell, Oyster, Periwinkle, Straw, Rosewater, Celadon, Bone, Cobweb, Apricot |
-| **Twilight** — 23 | Slate, Terracotta, Sage, Dusk, Moss, Denim, Ochre, Pewter, Brick, Olive, Lagoon, Mulberry, Storm, Cedar, Fern, Indigo, Rosewood, Basalt, Marsh, Copper, Harbour, Heather, Tundra |
-| **Night** — 37 | Nocturne, Bronze, Aurora, Ember, Ultraviolet, Blueprint, Sakura, Nordic, Marine, Lacquer, Solar, Sunset, Neon, Rust, Monochrome, Cobalt, Oxblood, Ink, Abyss, Amber, Coal, Obsidian, Bottle, Carbon, Prussian, Wine, Espresso, Gunmetal, Deep water, Blackcurrant, Pinewood, Ironwork, Dark ochre, Midnight, Forge, Night slate, Night sea |
+| **Paper** — 31 | Daylight, Papyrus, Chalk, Linen, Porcelain, Mint, Blush, Newsprint, Vellum, Ice, Seafoam, Shell, Oyster, Periwinkle, Straw, Rosewater, Celadon, Bone, Atelier, Salon, Citron, Confetti, Sorbet, Cabana, Awning, Orchard, Marquee, Kiosk, Guava, Cobweb, Apricot |
+| **Twilight** — 24 | Slate, Terracotta, Sage, Dusk, Moss, Denim, Ochre, Pewter, Brick, Suede, Olive, Lagoon, Mulberry, Storm, Cedar, Fern, Indigo, Rosewood, Basalt, Marsh, Copper, Harbour, Heather, Tundra |
+| **Night** — 39 | Nocturne, Bronze, Aurora, Ember, Ultraviolet, Blueprint, Sakura, Nordic, Marine, Lacquer, Solar, Sunset, Neon, Rust, Monochrome, Cobalt, Oxblood, Ink, Abyss, Amber, Coal, Wasp, Regatta, Obsidian, Bottle, Carbon, Prussian, Wine, Espresso, Gunmetal, Deep water, Blackcurrant, Pinewood, Ironwork, Dark ochre, Midnight, Forge, Night slate, Night sea |
 
 **What colour is it.** Declared, and deliberately so. Deriving it was tried and
 is worse than it sounds: a rule reading the ground's hue calls every near-black
@@ -558,13 +558,13 @@ numbers that do not know.
 
 | | |
 |---|---|
-| **Blue** — 20 | Nocturne, Blueprint, Nordic, Marine, Solar, Porcelain, Slate, Dusk, Cobalt, Ice, Denim, Periwinkle, Storm, Indigo, Harbour, Prussian, Gunmetal, Midnight, Night slate, Night sea |
+| **Blue** — 22 | Nocturne, Blueprint, Nordic, Marine, Solar, Porcelain, Slate, Dusk, Cobalt, Ice, Denim, Periwinkle, Cabana, Regatta, Storm, Indigo, Harbour, Prussian, Gunmetal, Midnight, Night slate, Night sea |
 | **Teal** — 4 | Aurora, Abyss, Lagoon, Deep water |
-| **Green** — 10 | Sage, Mint, Moss, Seafoam, Celadon, Olive, Fern, Marsh, Bottle, Pinewood |
-| **Amber** — 14 | Bronze, Rust, Papyrus, Linen, Vellum, Ochre, Amber, Shell, Straw, Apricot, Cedar, Copper, Espresso, Dark ochre |
+| **Green** — 12 | Sage, Mint, Moss, Seafoam, Celadon, Awning, Kiosk, Olive, Fern, Marsh, Bottle, Pinewood |
+| **Amber** — 17 | Bronze, Rust, Papyrus, Linen, Vellum, Ochre, Amber, Shell, Straw, Citron, Wasp, Orchard, Apricot, Cedar, Copper, Espresso, Dark ochre |
 | **Red** — 12 | Ember, Lacquer, Terracotta, Oxblood, Blush, Brick, Rosewater, Mulberry, Rosewood, Wine, Blackcurrant, Forge |
-| **Rose** — 5 | Ultraviolet, Sakura, Sunset, Neon, Heather |
-| **Neutral** — 15 | Daylight, Monochrome, Chalk, Newsprint, Pewter, Ink, Coal, Oyster, Bone, Cobweb, Basalt, Tundra, Obsidian, Carbon, Ironwork |
+| **Rose** — 6 | Ultraviolet, Sakura, Sunset, Neon, Guava, Heather |
+| **Neutral** — 21 | Daylight, Monochrome, Chalk, Newsprint, Pewter, Ink, Coal, Oyster, Bone, Atelier, Salon, Confetti, Sorbet, Marquee, Suede, Cobweb, Basalt, Tundra, Obsidian, Carbon, Ironwork |
 
 **The last forty were not chosen by eye.** A search took each ground and
 returned the *quietest* quartet clearing the suite's two rules, which is the
@@ -951,6 +951,31 @@ the notes. Nobody living is imitated.
 | **Memphis** | Squiggles, confetti and terrazzo chips with black outlines. |
 | **Quiet grid** | After Agnes Martin: hand-wavering pencil lines and bands of colour you feel more than see. |
 | **Drip painting** | After Pollock: flicks of paint that loop, thin and spatter, piling up. |
+
+#### Converging stripes
+
+**Converging stripes** (`sheaf`, on the *Painting* shelf, in
+[`graphic.js`](../src/visual/scenes/graphic.js)) is a sign painter's striping
+pulled out of true: flat stripes that are rays from one vanishing point set on
+the diagonal a few sheet widths beyond the top left corner, so they read as
+parallel and are not -- shallow towards the top right, steep towards the foot,
+and drawn together along the diagonal into a seam of hairlines. Above the seam
+the stripes keep to a unit and its doubles; below it they are cut freely, with
+a broad band now and then. The inks are the palette's ground and then `user`,
+`anon`, `bot` and `alert`, as many as the **inks** dial asks for, the ground
+most often and laid widest; each ink has a deeper and a lighter twin, and a
+sheaf cut from one ink becomes seven depths of it. An event re-inks the stripe
+it falls on, the new colour running out along the stripe both ways from the
+point struck; a middling one re-inks a run a beat apart, and a large one cuts
+its stripe into several, up to a ceiling. The picture is a sorted list of
+wedges, so finding the stripe under an event is a search on its angle and a
+frame is one filled path per stripe.
+
+Nine works hang on it, one per striping, each in a palette read off a finished
+print: **Wasp**, **Cabana**, **Awning**, **Regatta**, **Orchard**,
+**Marquee**, **Suede**, **Kiosk** and **Guava**. Those palettes list their
+inks in the order the sheaf takes them, so the colours a striping is known by
+come first.
 
 #### Nature and night
 

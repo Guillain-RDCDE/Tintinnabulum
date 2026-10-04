@@ -451,6 +451,54 @@ export const WORKS = {
     grain: true, mat: 'gallery', pace: REAL_TIME, dials: { figure: 2, layout: 3 },
     cartel: 'Bars turned on the diagonal and laid either side of a straight gap, their reach shaped into a lozenge; veils and fine rulings in coral, peach, ochre and slate. Every event lays a step again where it falls.',
   }),
+  // Nine stripings of one sheaf: stripes fanned from a point beyond the top
+  // left corner and drawn together into a seam of hairlines on the diagonal,
+  // each hung in the palette it was read off.
+  sheafwasp: work('Night', 'lively', 'Warning stripe', {
+    scene: 'sheaf', palette: 'wasp', kit: 'steelpan', space: 'room',
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inks: 3, stripes: 24, seam: 7, tone: 0.4, drift: 0.26 },
+    cartel: 'Broad bands of black and a hot yellow with a cream between, all leaning the same way and none of them quite parallel: they open towards the top and close towards the foot, and along the diagonal they crowd into a seam of hairlines. Every event re-inks the band it falls on, the new colour running out along it from where it was struck.',
+  }),
+  sheafregatta: work('Night', 'calm', 'Racing colours', {
+    scene: 'sheaf', palette: 'regatta', kit: 'handbells', space: 'hall',
+    grain: true, mat: 'gallery', pace: SLOW, dials: { inks: 2, stripes: 64, seam: 14, tone: 0.8 },
+    cartel: 'Navy in three depths, cut across with yellow, the stripes fanning out from a point far off the corner so that the sheet seems to lean. Handbells in a hall; each event re-inks a stripe, and a large one cuts its stripe in pieces.',
+  }),
+  sheafcabana: work('Daylight', 'lively', 'Beach huts', {
+    scene: 'sheaf', palette: 'cabana', kit: 'marimba', space: 'room',
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inks: 4, stripes: 100, seam: 22 },
+    cartel: 'A hundred stripes in butter, ink, royal blue and sea blue, fine above the diagonal and freer below it, closing into a long seam of hairlines where the two halves meet. A marimba; every event re-inks the stripe it lands on, a middling one a run of them a beat apart.',
+  }),
+  sheafawning: work('Daylight', 'calm', 'The awning', {
+    scene: 'sheaf', palette: 'awning', kit: 'koto', space: 'room',
+    grain: true, mat: 'gallery', pace: UNHURRIED, dials: { inks: 2, stripes: 24, seam: 8, tone: 0.8 },
+    cartel: 'Green on cream and the green a shade deeper where the cloth is doubled, the stripes running down into a pale field at the foot. A koto in the next room; each event re-inks a stripe, slowly.',
+  }),
+  sheaforchard: work('Daylight', 'lively', 'Citrus', {
+    scene: 'sheaf', palette: 'orchard', kit: 'glassy', space: 'room',
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inks: 3, stripes: 26, seam: 8, tone: 0.7, drift: 0.3 },
+    cartel: 'Lemon, olive and orange laid edge to edge, the olive now and then a lighter, greener twin of itself. The stripes lean and gather into hairlines along the diagonal. Every event re-inks the stripe it falls on.',
+  }),
+  sheafmarquee: work('Daylight', 'calm', 'Show tent', {
+    scene: 'sheaf', palette: 'marquee', kit: 'chimes', space: 'room',
+    grain: true, mat: 'gallery', pace: SLOW, dials: { inks: 3, stripes: 22, seam: 6, tone: 0.9 },
+    cartel: 'Wide grey bands with navy and amber between them, and a black that is the navy taken further. Few stripes and broad ones, so a re-inked band changes the whole sheet. Wind chimes.',
+  }),
+  sheafkiosk: work('Daylight', 'lively', 'The kiosk', {
+    scene: 'sheaf', palette: 'kiosk', kit: 'musicbox', space: 'room',
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inks: 4, stripes: 80, seam: 16, tone: 0.1 },
+    cartel: 'Cream, black, bottle green and orange in eighty stripes, fanned from a point beyond the corner and gathered into a seam. A music box; every event re-inks the stripe it falls on, and a large one cuts it into several.',
+  }),
+  sheafsuede: work('Dusk', 'calm', 'Worn suede', {
+    scene: 'sheaf', palette: 'suede', kit: 'strings', space: 'room',
+    grain: true, mat: 'gallery', pace: SLOW, dials: { inks: 1, stripes: 110, seam: 18, tone: 0.9, drift: 0.1 },
+    cartel: 'One tan at seven depths, from bark to biscuit, in a hundred and ten fine stripes, so the sheet reads as a nap rather than a pattern. Plucked strings; each event turns one stripe a shade lighter or darker.',
+  }),
+  sheafguava: work('Dawn', 'calm', 'Guava', {
+    scene: 'sheaf', palette: 'guava', kit: 'chimes', space: 'room',
+    grain: true, mat: 'gallery', pace: UNHURRIED, dials: { inks: 1, stripes: 60, tone: 0.5, drift: 0.7 },
+    cartel: 'Coral turning to peach and back across sixty stripes, all one colour at different depths, the light ones warmer. Each event moves one stripe along that ramp, the new shade running out from where it fell.',
+  }),
   // Five sheets of hexadecimal: every event writes its own fingerprint into
   // the grid where it falls, and each sheet dresses the grid its own way.
   hexplain: work('Night', 'calm', 'Fingerprints', {

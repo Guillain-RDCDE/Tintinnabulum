@@ -1,16 +1,16 @@
 // Graphic scenes: the vocabulary of posters, prints and backgrounds.
 //
 // Four constructions every graphic designer reaches for -- the soft gradient,
-// op-art stripes pulled out of true, the dot screen of cheap colour printing
-// and counterchanged rings -- rebuilt so that the data does the pulling. Each
-// is cheap enough to run full screen, because each is drawn with what a canvas
-// does quickly: gradients, filled paths, and dots batched by colour.
+// the dot screen of cheap colour printing, counterchanged rings, and stripes
+// fanned out from a point beyond the edge of the sheet -- rebuilt so that the
+// data does the pulling. Each is cheap enough to run full screen, because each
+// is drawn with what a canvas does quickly: gradients, filled paths, and dots
+// batched by colour.
 
 import { noise2 } from './noise.js';
 import { toRgb, scratch, packRgba } from './paint.js';
-import { mixColors } from '../color.js';
-
-const TAU = Math.PI * 2;
+import { mixColors, parseColor, rgbToOklab, toOklch, fromOklch, toCss } from '../color.js';
+import { TAU, sizeOf, ambient, clampTo } from './shared.js';
 
 /** A colour at some opacity, whatever form it came in. */
 const alpha = (c, a) => {
@@ -241,4 +241,337 @@ export const GRAPHIC_SCENES = {
       }
     },
   },
+  sheaf: {
+    label: 'Converging stripes',
+    note: 'Stripes fanned from one point, as a sign painter rules them for an awning or a racing livery and an op-art canvas pulls them out of true. The stripes are angles, not positions: each is a wedge between two rays from one vanishing point set on the diagonal through the corner, and the whole picture is a list of those wedges, sorted, so finding the stripe under an event is a search on its angle. Widths are laid outward from the seam on either side, in units on one side and freely on the other, and every stripe takes an ink unlike its neighbour, the ground first and most often. Each ink also has a deeper and a lighter twin a little way off in OKLCH, so a black stripe is now and then a blacker one; with a single ink the twins become seven depths of it. A change is drawn as the old stripe still showing beyond a window that widens from the struck point, which is a pair of wedge segments, and nothing is struck onto a buffer. Every event re-inks the stripe it falls on, the new colour running out along it both ways from the point struck; a middling one re-inks a run, a beat apart, and a large one cuts its stripe into several.',
+    positional: true,
+    preview: { frames: 50, dt: 60 },
+    params: {
+      stripes: { label: 'How many stripes', min: 12, max: 140, step: 1, default: 48, rebuild: true },
+      seam: { label: 'Hairlines in the seam', min: 0, max: 40, step: 1, default: 16, rebuild: true },
+      inks: { label: 'How many inks', min: 1, max: 5, step: 1, default: 3, rebuild: true },
+      tone: { label: 'How far a stripe strays from its ink', min: 0, max: 1, step: 0.02, default: 0.3 },
+      drift: { label: 'How far it strays in hue', min: 0, max: 1, step: 0.02, default: 0.12 },
+      converge: { label: 'How hard the stripes converge', min: 0, max: 1, step: 0.02, default: 0.5, rebuild: true },
+    },
+    init: laySheaf,
+    event(p, api) {
+      const s = api.scene;
+      if (!s.stripes) return;
+      s.lastAt = api.now;
+      strikeSheaf(api, p);
+    },
+    frame: drawSheaf,
+  },
 };
+
+// --- the sheaf ------------------------------------------------------------------------
+
+/** The diagonal the seam runs along, and the vanishing point sits on. */
+const SEAM = Math.PI / 4;
+
+/** The inks a sheaf is cut from: the ground first, then the categories in order. */
+function sheafInks(api) {
+  const pal = api.palette;
+  const all = [pal.background, pal.user, pal.anon, pal.bot, pal.alert].filter(Boolean);
+  const n = clampTo(Math.round(api.param('inks')), 1, all.length);
+  return all.slice(0, n);
+}
+
+/** A colour moved in OKLCH lightness and hue, kept in gamut by giving up chroma. */
+function toneOf(c, dL, dh) {
+  const { r, g, b } = parseColor(c);
+  const o = toOklch(rgbToOklab({ r, g, b }));
+  return toCss(fromOklch({ L: clampTo(o.L + dL, 0.04, 0.98), C: o.C, h: o.h + dh }));
+}
+
+/**
+ * Every ink at each of its depths. Several inks: the ink, a deeper twin and a
+ * lighter one, which is what makes a sheet of black read as two blacks. One
+ * ink: seven depths of it, which is the whole picture when a sheaf is cut from
+ * a single colour. The seven reach further up than down -- a tan worn to
+ * biscuit more than to bark, a coral turning to peach -- and the hue moves
+ * mostly on the way up, so the light end warms and the dark end barely cools.
+ */
+function sheafShades(s, api) {
+  const tone = api.param('tone');
+  const drift = api.param('drift');
+  const key = s.inks.join() + '|' + tone + '|' + drift;
+  if (s.shadeKey === key) return s.shades;
+  s.shadeKey = key;
+  if (s.inks.length === 1) {
+    const steps = [];
+    for (let j = 0; j < 7; j++) {
+      const t = (j / 6) * 1.6 - 0.6;
+      steps.push(toneOf(s.inks[0], t * 0.19 * tone, t * drift * (t > 0 ? 0.6 : 0.2)));
+    }
+    s.shades = [steps];
+  } else {
+    s.shades = s.inks.map((c) => [c, toneOf(c, -0.11 * tone, drift * 0.35), toneOf(c, 0.08 * tone, -drift * 0.35)]);
+  }
+  return s.shades;
+}
+
+/** A depth for a stripe: mostly the ink itself when there are several. */
+function depthOf(s) {
+  if (s.inks.length === 1) return (Math.random() * 7) | 0;
+  const r = Math.random();
+  return r < 0.55 ? 0 : r < 0.85 ? 1 : 2;
+}
+
+/** An ink unlike `not`, the ground most often and each later ink less. */
+function inkUnlike(s, not) {
+  const n = s.inks.length;
+  if (n === 1) return 0;
+  let total = 0;
+  for (let i = 0; i < n; i++) if (i !== not) total += Math.pow(0.5, i);
+  let r = Math.random() * total;
+  for (let i = 0; i < n; i++) {
+    if (i === not) continue;
+    r -= Math.pow(0.5, i);
+    if (r <= 0) return i;
+  }
+  return n - 1 === not ? 0 : n - 1;
+}
+
+/** Ink and depth for the next stripe of a run, so that no two neighbours match. */
+function nextColour(s, prev) {
+  if (s.inks.length === 1) {
+    let lvl = depthOf(s);
+    if (prev && lvl === prev.lvl) lvl = (lvl + 1 + ((Math.random() * 6) | 0)) % 7;
+    return { ink: 0, lvl };
+  }
+  return { ink: inkUnlike(s, prev ? prev.ink : -1), lvl: depthOf(s) };
+}
+
+/**
+ * Stripes laid outward from the seam, each an ink and then a width, as an
+ * angle. Towards the top right a unit and its doubles, narrowing a little as
+ * they near the seam; towards the bottom left cut freely, smallest at the
+ * seam, with a broad band now and then. A stripe in the ground's own ink is
+ * laid wider, because the ground is what a striping is known by: the black of
+ * a black-and-yellow, the grey of a grey with navy and amber.
+ */
+function sideStripes(s, from, to, regular, prev) {
+  const out = [];
+  const dir = Math.sign(to - from);
+  let at = from;
+  while ((to - at) * dir > 0) {
+    const d = Math.abs(at - from);
+    const c = nextColour(s, prev);
+    let w;
+    if (regular) {
+      const r = Math.random();
+      const mult = r < 0.68 ? 1 : r < 0.88 ? 2 : r < 0.96 ? 3 : 4;
+      w = s.unit * mult * (0.62 + 0.38 * Math.min(1, d / (s.unit * 5)));
+    } else if (Math.random() < 0.06 && d > s.unit * 3) {
+      w = s.unit * (4 + Math.random() * 8);
+    } else {
+      w = s.unit * (0.25 + Math.random() * 1.15) * (0.3 + 0.7 * Math.min(1, d / (s.unit * 4)));
+    }
+    if (c.ink === 0 && s.inks.length > 1) w *= 1.25 + Math.random() * 0.9;
+    w = Math.max(s.hair, w);
+    out.push({ w, ...c });
+    prev = c;
+    at += w * dir;
+  }
+  return out;
+}
+
+function laySheaf(api) {
+  const s = api.scene;
+  const W = api.w;
+  const H = api.h;
+  const m = Math.min(W, H);
+  // The vanishing point, on the diagonal through the top left corner and a
+  // few sheet widths out: far enough that the stripes read as nearly parallel,
+  // near enough that they visibly are not.
+  s.D = m * 3.4 * Math.pow(2.5, 1 - 2 * api.param('converge'));
+  s.vx = -s.D * Math.cos(SEAM);
+  s.vy = -s.D * Math.sin(SEAM);
+  const angle = (x, y) => Math.atan2(y - s.vy, x - s.vx);
+  const reach = (x, y) => Math.hypot(x - s.vx, y - s.vy);
+  const lo = angle(W, 0);
+  const hi = angle(0, H);
+  s.r0 = reach(0, 0) - 2;
+  s.r1 = Math.max(reach(W, H), reach(W, 0), reach(0, H)) + 2;
+  const mid = reach(W / 2, H / 2);
+  // A hairline is a pixel or two wide in the middle of the sheet, and a
+  // stripe a share of the whole fan.
+  s.hair = Math.max(0.7, m / 700) / mid;
+  s.unit = (hi - lo) / Math.max(4, Math.round(api.param('stripes')));
+  s.eps = 0.6 / mid;
+  s.inks = sheafInks(api);
+  s.shadeKey = null;
+
+  // The seam: a run of hairlines just below the corner.
+  const seam = [];
+  const count = Math.round(api.param('seam'));
+  for (let i = 0; i < count; i++) seam.push(s.hair * (0.6 + Math.random() * (Math.random() < 0.15 ? 5 : 1.8)));
+  const seamWidth = seam.reduce((a, b) => a + b, 0);
+  const centre = angle(0, m * 0.015);
+  const top = centre - seamWidth / 2;
+  const foot = centre + seamWidth / 2;
+
+  // The seam's hairlines first, then each side laid outward from it, so that
+  // no stripe matches the one beside it anywhere along the fan.
+  const hairs = [];
+  let prev = null;
+  for (const w of seam) {
+    const c = nextColour(s, prev);
+    hairs.push({ w, ...c });
+    prev = c;
+  }
+  const above = sideStripes(s, top, lo - s.unit, true, hairs[0] || null);
+  const below = sideStripes(s, foot, hi + s.unit, false, hairs[hairs.length - 1] || above[0] || null);
+  // Laid from the top right corner round to the bottom left, in angle order.
+  s.stripes = [];
+  let at = top;
+  for (const st of above) at -= st.w;
+  const put = (st, hair) => {
+    s.stripes.push({ a0: at, a1: at + st.w, hair, ink: st.ink, lvl: st.lvl });
+    at += st.w;
+  };
+  for (let i = above.length - 1; i >= 0; i--) put(above[i], false);
+  for (const st of hairs) put(st, true);
+  for (const st of below) put(st, false);
+  // Large events cut stripes, and every cut adds some; past this they only re-ink.
+  s.cap = Math.round(s.stripes.length * 1.4) + 8;
+  s.wipes = [];
+  s.lastAt = 0;
+  s.ambient = 0;
+}
+
+/** The stripe at an angle: the last whose near edge is at or before it. */
+function stripeAt(s, th) {
+  const list = s.stripes;
+  let lo = 0;
+  let hi = list.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (list[mid].a0 <= th) lo = mid;
+    else hi = mid - 1;
+  }
+  return lo;
+}
+
+/** Give stripe i a new colour, unlike the one it had, running out from radius r. */
+function reink(api, s, i, r, base, delay = 0) {
+  const st = s.stripes[i];
+  const old = { a0: st.a0, a1: st.a1, ink: st.ink, lvl: st.lvl };
+  let ink = st.ink;
+  let lvl = st.lvl;
+  // The event's own colour a third of the time, when the sheaf is cut from
+  // it; otherwise any ink but this stripe's, so a re-inking always shows. Not
+  // every time: the commonest kind of event would take the whole sheet over
+  // within a minute and the ground, which is most of the picture, would go.
+  const own = base && Math.random() < 0.35 ? s.inks.findIndex((c) => String(c).toLowerCase() === String(base).toLowerCase()) : -1;
+  if (s.inks.length === 1) {
+    lvl = (st.lvl + 1 + ((Math.random() * 6) | 0)) % 7;
+  } else if (own >= 0 && own !== st.ink) {
+    ink = own;
+    lvl = 0;
+  } else {
+    ink = inkUnlike(s, st.ink);
+    lvl = depthOf(s);
+  }
+  st.ink = ink;
+  st.lvl = lvl;
+  s.wipes.push({ r, born: api.now + delay, under: [old] });
+}
+
+/** A large event: the stripe cut into a few narrower ones, in fresh inks. */
+function recut(api, s, i, r) {
+  const st = s.stripes[i];
+  const parts = 2 + ((Math.random() * 4) | 0);
+  const weights = [];
+  for (let k = 0; k < parts; k++) weights.push(0.3 + Math.random());
+  const sum = weights.reduce((a, b) => a + b, 0);
+  const span = st.a1 - st.a0;
+  const fresh = [];
+  let at = st.a0;
+  let prev = i > 0 ? s.stripes[i - 1] : null;
+  for (let k = 0; k < parts; k++) {
+    const a1 = k === parts - 1 ? st.a1 : at + (span * weights[k]) / sum;
+    const c = nextColour(s, prev);
+    fresh.push({ a0: at, a1, hair: false, ...c });
+    prev = c;
+    at = a1;
+  }
+  s.stripes.splice(i, 1, ...fresh);
+  s.wipes.push({ r, born: api.now, under: [{ a0: st.a0, a1: st.a1, ink: st.ink, lvl: st.lvl }] });
+}
+
+function strikeSheaf(api, p) {
+  const s = api.scene;
+  const th = Math.atan2(p.y - s.vy, p.x - s.vx);
+  const r = Math.hypot(p.x - s.vx, p.y - s.vy);
+  const i = stripeAt(s, th);
+  const q = sizeOf(p, api);
+  if (q >= 0.78 && !s.stripes[i].hair && s.stripes[i].a1 - s.stripes[i].a0 > s.hair * 4 && s.stripes.length < s.cap) {
+    recut(api, s, i, r);
+  } else if (q >= 0.45) {
+    // A run either side, each a beat after the last, so it ripples across.
+    const half = 1 + ((q - 0.45) * 6) | 0;
+    for (let k = -half; k <= half; k++) {
+      const j = i + k;
+      if (j >= 0 && j < s.stripes.length) reink(api, s, j, r, k === 0 ? p.base : null, Math.abs(k) * 70);
+    }
+  } else {
+    reink(api, s, i, r, p.base);
+  }
+  // Wipes are short-lived; a flood of them is held to a ceiling.
+  if (s.wipes.length > 160) s.wipes.splice(0, s.wipes.length - 160);
+}
+
+/** One stripe between two radii, as a filled quadrilateral from the vanishing point. */
+function wedge(ctx, s, a0, a1, r0, r1) {
+  const c0 = Math.cos(a0);
+  const n0 = Math.sin(a0);
+  const c1 = Math.cos(a1);
+  const n1 = Math.sin(a1);
+  ctx.beginPath();
+  ctx.moveTo(s.vx + c0 * r0, s.vy + n0 * r0);
+  ctx.lineTo(s.vx + c0 * r1, s.vy + n0 * r1);
+  ctx.lineTo(s.vx + c1 * r1, s.vy + n1 * r1);
+  ctx.lineTo(s.vx + c1 * r0, s.vy + n1 * r0);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function drawSheaf(ctx, api) {
+  const s = api.scene;
+  if (!s.stripes) return;
+  // The quiet hand: one stripe every five seconds, and only while nothing arrives.
+  ambient(s, api, 5200, () => {
+    const i = (Math.random() * s.stripes.length) | 0;
+    reink(api, s, i, s.r0 + Math.random() * (s.r1 - s.r0), null);
+  });
+  const shades = sheafShades(s, api);
+  for (const st of s.stripes) {
+    ctx.fillStyle = shades[st.ink][st.lvl];
+    // A hair past the far edge, under the next stripe, so no ground shows
+    // between two stripes where the antialiasing of their edges meets.
+    wedge(ctx, s, st.a0, st.a1 + s.eps, s.r0, s.r1);
+  }
+  // What a stripe was, still showing beyond the window the new colour has
+  // reached. The window opens from the point struck as ink runs along a
+  // ruled line: fast at first and slowing, so most of the stripe has turned
+  // within a fifth of a second and the last of it takes half a second.
+  const span = s.r1 - s.r0;
+  const live = [];
+  for (const w of s.wipes) {
+    const t = (api.now - w.born) / 520;
+    const open = t <= 0 ? 0 : span * Math.sqrt(t);
+    const near = w.r - Math.max(0, open);
+    const far = w.r + Math.max(0, open);
+    if (near <= s.r0 && far >= s.r1) continue;
+    live.push(w);
+    for (const u of w.under) {
+      ctx.fillStyle = shades[u.ink][u.lvl];
+      if (near > s.r0) wedge(ctx, s, u.a0, u.a1 + s.eps, s.r0, near);
+      if (far < s.r1) wedge(ctx, s, u.a0, u.a1 + s.eps, far, s.r1);
+    }
+  }
+  s.wipes = live;
+}
