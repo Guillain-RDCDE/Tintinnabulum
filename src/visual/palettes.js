@@ -1092,6 +1092,59 @@ export const PALETTES = {
     },
   },
 
+  // Three grounds for the screentone boards: the soft walls they were pinned
+  // to. On those boards only the ground comes from here -- the screens and the
+  // square have tints of their own -- so the four marks below are the
+  // quietest that clear the suite's rules, for every other picture.
+  iris: {
+    label: 'Iris',
+    family: 'Blue',
+    note: 'A cool lavender wall with a yellow square pinned to it, and a teal, a moss, an umber and a plum for everything else.',
+    colors: {
+      background: '#c6c6de',
+      default: '#f0c646',
+      user: '#2f6f7c',
+      anon: '#2d6121',
+      bot: '#965719',
+      alert: '#924d7d',
+      text: '#22223a',
+      banner: 'rgba(34, 34, 58, 0.85)',
+      hud: 'rgba(34, 34, 58, 0.45)',
+    },
+  },
+  lichen: {
+    label: 'Lichen',
+    family: 'Green',
+    note: 'A grey sage, the colour of lichen on a north wall, with a deep sea blue to cut into it.',
+    colors: {
+      background: '#b0bfad',
+      default: '#057da1',
+      user: '#05708f',
+      anon: '#965719',
+      bot: '#447838',
+      alert: '#924d7d',
+      text: '#1d2a20',
+      banner: 'rgba(29, 42, 32, 0.85)',
+      hud: 'rgba(29, 42, 32, 0.45)',
+    },
+  },
+  pigeon: {
+    label: 'Pigeon',
+    family: 'Neutral',
+    note: 'A lilac grey, the breast of a city pigeon, with the same sea blue and a bronze, a jade and a plum.',
+    colors: {
+      background: '#a9a9bc',
+      default: '#057da1',
+      user: '#055f7d',
+      anon: '#786900',
+      bot: '#177c52',
+      alert: '#924d7d',
+      text: '#17172a',
+      banner: 'rgba(23, 23, 42, 0.85)',
+      hud: 'rgba(23, 23, 42, 0.45)',
+    },
+  },
+
   cobweb: {
     label: 'Cobweb',
     family: 'Neutral',

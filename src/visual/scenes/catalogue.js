@@ -119,6 +119,7 @@ export const CATALOGUE = {
   worley: S('Pattern', 'Stones, scales and cells, softly shaded where they meet.'),
   penrose: S('Pattern', 'A floor of two tiles that never repeats, however far you walk across it.'),
   girih: S('Pattern', 'Stars laced into one another, as in the tiled walls of old Isfahan.'),
+  screentone: S('Pattern', 'A designer\'s board of cut screentone: dot screens, broken rules, grids of black squares, white spots, fields of dashes, bands of crossed zigzags and hatching, two soft figures of blurred dashes, and one square of coloured paper over all of it. Every event cuts a new swatch where it lands and the oldest is peeled away.'),
   benday: S('Pattern', 'The dot screen of an old comic, printed from a heat map: the dots swell where things are busy.'),
 
   // --- drawing machines --------------------------------------------------

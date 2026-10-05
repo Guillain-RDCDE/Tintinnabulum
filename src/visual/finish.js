@@ -44,11 +44,14 @@ export const FINISHES = {
   engraved: { label: 'Engraved', note: 'The picture cut as a copper plate: one ink, parallel burin lines that swell where the form turns away from the light, a second set crossing them in the darkest passages, and flick work between.' },
 };
 
-export const MAT_ORDER = ['none', 'thin', 'gallery'];
+export const MAT_ORDER = ['none', 'thin', 'gallery', 'frame'];
 export const MATS = {
   none: { label: 'No frame', width: 0 },
   thin: { label: 'Thin mat', width: 0.035 },
   gallery: { label: 'Gallery mat', width: 0.075 },
+  // A narrow black moulding and no board: the frame a print shop puts round a
+  // poster, which is black whatever the picture, and has no bevel to light.
+  frame: { label: 'Black frame', width: 0.011, face: '#0d0d0d' },
 };
 
 // --- helpers ----------------------------------------------------------------
@@ -1046,7 +1049,7 @@ export function drawMat(ctx, name, { palette } = {}) {
   const dark = palette && lightnessOf(palette.background) < 0.3;
   // A dark picture gets a black mat, a light one a warm white: a white mat
   // round a night scene makes the night look like a hole in a wall.
-  const face = dark ? '#141414' : '#f2eee6';
+  const face = spec.face || (dark ? '#141414' : '#f2eee6');
   const bevelHi = dark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.85)';
   const bevelLo = dark ? 'rgba(0,0,0,0.6)' : 'rgba(0,0,0,0.16)';
   ctx.save();
@@ -1059,6 +1062,10 @@ export function drawMat(ctx, name, { palette } = {}) {
   ctx.rect(0, 0, W, H);
   ctx.rect(m, m, W - m * 2, H - m * 2);
   ctx.fill('evenodd');
+  if (spec.face) {
+    ctx.restore();
+    return true;
+  }
   // The bevel: the cut edge of the board, lit from the top left.
   const b = Math.max(1, Math.round(m * 0.06));
   ctx.fillStyle = bevelLo;

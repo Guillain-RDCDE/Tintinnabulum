@@ -1,16 +1,24 @@
 // Graphic scenes: the vocabulary of posters, prints and backgrounds.
 //
-// Four constructions every graphic designer reaches for -- the soft gradient,
-// the dot screen of cheap colour printing, counterchanged rings, and stripes
-// fanned out from a point beyond the edge of the sheet -- rebuilt so that the
-// data does the pulling. Each is cheap enough to run full screen, because each
+// Five constructions every graphic designer reaches for -- the soft gradient,
+// the dot screen of cheap colour printing, counterchanged rings, stripes
+// fanned out from a point beyond the edge of the sheet, and a board of cut
+// screentone swatches round one square of coloured paper -- rebuilt so that
+// the data does the pulling. Each is cheap enough to run full screen, because each
 // is drawn with what a canvas does quickly: gradients, filled paths, and dots
 // batched by colour.
 
 import { noise2 } from './noise.js';
 import { toRgb, scratch, packRgba } from './paint.js';
 import { mixColors, parseColor, rgbToOklab, toOklch, fromOklch, toCss } from '../color.js';
-import { TAU, sizeOf, ambient, clampTo } from './shared.js';
+import { TAU, sizeOf, ambient, clampTo, papers } from './shared.js';
+
+/** The tints the screens came in, as the sheets were sold; the first is the palette's own. */
+const TONE_SETS = [null, ['#2f6f7c'], ['#e8c45a', '#2f6f7c', '#28abdb'], ['#28abdb', '#e8c45a'], ['#e8c45a'], ['#e8687a']];
+const TONE_NAMES = ['palette', 'teal', 'yellow, teal and cyan', 'cyan and yellow', 'yellow', 'pink'];
+/** The papers the square was cut from; the first is the palette's own. */
+const SQUARES = [null, '#f0c646', '#057da1', '#f4687a', '#c96fa8', '#f9356a'];
+const SQUARE_NAMES = ['palette', 'yellow', 'blue', 'coral', 'magenta', 'pink'];
 
 /** A colour at some opacity, whatever form it came in. */
 const alpha = (c, a) => {
@@ -262,6 +270,27 @@ export const GRAPHIC_SCENES = {
       strikeSheaf(api, p);
     },
     frame: drawSheaf,
+  },
+  screentone: {
+    label: 'Screentones',
+    note: 'A designer\'s board of screentone swatches, the adhesive sheets of printed texture an illustrator cut out and burnished down before anything was done on a screen: fine and coarse dot screens, broken rules, grids of black squares, white spots, fields of short dashes, bands of crossed zigzags and of hatching, a pair of soft figures made of blurred dashes, and over all of it one square of coloured paper, upright or turned. The screens are black and white and a few tints, as the sheets were sold; the square and the ground are the colour. Every event cuts a new swatch where it lands and the oldest is peeled away: a small event a patch of dashes, a middling one a screen, a larger one a band run out to the edge of the board, and the largest a figure. The square never moves. Each swatch is printed once onto a sheet of its own and laid down whole each frame, revealed from the point where it was cut; the dots, squares, spots and dashes are tiles repeated as a pattern, the broken rules and the figures are drawn stroke by stroke, and the figures\' dashes are blurred by drawing only their shadows.',
+    positional: true,
+    preview: { frames: 40, dt: 60 },
+    params: {
+      tones: { label: 'Tints of the screens', options: TONE_NAMES, min: 0, max: TONE_NAMES.length - 1, step: 1, default: 0, rebuild: true },
+      square: { label: 'The square', options: SQUARE_NAMES, min: 0, max: SQUARE_NAMES.length - 1, step: 1, default: 0 },
+      turn: { label: 'How far the square is turned', min: -45, max: 45, step: 1, default: 0 },
+      count: { label: 'How many swatches', min: 6, max: 20, step: 1, default: 10, rebuild: true },
+      scale: { label: 'How large', min: 0.6, max: 1.4, step: 0.05, default: 1, rebuild: true },
+    },
+    init: layScreens,
+    event(p, api) {
+      const s = api.scene;
+      if (!s.patches) return;
+      s.lastAt = api.now;
+      cutSwatch(api, p);
+    },
+    frame: drawScreens,
   },
 };
 
@@ -574,4 +603,412 @@ function drawSheaf(ctx, api) {
     }
   }
   s.wipes = live;
+}
+
+// --- the screentones --------------------------------------------------------------------
+
+/** Which layer a swatch lies in: screens at the bottom, bands above, the square over all. */
+const LAYER = { dots: 0, lines: 0, grid: 1, discs: 1, figure: 2, dashes: 3, lattice: 4, hatch: 4 };
+const REVEAL = 380;
+/** Whether a swatch is being peeled. By the time it was, not its truth: a
+ *  board developed from a clock at zero peels its first swatches at zero. */
+const peeled = (sw) => sw.leftAt !== undefined;
+/** How long a peeled swatch takes to go: quicker than one arriving, so a burst never shows two boards at once. */
+const PEEL = 200;
+/** Which swatches stand in for one another when the board is re-cut. */
+const FAMILY = { dots: 'screen', lines: 'screen', grid: 'screen', discs: 'screen', dashes: 'dashes', lattice: 'band', hatch: 'band', figure: 'figure' };
+
+/** A sheet of its own for one swatch. */
+function sheetFor(w, h) {
+  const W = Math.max(1, Math.ceil(w));
+  const H = Math.max(1, Math.ceil(h));
+  return typeof OffscreenCanvas === 'function'
+    ? new OffscreenCanvas(W, H)
+    : Object.assign(document.createElement('canvas'), { width: W, height: H });
+}
+
+/** A tile with one mark on it, for a screen repeated as a pattern. */
+function tileOf(w, h, mark) {
+  const t = sheetFor(w, h);
+  mark(t.getContext('2d'));
+  return t;
+}
+
+const pickFrom = (list) => list[(Math.random() * list.length) | 0];
+const between = (a, b) => a + Math.random() * (b - a);
+
+/** A tint for a swatch: the event's own colour on the palette's screens, a sheet's tint otherwise, black now and then. */
+function toneFor(s, base) {
+  if (Math.random() < 0.3) return s.ink;
+  if (!s.tones) return base || pickFrom([s.pal.user, s.pal.anon, s.pal.bot]);
+  return pickFrom(s.tones);
+}
+
+/**
+ * Where a swatch of this size goes: at the spot asked for, or at whichever of
+ * a few spots round it overlaps least what is already down. A board is mostly
+ * air between its swatches, and a swatch laid straight over another hides
+ * both; so it lands near where it was cut, in the clearest place there.
+ */
+function placed(s, w, h, x, y, snap) {
+  const W = s.W;
+  const H = s.H;
+  const down = (s.patches || []).filter((p) => !peeled(p) && FAMILY[p.kind] !== 'band');
+  let best = null;
+  for (let k = 0; k < 9; k++) {
+    const ang = (k / 8) * TAU;
+    const reach = k === 0 ? 0 : Math.min(W, H) * 0.18;
+    const bx = snap(clampTo(x + Math.cos(ang) * reach - w / 2, -w * 0.1, W - w * 0.9));
+    const by = snap(clampTo(y + Math.sin(ang) * reach - h / 2, -h * 0.1, H - h * 0.9));
+    let cover = 0;
+    for (const p of down) {
+      const ox = Math.max(0, Math.min(bx + w, p.x + p.w) - Math.max(bx, p.x));
+      const oy = Math.max(0, Math.min(by + h, p.y + p.h) - Math.max(by, p.y));
+      cover += ox * oy;
+    }
+    // A little against moving at all, so a clear spot near the cut wins.
+    const score = cover / (w * h) + (k === 0 ? 0 : 0.08);
+    if (!best || score < best.score) best = { x: bx, y: by, w, h, score };
+  }
+  return { x: best.x, y: best.y, w, h };
+}
+
+/** A swatch of a kind, somewhere near (x, y), its geometry only: it is printed when it is first drawn. */
+function swatch(s, kind, x, y, colour, round = Math.random() < 0.5) {
+  const u = s.u;
+  const W = s.W;
+  const H = s.H;
+  const snap = (v) => Math.round(v / s.g) * s.g;
+  const box = (w, h) => placed(s, w, h, x, y, snap);
+  if (kind === 'dots') {
+    const fine = Math.random() < 0.6;
+    return { kind, ...box(between(0.25, 0.45) * W, between(0.2, 0.36) * H), pitch: (fine ? 7 : 14) * u, r: Math.max(0.55, (fine ? 0.9 : 1.6) * u), colour: s.ink };
+  }
+  if (kind === 'lines') {
+    return { kind, ...box(between(0.2, 0.36) * W, between(0.14, 0.3) * H), pitch: between(4.5, 7) * u, across: Math.random() < 0.55, colour: s.ink };
+  }
+  if (kind === 'grid') {
+    return { kind, ...box(between(0.2, 0.4) * W, between(0.12, 0.28) * H), pitch: pickFrom([16, 16, 12]) * u, colour: s.ink };
+  }
+  if (kind === 'discs') {
+    const n = 4 + ((Math.random() * 4) | 0);
+    const m = 4 + ((Math.random() * 4) | 0);
+    return { kind, ...box(n * 22 * u, m * 22 * u), pitch: 22 * u, colour: s.chalk };
+  }
+  if (kind === 'dashes') {
+    const up = Math.random() < 0.4;
+    return { kind, ...box(between(0.18, 0.3) * W, between(0.14, 0.3) * H), up, colour: colour || (Math.random() < 0.3 ? s.chalk : toneFor(s, null)) };
+  }
+  if (kind === 'lattice' || kind === 'hatch') {
+    const h = kind === 'lattice' ? (Math.random() < 0.3 ? 40 : 36) * u : between(30, 72) * u;
+    // A band runs from where it was cut to one edge of the board, or now and
+    // then across the whole of it.
+    const reach = Math.random();
+    let x0 = snap(clampTo(x, 0, W));
+    let x1 = W;
+    if (reach < 0.4) { x1 = x0 + 6 * u; x0 = 0; }
+    if (reach > 0.85) { x0 = snap(between(0.05, 0.4) * W); x1 = x0 + between(0.3, 0.6) * W; }
+    const w = Math.max(80 * u, Math.min(W, x1) - x0);
+    return { kind, x: x0, y: snap(clampTo(y - h / 2, 0, H - h)), w, h, rows: kind === 'lattice' && h > 38 * u ? 2 : 1, colour: colour || toneFor(s, null) };
+  }
+  // A figure: a disc of level dashes or a tall capsule of upright ones.
+  const disc = round;
+  const w = (disc ? between(300, 340) : between(250, 300)) * u;
+  const h = disc ? w : between(430, 620) * u;
+  return { kind: 'figure', ...box(w, h), disc, colour: s.ink };
+}
+
+/** Print a swatch onto its own sheet. */
+function printSwatch(s, sw) {
+  const u = s.u;
+  const pad = 4;
+  const sheet = sheetFor(sw.w + pad * 2, sw.h + pad * 2);
+  const g = sheet.getContext('2d');
+  g.translate(pad, pad);
+  const line = Math.max(1, 1.7 * u);
+  const fillPattern = (tile) => {
+    g.fillStyle = g.createPattern(tile, 'repeat');
+    g.fillRect(0, 0, sw.w, sw.h);
+  };
+  if (sw.kind === 'dots' || sw.kind === 'discs') {
+    const r = sw.kind === 'dots' ? sw.r : sw.pitch * 0.36;
+    fillPattern(tileOf(sw.pitch, sw.pitch, (t) => {
+      t.fillStyle = sw.colour;
+      t.beginPath();
+      t.arc(sw.pitch / 2, sw.pitch / 2, r, 0, TAU);
+      t.fill();
+    }));
+  } else if (sw.kind === 'grid') {
+    const side = sw.pitch * 0.62;
+    fillPattern(tileOf(sw.pitch, sw.pitch, (t) => {
+      t.fillStyle = sw.colour;
+      t.fillRect((sw.pitch - side) / 2, (sw.pitch - side) / 2, side, side);
+    }));
+  } else if (sw.kind === 'dashes') {
+    // Three by three dashes to a tile, each a little turned and a little
+    // longer or shorter, so the field is hand-cut rather than printed.
+    const px = (sw.up ? 13 : 24) * u;
+    const py = (sw.up ? 34 : 13) * u;
+    const len = (sw.up ? 16 : 12) * u;
+    fillPattern(tileOf(px * 3, py * 3, (t) => {
+      t.strokeStyle = sw.colour;
+      t.lineWidth = Math.max(1, 2 * u);
+      t.lineCap = 'butt';
+      for (let i = 0; i < 3; i++) {
+        for (let j = 0; j < 3; j++) {
+          const cx = (i + 0.5) * px;
+          const cy = (j + 0.5) * py;
+          const a = (sw.up ? Math.PI / 2 : 0) + (Math.random() - 0.5) * 0.18;
+          const l = len * between(0.8, 1.15) / 2;
+          t.beginPath();
+          t.moveTo(cx - Math.cos(a) * l, cy - Math.sin(a) * l);
+          t.lineTo(cx + Math.cos(a) * l, cy + Math.sin(a) * l);
+          t.stroke();
+        }
+      }
+    }));
+  } else if (sw.kind === 'lines') {
+    // Broken rules: each one cut into runs of random length, as a worn
+    // sheet of line tone comes away from the backing.
+    g.fillStyle = sw.colour;
+    const thick = Math.max(0.8, 1.2 * u);
+    const along = sw.across ? sw.w : sw.h;
+    const over = sw.across ? sw.h : sw.w;
+    for (let a = 0; a < over; a += sw.pitch) {
+      let b = Math.random() * 6 * u;
+      while (b < along) {
+        const run = between(4, 42) * u;
+        const end = Math.min(along, b + run);
+        if (sw.across) g.fillRect(b, a, end - b, thick);
+        else g.fillRect(a, b, thick, end - b);
+        b = end + between(2, 10) * u;
+      }
+    }
+  } else if (sw.kind === 'lattice') {
+    // Two zigzags in opposite phase, which cross into a row of diamonds.
+    g.strokeStyle = sw.colour;
+    g.lineWidth = line;
+    const rowH = sw.h / sw.rows;
+    const step = rowH * 0.85;
+    g.beginPath();
+    for (let r = 0; r < sw.rows; r++) {
+      const y0 = r * rowH + line;
+      const y1 = (r + 1) * rowH - line;
+      for (const phase of [0, 1]) {
+        let up = phase === 0;
+        g.moveTo(0, up ? y0 : y1);
+        for (let x = step; x <= sw.w + step; x += step) {
+          up = !up;
+          g.lineTo(Math.min(x, sw.w), up ? y0 : y1);
+        }
+      }
+    }
+    g.stroke();
+  } else if (sw.kind === 'hatch') {
+    g.strokeStyle = sw.colour;
+    g.lineWidth = line;
+    const gap = 13 * u;
+    const lean = sw.h * 0.85;
+    g.save();
+    g.beginPath();
+    g.rect(0, 0, sw.w, sw.h);
+    g.clip();
+    g.beginPath();
+    for (let x = -lean; x < sw.w; x += gap) {
+      g.moveTo(x, 0);
+      g.lineTo(x + lean, sw.h);
+    }
+    g.stroke();
+    g.restore();
+  } else if (sw.kind === 'figure') {
+    // Dashes in rows across a disc or in columns down a capsule, soft at
+    // every edge: only their shadows are drawn, which are blurred, and the
+    // dashes themselves land off the sheet.
+    const off = sw.w + sw.h + 100;
+    g.save();
+    g.beginPath();
+    if (sw.disc) g.arc(sw.w / 2, sw.h / 2, sw.w / 2, 0, TAU);
+    else {
+      const r = sw.w / 2;
+      g.arc(r, r, r, Math.PI, 0);
+      g.arc(r, sw.h - r, r, 0, Math.PI);
+      g.closePath();
+    }
+    g.clip();
+    g.strokeStyle = sw.colour;
+    g.shadowColor = sw.colour;
+    g.shadowOffsetX = off;
+    g.lineCap = 'round';
+    const pitch = 19 * u;
+    const along = sw.disc ? sw.w : sw.h;
+    const over = sw.disc ? sw.h : sw.w;
+    for (let a = pitch * 0.5; a < over; a += pitch * between(0.85, 1.2)) {
+      let b = Math.random() * 40 * u;
+      while (b < along) {
+        const run = between(10, 120) * u;
+        const end = Math.min(along, b + run);
+        g.globalAlpha = between(0.6, 1);
+        g.lineWidth = between(2.5, 5.5) * u;
+        g.shadowBlur = between(0.8, 2.6) * u;
+        g.beginPath();
+        if (sw.disc) { g.moveTo(b - off, a); g.lineTo(end - off, a); }
+        else { g.moveTo(a - off, b); g.lineTo(a - off, end); }
+        g.stroke();
+        b = end + between(14, 80) * u;
+      }
+    }
+    g.restore();
+  }
+  sw.sheet = sheet;
+  sw.pad = pad;
+}
+
+/** The kinds a board is laid with at the start, in the proportions the boards have. */
+function boardKinds(n) {
+  const kinds = ['figure', 'figure', 'dots', 'lattice', 'hatch', 'dashes', 'dots', 'grid', 'lattice', 'lines', 'discs', 'hatch', 'dots', 'dashes', 'grid', 'lattice', 'hatch', 'dots', 'lines', 'dashes'];
+  return kinds.slice(0, n);
+}
+
+function layScreens(api) {
+  const s = api.scene;
+  s.W = api.w;
+  s.H = api.h;
+  s.u = (Math.min(api.w, api.h) / 800) * api.param('scale');
+  s.g = Math.max(4, Math.min(api.w, api.h) / 40);
+  s.pal = api.palette;
+  const paper = papers(api);
+  s.ink = paper.pale ? '#111111' : '#f2eee6';
+  // White screens stay white on any ground: they were sheets of white tone.
+  s.chalk = '#fbfaf6';
+  s.tones = TONE_SETS[clampTo(Math.round(api.param('tones')), 0, TONE_SETS.length - 1)];
+  s.cap = Math.round(api.param('count'));
+  s.patches = [];
+  const kinds = boardKinds(s.cap);
+  // The pair of figures one above the other, overlapping, near the middle,
+  // and both of a kind: two discs or two capsules.
+  const fx = between(0.4, 0.6) * s.W;
+  const fy = between(0.28, 0.38) * s.H;
+  const disc = Math.random() < 0.5;
+  s.round = disc;
+  let figures = 0;
+  for (const kind of kinds) {
+    let x = between(0.1, 0.9) * s.W;
+    let y = between(0.06, 0.94) * s.H;
+    if (kind === 'figure') {
+      x = fx + figures * between(-0.1, 0.1) * s.W;
+      y = fy + figures * (disc ? between(0.2, 0.26) : between(0.24, 0.3)) * s.H;
+      figures++;
+    }
+    const sw = swatch(s, kind, x, y, null, disc);
+    sw.born = -1e9;
+    sw.ox = sw.x;
+    sw.oy = sw.y;
+    s.patches.push(sw);
+  }
+  // The square: a third of the board or so, never at its very edge.
+  const side = between(0.26, 0.42) * Math.min(s.W, s.H * 0.8);
+  s.square = { x: between(0.12, 0.88) * s.W, y: between(0.18, 0.82) * s.H, side };
+  s.square.x = clampTo(s.square.x, side * 0.55, s.W - side * 0.55);
+  s.square.y = clampTo(s.square.y, side * 0.55, s.H - side * 0.55);
+  s.lastAt = 0;
+  s.ambient = 0;
+}
+
+/** An event: a new swatch cut where it landed, and the oldest peeled away. */
+function cutSwatch(api, p) {
+  const s = api.scene;
+  const q = sizeOf(p, api);
+  const kind = q < 0.18 ? 'dashes'
+    : q < 0.42 ? pickFrom(['dots', 'dots', 'grid', 'discs', 'lines'])
+    : q < 0.72 ? pickFrom(['lattice', 'hatch'])
+    : 'figure';
+  const colour = kind === 'dashes' || kind === 'lattice' || kind === 'hatch' ? toneFor(s, p.base) : null;
+  const sw = swatch(s, kind, p.x, p.y, colour, s.round);
+  if (kind === 'figure') {
+    // The figures are a pair, one over the other: a large event re-cuts the
+    // one nearer to it, in the same place and the same shape, and the new
+    // dashes are revealed from where the event fell.
+    const figs = s.patches.filter((x) => x.kind === 'figure' && !peeled(x));
+    let near = null;
+    let best = Infinity;
+    for (const f of figs) {
+      const d = Math.hypot(f.x + f.w / 2 - p.x, f.y + f.h / 2 - p.y);
+      if (d < best) { best = d; near = f; }
+    }
+    if (near) {
+      Object.assign(sw, { x: near.x, y: near.y, w: near.w, h: near.h, disc: near.disc });
+      near.leftAt = api.now;
+    }
+  }
+  lay(api, sw, p.x, p.y);
+}
+
+function lay(api, sw, ox, oy) {
+  const s = api.scene;
+  sw.born = api.now;
+  sw.ox = ox;
+  sw.oy = oy;
+  // The oldest swatch of the same family is peeled away -- a screen for a
+  // screen, a band for a band, a figure for a figure -- so the board keeps the
+  // proportions it was laid with however the feed runs. Only when the family
+  // has none down does the oldest of all go.
+  const family = FAMILY[sw.kind];
+  const down = s.patches.filter((x) => !peeled(x));
+  if (down.length >= s.cap) {
+    const same = down.find((x) => FAMILY[x.kind] === family && x !== sw);
+    (same || down[0]).leftAt = api.now;
+  }
+  s.patches.push(sw);
+  // A flood is held to a ceiling: what would be peeled at once goes now.
+  if (s.patches.length > s.cap * 3) s.patches = s.patches.filter((x) => !peeled(x) || x === sw);
+}
+
+function drawScreens(ctx, api) {
+  const s = api.scene;
+  if (!s.patches) return;
+  // The quiet hand: every six seconds of nothing, one swatch re-cut somewhere.
+  ambient(s, api, 6000, () => {
+    const kind = pickFrom(['dots', 'dashes', 'lattice', 'hatch', 'lines', 'grid']);
+    const x = between(0.1, 0.9) * s.W;
+    const y = between(0.08, 0.92) * s.H;
+    lay(api, swatch(s, kind, x, y, null), x, y);
+  });
+  // Printing is the costly part, so a burst prints a few a frame and the rest
+  // wait their turn, revealed when they are ready rather than when they came.
+  let presses = 3;
+  for (const sw of s.patches) {
+    if (sw.sheet || peeled(sw) || presses <= 0) continue;
+    printSwatch(s, sw);
+    if (sw.born > -1e8) sw.born = api.now;
+    presses--;
+  }
+  const order = s.patches.filter((sw) => sw.sheet).sort((a, b) => LAYER[a.kind] - LAYER[b.kind] || a.born - b.born);
+  for (const sw of order) {
+    let alpha = 1;
+    if (peeled(sw)) alpha = 1 - (api.now - sw.leftAt) / PEEL;
+    if (alpha <= 0) continue;
+    const t = (api.now - sw.born) / REVEAL;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    if (t < 1) {
+      // Revealed from the point it was cut, as a swatch is burnished down.
+      const far = Math.hypot(Math.max(Math.abs(sw.ox - sw.x), Math.abs(sw.ox - sw.x - sw.w)), Math.max(Math.abs(sw.oy - sw.y), Math.abs(sw.oy - sw.y - sw.h)));
+      const e = 1 - (1 - Math.max(0, t)) * (1 - Math.max(0, t));
+      ctx.beginPath();
+      ctx.arc(sw.ox, sw.oy, Math.max(0.5, far * e), 0, TAU);
+      ctx.clip();
+    }
+    ctx.drawImage(sw.sheet, sw.x - sw.pad, sw.y - sw.pad);
+    ctx.restore();
+  }
+  s.patches = s.patches.filter((sw) => !peeled(sw) || api.now - sw.leftAt < PEEL);
+  // The square, over everything.
+  const pick = clampTo(Math.round(api.param('square')), 0, SQUARES.length - 1);
+  const sq = s.square;
+  ctx.save();
+  ctx.translate(sq.x, sq.y);
+  ctx.rotate((api.param('turn') * Math.PI) / 180);
+  ctx.fillStyle = SQUARES[pick] || api.palette.default;
+  ctx.fillRect(-sq.side / 2, -sq.side / 2, sq.side, sq.side);
+  ctx.restore();
 }

@@ -499,6 +499,44 @@ export const WORKS = {
     grain: true, mat: 'gallery', pace: UNHURRIED, dials: { inks: 1, stripes: 60, tone: 0.5, drift: 0.7 },
     cartel: 'Coral turning to peach and back across sixty stripes, all one colour at different depths, the light ones warmer. Each event moves one stripe along that ramp, the new shade running out from where it fell.',
   }),
+  // Seven screentone boards: swatches of printed texture cut and pinned to a
+  // soft wall, one square of coloured paper over all of them, on a ground of
+  // rough render in a black frame.
+  toneyellow: work('Daylight', 'calm', 'The yellow square', {
+    scene: 'screentone', palette: 'iris', kit: 'musicbox', space: 'room', ground: 'stucco',
+    grain: true, mat: 'frame', pace: SLOW, dials: { tones: 1, square: 1 },
+    cartel: 'A lavender board with a fine dot screen, a field of teal dashes, a grid of white spots, bands of crossed zigzags and hatching, and two soft capsules of blurred dashes one over the other; over all of it, a yellow square. Every event cuts a new swatch where it lands and the oldest of its kind is peeled away; the square never moves.',
+  }),
+  toneturned: work('Daylight', 'lively', 'A square turned on sage', {
+    scene: 'screentone', palette: 'lichen', kit: 'marimba', space: 'room', ground: 'stucco',
+    grain: true, mat: 'frame', pace: REAL_TIME, dials: { tones: 2, square: 2, turn: -30 },
+    cartel: 'Sage, with screens in yellow, teal and cyan among the black ones, and a sea-blue square turned a third of the way to its corner. A marimba; each event cuts a swatch, a large one a band run out to the edge of the board.',
+  }),
+  tonelavender: work('Dawn', 'calm', 'Swatches on lavender', {
+    scene: 'screentone', palette: 'iris', kit: 'glassy', space: 'room', ground: 'stucco',
+    grain: true, mat: 'frame', pace: SLOW, dials: { tones: 3, square: 3 },
+    cartel: 'Broken rules, dot screens and grids of black squares on lavender, crossed by cyan zigzags and yellow hatching, with a coral square low to one side. Glass struck softly; every event cuts a new swatch and peels away the oldest.',
+  }),
+  tonesage: work('Daylight', 'calm', 'Swatches on sage', {
+    scene: 'screentone', palette: 'lichen', kit: 'koto', space: 'room', ground: 'stucco',
+    grain: true, mat: 'frame', pace: UNHURRIED, dials: { tones: 3, square: 3 },
+    cartel: 'Two discs of blurred dashes on sage among dot screens and a grid of black squares, with cyan dashes and yellow hatching, and a coral square near the foot. A koto; each event cuts a swatch where it lands.',
+  }),
+  tonemagenta: work('Dawn', 'calm', 'Spots and magenta', {
+    scene: 'screentone', palette: 'bone', kit: 'chimes', space: 'room', ground: 'stucco',
+    grain: true, mat: 'frame', pace: SLOW, dials: { tones: 4, square: 4 },
+    cartel: 'An off-white board, nearly bare: soft discs of dashes, dot screens, white spots that barely show, a yellow zigzag and a magenta square. Wind chimes; every event cuts one more swatch and takes the oldest away.',
+  }),
+  tonepink: work('Daylight', 'lively', 'Hot pink, pinned', {
+    scene: 'screentone', palette: 'newsprint', kit: 'steelpan', space: 'room', ground: 'stucco',
+    grain: true, mat: 'frame', pace: REAL_TIME, dials: { tones: 4, square: 5 },
+    cartel: 'Grey-white board, black screens and yellow hatching, and a hot pink square pinned over them. A steel pan; each event cuts a swatch, a middling one a screen and a large one a band to the edge.',
+  }),
+  tonepigeon: work('Dawn', 'lively', 'Blue on pigeon grey', {
+    scene: 'screentone', palette: 'pigeon', kit: 'handbells', space: 'room', ground: 'stucco',
+    grain: true, mat: 'frame', pace: REAL_TIME, dials: { tones: 5, square: 2, turn: -30 },
+    cartel: 'A lilac grey board with grids of black squares laid over one another, white dashes, pink zigzags and black hatching, and a sea-blue square turned on its corner. Handbells; every event cuts a new swatch where it falls.',
+  }),
   // Five sheets of hexadecimal: every event writes its own fingerprint into
   // the grid where it falls, and each sheet dresses the grid its own way.
   hexplain: work('Night', 'calm', 'Fingerprints', {

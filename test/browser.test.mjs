@@ -4141,14 +4141,16 @@ await developed();
 await pg.evaluate(() => document.querySelector('#st-grounds [data-ground="cotton"]').click());
 await pg.waitForTimeout(300);
 await developed();
-const pgPaper = await pg.evaluate(() => ({
+const pgPaper = await pg.evaluate(async () => ({
   ground: window.son.studio.state.ground,
   pressed: document.querySelector('#st-grounds [data-ground="cotton"]').getAttribute('aria-pressed'),
   address: /[?&]p=cotton/.test(location.hash),
   cards: document.querySelectorAll('#st-grounds .st-chip').length,
+  // One card per paper the library declares, whatever that number is now.
+  papers: (await import('/src/index.js')).GROUND_ORDER.length,
 }));
 ok('a paper can be chosen on the bench, and the address carries it',
-   pgPaper.ground === 'cotton' && pgPaper.pressed === 'true' && pgPaper.address && pgPaper.cards === 10, JSON.stringify(pgPaper));
+   pgPaper.ground === 'cotton' && pgPaper.pressed === 'true' && pgPaper.address && pgPaper.cards === pgPaper.papers, JSON.stringify(pgPaper));
 await pg.evaluate(() => document.querySelector('#st-grounds [data-ground="none"]').click());
 
 await pg.evaluate(() => document.querySelector('#st-ratios [data-ratio="16:9"]').click());

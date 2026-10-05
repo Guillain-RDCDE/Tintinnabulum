@@ -29,7 +29,7 @@
 
 import { lightnessOf, parseColor } from './color.js';
 
-export const GROUND_ORDER = ['none', 'cotton', 'coldpress', 'hotpress', 'washi', 'kraft', 'black', 'linen', 'plaster', 'aged'];
+export const GROUND_ORDER = ['none', 'cotton', 'coldpress', 'hotpress', 'washi', 'kraft', 'black', 'linen', 'plaster', 'stucco', 'aged'];
 
 export const GROUNDS = {
   none: { label: 'Screen', note: 'Light on glass, exactly as the scene draws it. No paper, no print.' },
@@ -64,6 +64,10 @@ export const GROUNDS = {
   plaster: {
     label: 'Lime plaster', note: 'A wall of lime wash, clouded and trowelled, the ground of a fresco.',
     tint: '#efe9df', relief: 0.4, tone: 'light',
+  },
+  stucco: {
+    label: 'Stucco', note: 'A wall of rough render, the sand in it standing proud as dark flecks; it takes no colour of its own, so a pastel stays the pastel it was.',
+    tint: '#fbfaf8', relief: 0.55, tone: 'light',
   },
   aged: {
     label: 'Old paper', note: 'A sheet that has waited in a drawer: yellowed towards the edges and spotted with foxing.',
@@ -324,6 +328,20 @@ function* buildSheet(name) {
         if ((i & 65535) === 65535) yield;
         height[i] = cloud[i] * 0.4 + trowel[i] * 0.8 + a[i] * 0.22;
         shade[i] = 1 - (cloud[i] - 0.5) * 0.08 + trowel[i] * 0.03;
+      }
+      break;
+    }
+    case 'stucco': {
+      // A smooth render with sand in it: small grains scattered thinly, each
+      // a fleck a shade darker than the lime round it and standing a little
+      // proud of it, and almost no cloud.
+      fib = yield* drawnField(w, h, (g) => flecks(g, w, h, rnd, 26000, 0.75));
+      const a = yield* L(1.5);
+      const cloud = yield* L(60);
+      for (let i = 0; i < n; i++) {
+        if ((i & 65535) === 65535) yield;
+        height[i] = fib[i] * 0.7 + a[i] * 0.08 + cloud[i] * 0.05;
+        shade[i] = 1 - fib[i] * 0.45 - (cloud[i] - 0.5) * 0.02;
       }
       break;
     }

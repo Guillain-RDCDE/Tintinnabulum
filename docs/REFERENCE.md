@@ -528,10 +528,10 @@ ear is listening for, and on a long-ringing bell that is a beat you can count.
 
 ### Palettes
 
-Ninety-four, selectable at runtime and stored as plain data in
+Ninety-seven, selectable at runtime and stored as plain data in
 [`src/visual/palettes.js`](../src/visual/palettes.js).
 
-Ninety-four swatches in a single grid is ninety-four swatches: you read the first row,
+Ninety-seven swatches in a single grid is ninety-seven swatches: you read the first row,
 decide it is a lot, and take the default. So they are offered **grouped, two
 ways**, because there are two questions anybody actually asks of a palette.
 
@@ -544,7 +544,7 @@ changed, offered fifteen times.
 
 | Band | |
 |---|---|
-| **Paper** — 31 | Daylight, Papyrus, Chalk, Linen, Porcelain, Mint, Blush, Newsprint, Vellum, Ice, Seafoam, Shell, Oyster, Periwinkle, Straw, Rosewater, Celadon, Bone, Atelier, Salon, Citron, Confetti, Sorbet, Cabana, Awning, Orchard, Marquee, Kiosk, Guava, Cobweb, Apricot |
+| **Paper** — 34 | Daylight, Papyrus, Chalk, Linen, Porcelain, Mint, Blush, Newsprint, Vellum, Ice, Seafoam, Shell, Oyster, Periwinkle, Straw, Rosewater, Celadon, Bone, Atelier, Salon, Citron, Confetti, Sorbet, Cabana, Awning, Orchard, Marquee, Kiosk, Guava, Iris, Lichen, Pigeon, Cobweb, Apricot |
 | **Twilight** — 24 | Slate, Terracotta, Sage, Dusk, Moss, Denim, Ochre, Pewter, Brick, Suede, Olive, Lagoon, Mulberry, Storm, Cedar, Fern, Indigo, Rosewood, Basalt, Marsh, Copper, Harbour, Heather, Tundra |
 | **Night** — 39 | Nocturne, Bronze, Aurora, Ember, Ultraviolet, Blueprint, Sakura, Nordic, Marine, Lacquer, Solar, Sunset, Neon, Rust, Monochrome, Cobalt, Oxblood, Ink, Abyss, Amber, Coal, Wasp, Regatta, Obsidian, Bottle, Carbon, Prussian, Wine, Espresso, Gunmetal, Deep water, Blackcurrant, Pinewood, Ironwork, Dark ochre, Midnight, Forge, Night slate, Night sea |
 
@@ -558,13 +558,13 @@ numbers that do not know.
 
 | | |
 |---|---|
-| **Blue** — 22 | Nocturne, Blueprint, Nordic, Marine, Solar, Porcelain, Slate, Dusk, Cobalt, Ice, Denim, Periwinkle, Cabana, Regatta, Storm, Indigo, Harbour, Prussian, Gunmetal, Midnight, Night slate, Night sea |
+| **Blue** — 23 | Nocturne, Blueprint, Nordic, Marine, Solar, Porcelain, Slate, Dusk, Cobalt, Ice, Denim, Periwinkle, Cabana, Regatta, Iris, Storm, Indigo, Harbour, Prussian, Gunmetal, Midnight, Night slate, Night sea |
 | **Teal** — 4 | Aurora, Abyss, Lagoon, Deep water |
-| **Green** — 12 | Sage, Mint, Moss, Seafoam, Celadon, Awning, Kiosk, Olive, Fern, Marsh, Bottle, Pinewood |
+| **Green** — 13 | Sage, Mint, Moss, Seafoam, Celadon, Awning, Kiosk, Lichen, Olive, Fern, Marsh, Bottle, Pinewood |
 | **Amber** — 17 | Bronze, Rust, Papyrus, Linen, Vellum, Ochre, Amber, Shell, Straw, Citron, Wasp, Orchard, Apricot, Cedar, Copper, Espresso, Dark ochre |
 | **Red** — 12 | Ember, Lacquer, Terracotta, Oxblood, Blush, Brick, Rosewater, Mulberry, Rosewood, Wine, Blackcurrant, Forge |
 | **Rose** — 6 | Ultraviolet, Sakura, Sunset, Neon, Guava, Heather |
-| **Neutral** — 21 | Daylight, Monochrome, Chalk, Newsprint, Pewter, Ink, Coal, Oyster, Bone, Atelier, Salon, Confetti, Sorbet, Marquee, Suede, Cobweb, Basalt, Tundra, Obsidian, Carbon, Ironwork |
+| **Neutral** — 22 | Daylight, Monochrome, Chalk, Newsprint, Pewter, Ink, Coal, Oyster, Bone, Atelier, Salon, Confetti, Sorbet, Marquee, Suede, Pigeon, Cobweb, Basalt, Tundra, Obsidian, Carbon, Ironwork |
 
 **The last forty were not chosen by eye.** A search took each ground and
 returned the *quietest* quartet clearing the suite's two rules, which is the
@@ -977,6 +977,36 @@ print: **Wasp**, **Cabana**, **Awning**, **Regatta**, **Orchard**,
 inks in the order the sheaf takes them, so the colours a striping is known by
 come first.
 
+#### Screentones
+
+**Screentones** (`screentone`, on the *Pattern* shelf, in
+[`graphic.js`](../src/visual/scenes/graphic.js)) is a designer's board of cut
+screentone: fine and coarse dot screens, broken rules, grids of black squares,
+white spots, fields of short dashes, bands of crossed zigzags and of hatching,
+a pair of soft figures made of blurred dashes, and one square of coloured paper
+over all of it, upright or turned by the **turn** dial. The screens are black,
+white and a few tints, as the sheets were sold, and the **tints** and
+**square** dials choose them by name; their first option, *palette*, takes the
+tints from the palette's categories and the square from its `default`
+instead. Only the ground always comes from the palette. That is deliberate:
+the tints on the reference boards are a pastel yellow, cyan and pink on pastel
+grounds, the same lightness as the ground, and a palette that carried them as
+categories could not keep its marks apart on its own ground.
+
+Every event cuts a new swatch where it lands -- dashes for a small one, a
+screen for a middling one, a band run out to the edge of the board for a
+larger one, a figure for the largest -- in the clearest spot within reach of
+where it fell, and the oldest swatch of the same family is peeled away, so the
+board keeps its proportions however the feed runs. The square never moves.
+Each swatch is printed once onto a canvas of its own, at most three a frame
+however many arrive, and laid down whole every frame, revealed from the point
+where it was cut; the regular screens are one tile repeated as a pattern, and
+the figures' dashes are blurred by drawing only their shadows.
+
+Seven works hang on it, on three new grounds -- **Iris**, **Lichen** and
+**Pigeon** -- and on Bone and Newsprint, all on the **Stucco** paper in a
+**black frame**.
+
 #### Nature and night
 
 Nine places rather than patterns. Each paints its own sky or ground, since a
@@ -1250,7 +1280,9 @@ Every finish takes its inks from the palette and leaves the drawing state as it
 found it; the suite checks both, on a dark palette and a light one.
 
 A **frame** (thin or gallery mat) is drawn over the edge of the picture, black on
-a dark ground and paper-coloured on a light one. **Film grain** is a separate
+a dark ground and paper-coloured on a light one; the **black frame** is a narrow
+black moulding with no board, black whatever the picture, as a print shop
+frames a poster. **Film grain** is a separate
 switch. **Pace** runs the scene's clock at a quarter, a half, three quarters of
 real time or faster: marks are born, age and fade on that clock, so a slow room
 is genuinely slower rather than merely less busy.
@@ -1307,6 +1339,7 @@ on a wall.
 | **Black paper** | Deep black card with a faint fibre that catches the light. |
 | **Linen canvas** | A primed linen canvas, the weave a little irregular, as linen is. |
 | **Lime plaster** | A wall of lime wash, clouded and trowelled. |
+| **Stucco** | Rough render, the sand in it standing proud as dark flecks; it takes no colour of its own, so a pastel stays the pastel it was. |
 | **Old paper** | Yellowed towards the edges and spotted with foxing. |
 
 A sheet is not a photograph laid over the picture. Each is generated from a
