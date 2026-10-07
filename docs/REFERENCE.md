@@ -1031,6 +1031,25 @@ re-set glyph is drawn again, revealed downwards like a shutter, so a sheet of
 six hundred modules costs a frame no more than the few being changed. Thirteen
 works hang on it, one per colourway, named *Specimen*.
 
+#### On the tilt
+
+**On the tilt** (`tilted`, on the *Pattern* shelf, in
+[`tilted.js`](../src/visual/scenes/tilted.js)) has two sheets that cover the
+whole picture and lean through the **angle** dial. *Tiles* is a floor of
+square tiles, each a flat colour, the floor turned and, with the **bend**
+dial, laid as if on a great arc so the rows curve and the tiles open into
+wedges, with white joints or none. Every event slides another colour across
+the tile it falls on, a middling one across a small block, a large one along a
+whole row. *Boards* is a pile of long boards at the sheet's angle, fanned with
+the **fan** dial, now and then edged with a hairline of another colour; every
+event lays one more board, longer the larger it is, and the pile is never
+cleared. The colours are seven named colourways, or the palette's own, for
+the reason the screentone tints are: a cream, a yellow or a pale grey sits
+beside white, and a palette may not carry marks that close to its ground.
+Both sheets are printed once onto a buffer and only what changes is drawn
+again. Sixteen works hang on it, in a **white border**, the flat white margin
+a print is trimmed with.
+
 #### Nature and night
 
 Nine places rather than patterns. Each paints its own sky or ground, since a
@@ -1306,7 +1325,8 @@ found it; the suite checks both, on a dark palette and a light one.
 A **frame** (thin or gallery mat) is drawn over the edge of the picture, black on
 a dark ground and paper-coloured on a light one; the **black frame** is a narrow
 black moulding with no board, black whatever the picture, as a print shop
-frames a poster. **Film grain** is a separate
+frames a poster; the **white border** is the flat white margin a print is
+trimmed with. **Film grain** is a separate
 switch. **Pace** runs the scene's clock at a quarter, a half, three quarters of
 real time or faster: marks are born, age and fade on that clock, so a slow room
 is genuinely slower rather than merely less busy.

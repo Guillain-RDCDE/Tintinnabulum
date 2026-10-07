@@ -604,6 +604,88 @@ export const WORKS = {
     pace: SLOW, dials: { colours: 6, grid: 0, rule: 0, fill: 0.7 },
     cartel: 'No colour at all: cream on black and cream fading into black, in eight broad columns. Each event re-sets one glyph.',
   }),
+  // Sixteen prints on the tilt: tiled floors, straight or bent, and piles of
+  // boards, each in the colourway it was printed in, in a white border.
+  tiltharbour: work('Dusk', 'calm', 'Harbour floor', {
+    scene: 'tilted', palette: 'daylight', kit: 'marimba', space: 'room',
+    grain: true, mat: 'border', pace: UNHURRIED, dials: { figure: 0, colours: 1, angle: -30, tiles: 7, bend: 0.1, joint: 0.04 },
+    cartel: 'Large square tiles in orange, vermilion, steel blue and navy, butted with no joint, the whole floor turned a third of the way to its corner. Every event slides another colour across the tile it falls on; a large one runs along a whole row.',
+  }),
+  tiltsunday: work('Daylight', 'calm', 'Sunday boards', {
+    scene: 'tilted', palette: 'daylight', kit: 'strings', space: 'room',
+    grain: true, mat: 'border', pace: SLOW, dials: { figure: 1, colours: 2, angle: -8, boards: 26, edge: 0.36, breadth: 1.4 },
+    cartel: 'Broad boards of cream, saffron and two blues laid almost level, one over another, a few edged with a hairline of another colour. Every event lays one more board where it lands, sliding in from one end.',
+  }),
+  tiltfanned: work('Dusk', 'lively', 'Harbour, fanned', {
+    scene: 'tilted', palette: 'daylight', kit: 'steelpan', space: 'room',
+    grain: true, mat: 'border', pace: REAL_TIME, dials: { figure: 1, colours: 1, angle: 16, boards: 60, fan: 0.8, breadth: 0.8, edge: 0 },
+    cartel: 'Sixty narrow boards in orange, vermilion, steel blue and navy, fanned across the sheet from a point off its left edge. Every event lays another, longer the larger it is.',
+  }),
+  tiltprimarybent: work('Daylight', 'lively', 'Primary floor, bent', {
+    scene: 'tilted', palette: 'daylight', kit: 'glassy', space: 'room',
+    grain: true, mat: 'border', pace: REAL_TIME, dials: { figure: 0, colours: 3, angle: -14, tiles: 9, bend: 0.56, joint: 0.3 },
+    cartel: 'Red, yellow, blue and white tiles with white joints, the floor bent as though laid on a great arc, so the rows curve and the tiles open into wedges. Every event slides a new colour across a tile.',
+  }),
+  tiltharbourbent: work('Dusk', 'calm', 'Harbour floor, bent', {
+    scene: 'tilted', palette: 'daylight', kit: 'koto', space: 'room',
+    grain: true, mat: 'border', pace: SLOW, dials: { figure: 0, colours: 1, angle: -14, tiles: 9, bend: 0.6, joint: 0.34 },
+    cartel: 'Orange, vermilion, steel blue and navy tiles on a curving floor, white joints between them. A koto; every event re-colours the tile it falls on, a larger one a block of them.',
+  }),
+  tiltsundaybent: work('Daylight', 'calm', 'Sunday floor, bent', {
+    scene: 'tilted', palette: 'daylight', kit: 'musicbox', space: 'room',
+    grain: true, mat: 'border', pace: SLOW, dials: { figure: 0, colours: 2, angle: -20, tiles: 16, bend: 0.5, joint: 0.3 },
+    cartel: 'Small tiles in cream, saffron and two blues, sixteen to a row, the rows curving across the sheet. A music box; every event slides a colour across a tile.',
+  }),
+  tiltcarmine: work('Dusk', 'lively', 'Carmine boards, slanting', {
+    scene: 'tilted', palette: 'daylight', kit: 'gongs', space: 'room',
+    grain: true, mat: 'border', pace: REAL_TIME, dials: { figure: 1, colours: 4, angle: 32, boards: 30, breadth: 1.6, edge: 0 },
+    cartel: 'Wide boards of carmine, orange, apricot and navy laid steeply down to the right, one over another. Gongs; every event lays another board.',
+  }),
+  tiltstanding: work('Dusk', 'calm', 'Carmine boards, standing', {
+    scene: 'tilted', palette: 'daylight', kit: 'handbells', space: 'room',
+    grain: true, mat: 'border', pace: UNHURRIED, dials: { figure: 1, colours: 4, angle: 82, boards: 26, breadth: 1.4, edge: 0 },
+    cartel: 'The same carmine, orange, apricot and navy in boards stood nearly upright and leaning a little, like planks against a wall. Handbells; each event stands another one.',
+  }),
+  tiltpetrol: work('Night', 'calm', 'Petrol boards', {
+    scene: 'tilted', palette: 'ironwork', kit: 'water', space: 'room',
+    grain: true, mat: 'border', pace: SLOW, dials: { figure: 1, colours: 5, angle: 78, boards: 44, edge: 0.4, breadth: 1 },
+    cartel: 'Upright boards in three dark blues and a sand, some edged with a hairline of another colour. Water; every event lays another board in the dark.',
+  }),
+  tiltlagoonsmall: work('Dawn', 'calm', 'Lagoon floor, small tiles', {
+    scene: 'tilted', palette: 'daylight', kit: 'chimes', space: 'room',
+    grain: true, mat: 'border', pace: SLOW, dials: { figure: 0, colours: 6, angle: -30, tiles: 15, bend: 0.16, joint: 0.3 },
+    cartel: 'Coral, a grey teal, a pale blue and a near white in small tiles with white joints, turned on the slant. Wind chimes; each event slides a colour across a tile.',
+  }),
+  tiltprimaryboards: work('Daylight', 'lively', 'Primary boards', {
+    scene: 'tilted', palette: 'daylight', kit: 'synth', space: 'room',
+    grain: true, mat: 'border', pace: REAL_TIME, dials: { figure: 1, colours: 3, angle: -8, boards: 26, breadth: 1.6, edge: 0 },
+    cartel: 'Blue, yellow, red and white boards laid nearly level until no ground is left. Every event lays another where it lands.',
+  }),
+  tiltgraphite: work('Daylight', 'calm', 'Graphite boards, level', {
+    scene: 'tilted', palette: 'daylight', kit: 'clay', space: 'room',
+    grain: true, mat: 'border', pace: SLOW, dials: { figure: 1, colours: 7, angle: -4, boards: 30, breadth: 1.5, edge: 0 },
+    cartel: 'Black, three greys and white in broad boards laid almost level. Every event lays another board; nothing is ever taken up.',
+  }),
+  tiltprimaryslant: work('Daylight', 'lively', 'Primary boards, slanting', {
+    scene: 'tilted', palette: 'daylight', kit: 'marimba', space: 'room',
+    grain: true, mat: 'border', pace: REAL_TIME, dials: { figure: 1, colours: 3, angle: -20, boards: 30, breadth: 1.4, edge: 0 },
+    cartel: 'Yellow, blue, red and white boards rising to the right, thin red ones between the broad. A marimba; every event lays another.',
+  }),
+  tiltlagoon: work('Dawn', 'calm', 'Lagoon floor', {
+    scene: 'tilted', palette: 'daylight', kit: 'earthchime', space: 'room',
+    grain: true, mat: 'border', pace: UNHURRIED, dials: { figure: 0, colours: 6, angle: -30, tiles: 8, bend: 0.2, joint: 0.3 },
+    cartel: 'Large tiles of coral, grey teal, pale blue and near white, joints in white, the floor turned and very gently bent. Each event slides a new colour across a tile.',
+  }),
+  tiltleaning: work('Daylight', 'lively', 'Graphite boards, leaning', {
+    scene: 'tilted', palette: 'daylight', kit: 'hatnote', space: 'room',
+    grain: true, mat: 'border', pace: REAL_TIME, dials: { figure: 1, colours: 7, angle: 66, boards: 40, edge: 0.3, breadth: 0.9, fan: 0.2 },
+    cartel: 'Long narrow boards in black, greys and white leaning steeply, a few edged in white, fanned a little. Every event lays another.',
+  }),
+  tiltsquare: work('Dusk', 'lively', 'Harbour floor, square', {
+    scene: 'tilted', palette: 'daylight', kit: 'marimba', space: 'room',
+    grain: true, mat: 'border', pace: REAL_TIME, dials: { figure: 0, colours: 1, angle: -30, tiles: 8, bend: 0.04, joint: 0.04 },
+    cartel: 'Orange, vermilion, steel blue and navy in square tiles butted edge to edge on the slant. Every event slides another colour across the tile it falls on.',
+  }),
   // Five sheets of hexadecimal: every event writes its own fingerprint into
   // the grid where it falls, and each sheet dresses the grid its own way.
   hexplain: work('Night', 'calm', 'Fingerprints', {

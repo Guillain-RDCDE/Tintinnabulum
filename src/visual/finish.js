@@ -44,7 +44,7 @@ export const FINISHES = {
   engraved: { label: 'Engraved', note: 'The picture cut as a copper plate: one ink, parallel burin lines that swell where the form turns away from the light, a second set crossing them in the darkest passages, and flick work between.' },
 };
 
-export const MAT_ORDER = ['none', 'thin', 'gallery', 'frame'];
+export const MAT_ORDER = ['none', 'thin', 'gallery', 'frame', 'border'];
 export const MATS = {
   none: { label: 'No frame', width: 0 },
   thin: { label: 'Thin mat', width: 0.035 },
@@ -52,6 +52,8 @@ export const MATS = {
   // A narrow black moulding and no board: the frame a print shop puts round a
   // poster, which is black whatever the picture, and has no bevel to light.
   frame: { label: 'Black frame', width: 0.011, face: '#0d0d0d' },
+  // The white margin a print is trimmed with, flat and cold: paper, not board.
+  border: { label: 'White border', width: 0.05, face: '#fdfdfd' },
 };
 
 // --- helpers ----------------------------------------------------------------
