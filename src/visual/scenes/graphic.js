@@ -1,16 +1,17 @@
 // Graphic scenes: the vocabulary of posters, prints and backgrounds.
 //
-// Five constructions every graphic designer reaches for -- the soft gradient,
+// Six constructions every graphic designer reaches for -- the soft gradient,
 // the dot screen of cheap colour printing, counterchanged rings, stripes
-// fanned out from a point beyond the edge of the sheet, and a board of cut
-// screentone swatches round one square of coloured paper -- rebuilt so that
-// the data does the pulling. Each is cheap enough to run full screen, because each
+// fanned out from a point beyond the edge of the sheet, a board of cut
+// screentone swatches round one square of coloured paper, and a specimen
+// sheet of modular glyphs set in lines -- rebuilt so that the data does the
+// pulling. Each is cheap enough to run full screen, because each
 // is drawn with what a canvas does quickly: gradients, filled paths, and dots
 // batched by colour.
 
 import { noise2 } from './noise.js';
 import { toRgb, scratch, packRgba } from './paint.js';
-import { mixColors, parseColor, rgbToOklab, toOklch, fromOklch, toCss } from '../color.js';
+import { mixColors, parseColor, rgbToOklab, toOklch, fromOklch, toCss, lightnessOf } from '../color.js';
 import { TAU, sizeOf, ambient, clampTo, papers } from './shared.js';
 
 /** The tints the screens came in, as the sheets were sold; the first is the palette's own. */
@@ -19,6 +20,29 @@ const TONE_NAMES = ['palette', 'teal', 'yellow, teal and cyan', 'cyan and yellow
 /** The papers the square was cut from; the first is the palette's own. */
 const SQUARES = [null, '#f0c646', '#057da1', '#f4687a', '#c96fa8', '#f9356a'];
 const SQUARE_NAMES = ['palette', 'yellow', 'blue', 'coral', 'magenta', 'pink'];
+
+/** The specimen's two neutrals: the black and the cream every sheet is printed with. */
+const GLYPH_DARK = '#1f2120';
+const GLYPH_LIGHT = '#ebe2d0';
+/** The colourways the specimen sheets were printed in: a ground and the colours on it; the first is the palette's own. */
+const GLYPH_WAYS = [
+  null,
+  { name: 'steel', ground: GLYPH_DARK, colours: ['#206682'] },
+  { name: 'teal', ground: GLYPH_DARK, colours: ['#216768'] },
+  { name: 'coral', ground: GLYPH_DARK, colours: ['#e95140'] },
+  { name: 'signal', ground: GLYPH_DARK, colours: ['#e53225', '#f2aacc'] },
+  { name: 'carnival', ground: GLYPH_DARK, colours: ['#e53224', '#f0f500', '#6380b2', '#9cc4a1', '#fac310', '#bbbcdc'] },
+  { name: 'bone', ground: GLYPH_DARK, colours: [] },
+  { name: 'cobalt', ground: GLYPH_LIGHT, colours: ['#00599c'] },
+  { name: 'mint', ground: GLYPH_LIGHT, colours: ['#9cc5a1'] },
+  { name: 'lemon', ground: GLYPH_LIGHT, colours: ['#f0f500'] },
+  { name: 'gold', ground: GLYPH_LIGHT, colours: ['#fac311', '#41699c'] },
+  { name: 'holly', ground: GLYPH_LIGHT, colours: ['#c83818', '#509066', '#ec1c24'] },
+  { name: 'pastel', ground: GLYPH_LIGHT, colours: ['#9cc4a1', '#f2aacc', '#6380b2', '#bbbcdc'] },
+  { name: 'flamingo', ground: '#f2aacc', colours: ['#fe1c1c', '#f95a22', '#f8aa1f'] },
+];
+const GLYPH_WAY_NAMES = GLYPH_WAYS.map((w) => (w ? w.name : 'palette'));
+const GLYPH_GRIDS = [8, 12, 20];
 
 /** A colour at some opacity, whatever form it came in. */
 const alpha = (c, a) => {
@@ -291,6 +315,27 @@ export const GRAPHIC_SCENES = {
       cutSwatch(api, p);
     },
     frame: drawScreens,
+  },
+  glyphs: {
+    label: 'Modular glyphs',
+    note: 'A specimen sheet of a modular display face that was never cut as letters: lines of glyphs set on a strict grid, each glyph built from a few modules -- flat colour, a fade from one colour into another or into the ground, a staircase, slats stepping down a diagonal, bars, a screen of fine rules, a disc, a dot, a half disc, a quarter, an arch -- so that a line reads like a word in a language nobody speaks. Lines of three modules and of two, with a half-module gutter between, or set solid. A black and a cream are always on the press with one to six colours, from a set of colourways or from the palette. Every event re-sets the glyph it falls on; a middling one re-sets its whole word, and a large one the whole line. The sheet is set once onto a buffer and only a re-set glyph is drawn again, revealed downwards like a shutter, so a sheet of six hundred modules costs a frame no more than the few being changed.',
+    positional: true,
+    preview: { frames: 30, dt: 60 },
+    params: {
+      colours: { label: 'Colourway', options: GLYPH_WAY_NAMES, min: 0, max: GLYPH_WAY_NAMES.length - 1, step: 1, default: 0, rebuild: true },
+      grid: { label: 'Columns', options: GLYPH_GRIDS.map(String), min: 0, max: GLYPH_GRIDS.length - 1, step: 1, default: 1, rebuild: true, vary: false },
+      rule: { label: 'How the lines are set', options: ['with gutters', 'solid'], min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      fill: { label: 'How full the lines are', min: 0.3, max: 1, step: 0.02, default: 0.8, rebuild: true },
+      fades: { label: 'How much is faded', min: 0, max: 1, step: 0.02, default: 0.55, rebuild: true },
+    },
+    init: setSpecimen,
+    event(p, api) {
+      const s = api.scene;
+      if (!s.lines) return;
+      s.lastAt = api.now;
+      resetGlyph(api, p);
+    },
+    frame: drawSpecimen,
   },
 };
 
@@ -1011,4 +1056,359 @@ function drawScreens(ctx, api) {
   ctx.fillStyle = SQUARES[pick] || api.palette.default;
   ctx.fillRect(-sq.side / 2, -sq.side / 2, sq.side, sq.side);
   ctx.restore();
+}
+
+// --- the modular glyphs -----------------------------------------------------------------
+
+const GLYPH_SHUTTER = 320;
+
+/** Weighted choice from [[value, weight], ...]. */
+function weighted(pairs) {
+  let total = 0;
+  for (const [, w] of pairs) total += w;
+  let r = Math.random() * total;
+  for (const [v, w] of pairs) {
+    r -= w;
+    if (r <= 0) return v;
+  }
+  return pairs[pairs.length - 1][0];
+}
+
+/** The press: the ground, the neutral opposite it, and the colours. */
+function pressOf(api) {
+  const way = GLYPH_WAYS[clampTo(Math.round(api.param('colours')), 0, GLYPH_WAYS.length - 1)];
+  if (way) {
+    const dark = lightnessOf(way.ground) < 0.4;
+    return { ground: way.ground, neutral: dark ? GLYPH_LIGHT : GLYPH_DARK, colours: way.colours };
+  }
+  const pal = api.palette;
+  const dark = lightnessOf(pal.background) < 0.4;
+  return { ground: pal.background, neutral: dark ? GLYPH_LIGHT : GLYPH_DARK, colours: [pal.user, pal.anon, pal.bot, pal.alert].filter(Boolean) };
+}
+
+/** A colour to print a module in: a colour most often, the neutral often, now and then the ground. */
+function inkFor(s, not) {
+  const pairs = s.press.colours.map((c) => [c, 0.55 / s.press.colours.length]);
+  pairs.push([s.press.neutral, s.press.colours.length ? 0.35 : 0.8]);
+  pairs.push([s.press.ground, 0.1]);
+  for (let k = 0; k < 4; k++) {
+    const c = weighted(pairs);
+    if (c !== not) return c;
+  }
+  return s.press.neutral;
+}
+
+/** What a colour fades into: the ground most often, else black or cream, else another colour. */
+function fadeFor(s, from) {
+  const light = lightnessOf(from) > 0.55;
+  const other = s.press.colours.filter((c) => c !== from);
+  const to = weighted([
+    [s.press.ground, 0.32],
+    [light ? GLYPH_DARK : GLYPH_LIGHT, 0.38],
+    [other.length ? pickFrom(other) : s.press.neutral, 0.3],
+  ]);
+  return to === from ? s.press.neutral : to;
+}
+
+/** A paint: one colour, or a fade between two along an axis. */
+function paintOf(s, base, fades) {
+  const a = base || inkFor(s, null);
+  if (Math.random() < fades) return { a, b: fadeFor(s, a), axis: Math.random() < 0.85 ? 'down' : 'across', flip: Math.random() < 0.5 };
+  return { a };
+}
+
+function styleOf(g, p, x, y, w, h) {
+  if (!p.b) return p.a;
+  const down = p.axis === 'down';
+  const gr = down ? g.createLinearGradient(0, y, 0, y + h) : g.createLinearGradient(x, 0, x + w, 0);
+  gr.addColorStop(0, p.flip ? p.b : p.a);
+  gr.addColorStop(1, p.flip ? p.a : p.b);
+  return gr;
+}
+
+/** One module: what it is and the paints it is made of, for a piece w by h modules. */
+function moduleFor(s, wu, hu) {
+  const fades = s.fades;
+  const square = wu === hu;
+  const tall = hu >= 2 * wu;
+  const kind = weighted([
+    ['fill', 0.16 + (1 - fades) * 0.12],
+    ['fade', 0.22 * fades + 0.04],
+    ['stairs', 0.16],
+    ['slats', 0.11],
+    ['bars', 0.1],
+    ['screen', 0.07],
+    ['disc', square ? 0.1 : 0.03],
+    ['dot', 0.05],
+    ['half', 0.07],
+    ['quarter', square ? 0.05 : 0.02],
+    ['arch', tall ? 0.08 : 0.01],
+  ]);
+  // Most motifs sit on a ground of their own: bare paper, or a fill or a fade.
+  const bare = kind === 'fill' || kind === 'fade' ? null : Math.random() < 0.2 ? { a: s.press.ground } : paintOf(s, null, fades * 0.7);
+  const top = paintOf(s, inkFor(s, bare && bare.a), kind === 'fill' ? 0 : kind === 'fade' ? 1 : fades * 0.8);
+  return {
+    kind, bare, top,
+    o: (Math.random() * 4) | 0,
+    n: kind === 'stairs' ? 6 + ((Math.random() * 5) | 0) : kind === 'slats' ? 6 + ((Math.random() * 4) | 0) : kind === 'bars' ? 3 + ((Math.random() * 4) | 0) : 0,
+  };
+}
+
+/** Draw one module into the rectangle it owns, and nowhere else. */
+function drawModule(g, s, m, x, y, w, h) {
+  g.save();
+  g.beginPath();
+  g.rect(x, y, w, h);
+  g.clip();
+  if (m.bare) {
+    g.fillStyle = styleOf(g, m.bare, x, y, w, h);
+    g.fillRect(x, y, w, h);
+  }
+  const p = m.top;
+  g.fillStyle = styleOf(g, p, x, y, w, h);
+  const o = m.o;
+  const r = Math.min(w, h);
+  if (m.kind === 'fill' || m.kind === 'fade') {
+    g.fillRect(x, y, w, h);
+  } else if (m.kind === 'stairs') {
+    // A staircase of n steps filling one half of the module, corner to
+    // corner, worked out in a unit square and turned by mirroring.
+    const n = m.n;
+    const pts = [[0, 1]];
+    for (let i = 0; i < n; i++) {
+      pts.push([i / n, 1 - (i + 1) / n]);
+      pts.push([(i + 1) / n, 1 - (i + 1) / n]);
+    }
+    pts.push([1, 1]);
+    g.beginPath();
+    pts.forEach(([u, v], i) => {
+      const px = x + (o & 1 ? 1 - u : u) * w;
+      const py = y + (o & 2 ? 1 - v : v) * h;
+      if (i === 0) g.moveTo(px, py);
+      else g.lineTo(px, py);
+    });
+    g.closePath();
+    g.fill();
+  } else if (m.kind === 'slats') {
+    // Slats stepping down a diagonal, each one fading along its length.
+    const n = m.n;
+    const sh = (h / n) * 0.62;
+    const sw = w * 0.55;
+    for (let i = 0; i < n; i++) {
+      const sx = x + ((o & 1 ? n - 1 - i : i) / Math.max(1, n - 1)) * (w - sw);
+      const sy = y + (i / n) * h + (h / n - sh) / 2;
+      const gr = g.createLinearGradient(sx, 0, sx + sw, 0);
+      gr.addColorStop(0, p.a);
+      gr.addColorStop(1, p.b || (m.bare ? m.bare.a : s.press.ground));
+      g.fillStyle = gr;
+      g.fillRect(sx, sy, sw, sh);
+    }
+  } else if (m.kind === 'bars') {
+    const n = m.n;
+    for (let i = 0; i < n; i++) {
+      if (o & 1) g.fillRect(x, y + ((i + 0.25) / n) * h, w, h / n / 2);
+      else g.fillRect(x + ((i + 0.25) / n) * w, y, w / n / 2, h);
+    }
+  } else if (m.kind === 'screen') {
+    const pitch = Math.max(2.4, s.u / 11);
+    const lw = Math.max(0.8, pitch * 0.42);
+    if (o & 1) for (let yy = y + pitch / 2; yy < y + h; yy += pitch) g.fillRect(x, yy, w, lw);
+    else for (let xx = x + pitch / 2; xx < x + w; xx += pitch) g.fillRect(xx, y, lw, h);
+  } else if (m.kind === 'disc' || m.kind === 'dot') {
+    const rad = m.kind === 'disc' ? r / 2 : r * 0.24;
+    const cx = w > h ? x + (o & 1 ? w - h / 2 : h / 2) : x + w / 2;
+    const cy = h > w ? y + (o & 1 ? h - w / 2 : w / 2) : y + h / 2;
+    g.beginPath();
+    g.arc(cx, cy, rad, 0, TAU);
+    g.fill();
+  } else if (m.kind === 'half') {
+    // A half disc, its flat side on one edge of the module.
+    g.beginPath();
+    if (o === 0) { const rad = Math.min(h / 2, w); g.arc(x, y + h / 2, rad, -Math.PI / 2, Math.PI / 2); }
+    else if (o === 1) { const rad = Math.min(h / 2, w); g.arc(x + w, y + h / 2, rad, Math.PI / 2, Math.PI * 1.5); }
+    else if (o === 2) { const rad = Math.min(w / 2, h); g.arc(x + w / 2, y, rad, 0, Math.PI); }
+    else { const rad = Math.min(w / 2, h); g.arc(x + w / 2, y + h, rad, Math.PI, TAU); }
+    g.closePath();
+    g.fill();
+  } else if (m.kind === 'quarter') {
+    const cx = o & 1 ? x + w : x;
+    const cy = o & 2 ? y + h : y;
+    const a0 = [0, Math.PI / 2, -Math.PI / 2, Math.PI][o];
+    g.beginPath();
+    g.moveTo(cx, cy);
+    g.arc(cx, cy, r, a0, a0 + Math.PI / 2);
+    g.closePath();
+    g.fill();
+  } else if (m.kind === 'arch') {
+    // A bar with one end rounded: an arch standing up, or lying down.
+    g.beginPath();
+    if (h >= w) {
+      const rad = w / 2;
+      if (o & 1) { g.moveTo(x, y + h); g.lineTo(x, y + rad); g.arc(x + rad, y + rad, rad, Math.PI, TAU); g.lineTo(x + w, y + h); }
+      else { g.moveTo(x, y); g.lineTo(x, y + h - rad); g.arc(x + rad, y + h - rad, rad, Math.PI, 0, true); g.lineTo(x + w, y); }
+    } else {
+      const rad = h / 2;
+      if (o & 1) { g.moveTo(x + w, y); g.lineTo(x + rad, y); g.arc(x + rad, y + rad, rad, -Math.PI / 2, Math.PI / 2, true); g.lineTo(x + w, y + h); }
+      else { g.moveTo(x, y); g.lineTo(x + w - rad, y); g.arc(x + w - rad, y + rad, rad, -Math.PI / 2, Math.PI / 2); g.lineTo(x, y + h); }
+    }
+    g.closePath();
+    g.fill();
+  }
+  g.restore();
+}
+
+/** A block's pieces: its column of modules, one to three high. */
+function piecesOf(s, wu, hu) {
+  const splits = hu === 3 ? weighted([[[3], 0.45], [[1, 2], 0.22], [[2, 1], 0.22], [[1, 1, 1], 0.11]])
+    : hu === 2 ? weighted([[[2], 0.7], [[1, 1], 0.3]]) : [hu];
+  let at = 0;
+  return splits.map((hh) => {
+    const piece = { y: at, h: hh, m: moduleFor(s, wu, hh) };
+    at += hh;
+    return piece;
+  });
+}
+
+/** A line's blocks, left to right: glyphs a module or two wide, and spaces. */
+function blocksOf(s, line) {
+  const out = [];
+  let x = 0;
+  while (x < s.cols) {
+    const wu = Math.min(s.cols - x, weighted([[1, 0.3], [2, 0.5], [3, 0.2]]));
+    const space = Math.random() > s.fill;
+    out.push({ x, w: wu, space, pieces: space ? [] : piecesOf(s, wu, line.h) });
+    x += wu;
+  }
+  return out;
+}
+
+function setSpecimen(api) {
+  const s = api.scene;
+  const W = api.w;
+  const H = api.h;
+  const m = Math.round(Math.min(W, H) * 0.1);
+  s.cols = GLYPH_GRIDS[clampTo(Math.round(api.param('grid')), 0, GLYPH_GRIDS.length - 1)];
+  s.u = (W - m * 2) / s.cols;
+  s.ox = m;
+  s.press = pressOf(api);
+  s.fill = api.param('fill');
+  s.fades = api.param('fades');
+  const gutters = Math.round(api.param('rule')) === 0;
+  const gap = gutters ? s.u * 0.5 : 0;
+  // Lines three modules high and two, in turn, as many as fit, the block of
+  // them centred on the sheet.
+  const room = H - m * 2;
+  s.lines = [];
+  let used = 0;
+  for (let k = 0; ; k++) {
+    const h = k % 2 === 0 ? 3 : 2;
+    const need = (s.lines.length ? gap : 0) + h * s.u;
+    if (used + need > room + 0.5) break;
+    used += need;
+    s.lines.push({ h, y: 0 });
+  }
+  if (!s.lines.length) s.lines.push({ h: 1, y: 0 });
+  let y = m + Math.max(0, (room - used) / 2);
+  for (const line of s.lines) {
+    line.y = y;
+    y += line.h * s.u + gap;
+    line.blocks = blocksOf(s, line);
+  }
+  s.fresh = [];
+  s.drawn = false;
+  s.lastAt = 0;
+  s.ambient = 0;
+}
+
+/** The rectangle a block owns, in pixels. */
+function blockRect(s, line, b) {
+  return { x: s.ox + b.x * s.u, y: line.y, w: b.w * s.u, h: line.h * s.u };
+}
+
+/** Print a block: its ground, then its modules. */
+function printBlock(g, s, line, b) {
+  const r = blockRect(s, line, b);
+  g.fillStyle = s.press.ground;
+  g.fillRect(r.x, r.y, r.w, r.h);
+  for (const pc of b.pieces) drawModule(g, s, pc.m, r.x, r.y + pc.y * s.u, r.w, pc.h * s.u);
+}
+
+/** A block set again: new modules, or now and then a space where a glyph was, and a glyph where a space was. */
+function reset(api, line, b, delay = 0) {
+  const s = api.scene;
+  b.space = Math.random() > Math.max(s.fill, 0.7);
+  b.pieces = b.space ? [] : piecesOf(s, b.w, line.h);
+  s.fresh.push({ line, b, born: api.now + delay });
+}
+
+function resetGlyph(api, p) {
+  const s = api.scene;
+  // The line it fell on, or the nearest.
+  let line = s.lines[0];
+  let best = Infinity;
+  for (const l of s.lines) {
+    const d = p.y < l.y ? l.y - p.y : p.y > l.y + l.h * s.u ? p.y - l.y - l.h * s.u : 0;
+    if (d < best) { best = d; line = l; }
+  }
+  const col = clampTo(Math.floor((p.x - s.ox) / s.u), 0, s.cols - 1);
+  const at = line.blocks.findIndex((b) => col >= b.x && col < b.x + b.w);
+  const q = sizeOf(p, api);
+  if (q >= 0.8) {
+    // The whole line set again, with new widths, swept left to right.
+    line.blocks = blocksOf(s, line);
+    line.blocks.forEach((b, i) => s.fresh.push({ line, b, born: api.now + i * 40 }));
+  } else if (q >= 0.45) {
+    // The word: the run of glyphs either side, up to a space.
+    let a = at;
+    let z = at;
+    while (a > 0 && !line.blocks[a - 1].space) a--;
+    while (z < line.blocks.length - 1 && !line.blocks[z + 1].space) z++;
+    for (let i = a; i <= z; i++) reset(api, line, line.blocks[i], (i - a) * 50);
+  } else {
+    reset(api, line, line.blocks[at]);
+  }
+  if (s.fresh.length > 240) s.fresh.splice(0, s.fresh.length - 240);
+}
+
+function drawSpecimen(ctx, api) {
+  const s = api.scene;
+  if (!s.lines) return;
+  const buf = scratch(api, 'glyphbuf');
+  const g = s.glyphbufCtx;
+  if (!s.drawn) {
+    // The whole sheet, once: the buffer may have come from another scene.
+    g.setTransform(1, 0, 0, 1, 0, 0);
+    g.globalAlpha = 1;
+    g.globalCompositeOperation = 'source-over';
+    g.fillStyle = s.press.ground;
+    g.fillRect(0, 0, buf.width, buf.height);
+    for (const line of s.lines) for (const b of line.blocks) printBlock(g, s, line, b);
+    s.drawn = true;
+  }
+  // The quiet hand: one glyph re-set every five seconds while nothing arrives.
+  ambient(s, api, 5000, () => {
+    const line = pickFrom(s.lines);
+    reset(api, line, pickFrom(line.blocks));
+  });
+  // A finished re-set is printed into the sheet and forgotten.
+  const live = [];
+  for (const f of s.fresh) {
+    if (api.now - f.born >= GLYPH_SHUTTER) printBlock(g, s, f.line, f.b);
+    else live.push(f);
+  }
+  s.fresh = live;
+  ctx.drawImage(buf, 0, 0, api.w, api.h);
+  // One being re-set: the new glyph shown down to the shutter's edge.
+  for (const f of live) {
+    const t = (api.now - f.born) / GLYPH_SHUTTER;
+    if (t <= 0) continue;
+    const r = blockRect(s, f.line, f.b);
+    const e = 1 - (1 - t) * (1 - t);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(r.x, r.y, r.w, r.h * e);
+    ctx.clip();
+    printBlock(ctx, s, f.line, f.b);
+    ctx.restore();
+  }
 }

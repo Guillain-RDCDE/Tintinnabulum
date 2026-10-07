@@ -43,6 +43,7 @@ export const CATALOGUE = {
   drip: S('Painting', 'Paint flung from a stick in loops that thin to threads and break into spatter.'),
   lilies: S('Painting', 'A pond of broken brush strokes, with pads and flowers and the sky in it.'),
   mondrian: S('Painting', 'A canvas divided into rooms of colour, one line at a time.'),
+  glyphs: S('Painting', 'A specimen sheet of a typeface nobody can read: lines of glyphs on a strict grid, each built from fades, staircases, slats, bars, fine rules, discs and half discs in black, cream and a colour or two. Every event re-sets the glyph it falls on, a larger one its word or its whole line.'),
   sheaf: S('Painting', 'Flat stripes fanned from a point far off the corner, so they look parallel and are not: shallow at the top, steep at the foot, and drawn together along the diagonal into a seam of hairlines. Every event re-inks the stripe it falls on, the colour running out along it from where it was struck.'),
   opwaves: S('Painting', 'Bands that swell and turn, so a flat wall seems to breathe.'),
   ribbons: S('Painting', 'Thick ribbons of colour following an unseen current, packed close and never crossing.'),

@@ -1007,6 +1007,30 @@ Seven works hang on it, on three new grounds -- **Iris**, **Lichen** and
 **Pigeon** -- and on Bone and Newsprint, all on the **Stucco** paper in a
 **black frame**.
 
+#### Modular glyphs
+
+**Modular glyphs** (`glyphs`, on the *Painting* shelf, in
+[`graphic.js`](../src/visual/scenes/graphic.js)) is the specimen sheet of a
+modular display face that was never cut as letters: lines of glyphs on a grid
+of 8, 12 or 20 columns, each glyph a column of one to three modules -- flat
+colour, a fade into another colour or into the ground, a staircase, slats
+stepping down a diagonal, bars, a screen of fine rules, a disc, a dot, a half
+disc, a quarter, an arch. Lines are three modules high and two in turn, with a
+half-module gutter between them or set solid, inside a margin of a tenth of the
+sheet. A black and a cream are always on the press with up to six colours; the
+**colourway** dial names thirteen sheets, and its first option, *palette*,
+takes the ground and the colours from the palette instead. The colourways are
+the scene's own for the reason the screentone tints are: a mint, a lemon or a
+saffron on cream sits at the cream's own lightness, which no palette's
+categories may.
+
+An event re-sets the glyph it falls on; a middling one re-sets its word, the
+run of glyphs between two spaces, a beat apart; a large one sets the whole
+line again with new widths. The sheet is printed once onto a buffer and only a
+re-set glyph is drawn again, revealed downwards like a shutter, so a sheet of
+six hundred modules costs a frame no more than the few being changed. Thirteen
+works hang on it, one per colourway, named *Specimen*.
+
 #### Nature and night
 
 Nine places rather than patterns. Each paints its own sky or ground, since a

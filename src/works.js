@@ -537,6 +537,73 @@ export const WORKS = {
     grain: true, mat: 'frame', pace: REAL_TIME, dials: { tones: 5, square: 2, turn: -30 },
     cartel: 'A lilac grey board with grids of black squares laid over one another, white dashes, pink zigzags and black hatching, and a sea-blue square turned on its corner. Handbells; every event cuts a new swatch where it falls.',
   }),
+  // Thirteen specimen sheets of one modular face: lines of glyphs on a grid,
+  // each sheet in the colourway it was printed in.
+  glyphsteel: work('Night', 'calm', 'Specimen, steel blue', {
+    scene: 'glyphs', palette: 'ironwork', kit: 'handbells', space: 'hall',
+    pace: SLOW, dials: { colours: 1, grid: 2, rule: 0, fill: 0.86 },
+    cartel: 'Twenty columns of small glyphs on black, in cream and a steel blue that fades into the ground: lines three modules high and two, a narrow gutter between. Handbells in a hall; every event re-sets the glyph it falls on.',
+  }),
+  glyphflamingo: work('Daylight', 'lively', 'Specimen on flamingo pink', {
+    scene: 'glyphs', palette: 'linen', kit: 'steelpan', space: 'room',
+    pace: REAL_TIME, dials: { colours: 13, grid: 1, rule: 1, fill: 0.96 },
+    cartel: 'Glyphs set solid on a flamingo pink, in red, orange, saffron, black and cream, every fade running hot. A steel pan; each event re-sets a glyph, a larger one its word, the largest the whole line.',
+  }),
+  glyphcobalt: work('Daylight', 'calm', 'Specimen, cobalt', {
+    scene: 'glyphs', palette: 'linen', kit: 'koto', space: 'room',
+    pace: SLOW, dials: { colours: 7, grid: 1, rule: 0, fill: 0.86 },
+    cartel: 'Black and a cobalt blue on cream, lines of three and two, staircases and fine rules among the discs. A koto; every event re-sets the glyph it lands on, revealed downwards like a shutter.',
+  }),
+  glyphcarnival: work('Night', 'lively', 'Specimen, carnival', {
+    scene: 'glyphs', palette: 'ironwork', kit: 'marimba', space: 'room',
+    pace: REAL_TIME, dials: { colours: 5, grid: 1, rule: 1, fill: 0.96 },
+    cartel: 'A sheet set solid on black in six colours at once -- red, lemon, cornflower, mint, saffron and lilac -- fading into one another and into the ground. A marimba; each event re-sets a glyph.',
+  }),
+  glyphteal: work('Night', 'calm', 'Specimen, teal', {
+    scene: 'glyphs', palette: 'ironwork', kit: 'strings', space: 'room',
+    pace: UNHURRIED, dials: { colours: 2, grid: 1, rule: 0, fill: 0.5 },
+    cartel: 'Half the sheet left black: scattered glyphs in cream and a deep teal, fading into the dark between them. Plucked strings; every event re-sets one glyph, a large one its line.',
+  }),
+  glyphholly: work('Daylight', 'lively', 'Specimen, holly', {
+    scene: 'glyphs', palette: 'linen', kit: 'glassy', space: 'room',
+    pace: REAL_TIME, dials: { colours: 11, grid: 1, rule: 1, fill: 0.7 },
+    cartel: 'Vermilion, scarlet and a holly green on cream, set solid with spaces in it, the reds fading through black. Glass struck; every event re-sets the glyph it falls on.',
+  }),
+  glyphcoral: work('Dusk', 'lively', 'Specimen, coral', {
+    scene: 'glyphs', palette: 'ironwork', kit: 'gongs', space: 'room',
+    pace: REAL_TIME, dials: { colours: 3, grid: 0, rule: 1, fill: 0.86 },
+    cartel: 'Eight wide columns of coral, cream and black, the glyphs large enough to read as letters that are not quite letters. Gongs; each event re-sets a glyph, a larger one its word.',
+  }),
+  glyphpastel: work('Dawn', 'calm', 'Specimen, pastel', {
+    scene: 'glyphs', palette: 'linen', kit: 'musicbox', space: 'room',
+    pace: SLOW, dials: { colours: 12, grid: 1, rule: 0, fill: 0.9 },
+    cartel: 'Mint, pink, cornflower and lilac on cream with a little black, every fade soft. A music box; every event re-sets the glyph it lands on.',
+  }),
+  glyphmint: work('Dawn', 'calm', 'Specimen, mint', {
+    scene: 'glyphs', palette: 'linen', kit: 'chimes', space: 'room',
+    pace: SLOW, dials: { colours: 8, grid: 1, rule: 0, fill: 0.7 },
+    cartel: 'Black and one mint green on cream, arches, discs and slats in lines of three and two. Wind chimes; each event re-sets a glyph.',
+  }),
+  glyphlemon: work('Daylight', 'lively', 'Specimen, lemon', {
+    scene: 'glyphs', palette: 'linen', kit: 'synth', space: 'room',
+    pace: REAL_TIME, dials: { colours: 9, grid: 0, rule: 0, fill: 0.76 },
+    cartel: 'An acid lemon and black on cream in eight broad columns, the lemon fading into the paper. Every event re-sets the glyph it falls on, a large one the whole line.',
+  }),
+  glyphgold: work('Daylight', 'calm', 'Specimen, gold and blue', {
+    scene: 'glyphs', palette: 'linen', kit: 'earthchime', space: 'room',
+    pace: UNHURRIED, dials: { colours: 10, grid: 1, rule: 0, fill: 0.56 },
+    cartel: 'Saffron and a slate blue with black, sparse on cream: more space than glyph. Each event re-sets a glyph or sets one where a space was.',
+  }),
+  glyphsignal: work('Night', 'lively', 'Specimen, signal red', {
+    scene: 'glyphs', palette: 'ironwork', kit: 'hatnote', space: 'room',
+    pace: REAL_TIME, dials: { colours: 4, grid: 2, rule: 0, fill: 0.96 },
+    cartel: 'Twenty columns set close on black in signal red, pink and cream, the reds fading to black. Every event re-sets the glyph it falls on; a busy feed keeps the whole sheet flickering.',
+  }),
+  glyphbone: work('Night', 'calm', 'Specimen, black and cream', {
+    scene: 'glyphs', palette: 'ironwork', kit: 'clay', space: 'room',
+    pace: SLOW, dials: { colours: 6, grid: 0, rule: 0, fill: 0.7 },
+    cartel: 'No colour at all: cream on black and cream fading into black, in eight broad columns. Each event re-sets one glyph.',
+  }),
   // Five sheets of hexadecimal: every event writes its own fingerprint into
   // the grid where it falls, and each sheet dresses the grid its own way.
   hexplain: work('Night', 'calm', 'Fingerprints', {
