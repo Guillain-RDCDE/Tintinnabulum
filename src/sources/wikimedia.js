@@ -5,6 +5,16 @@ import { createHumanity, categoryFor } from './humanity.js';
 
 const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$|:/;
 
+/** Wikimedia projects whose names end in `wiki` without being a Wikipedia. */
+export const SISTER_WIKIS = new Set([
+  'wikidatawiki', 'commonswiki', 'metawiki', 'mediawikiwiki', 'specieswiki', 'sourceswiki',
+  'incubatorwiki', 'outreachwiki', 'wikimaniawiki', 'testwiki', 'test2wiki', 'testwikidatawiki',
+  'foundationwiki', 'loginwiki', 'wikifunctionswiki', 'apiportalwiki', 'votewiki', 'donatewiki',
+  'nostalgiawiki', 'labswiki', 'labtestwiki', 'advisorywiki', 'qualitywiki', 'strategywiki',
+  'usabilitywiki', 'tenwiki', 'fifteenwiki', 'twentywiki', 'legalteamwiki', 'stewardwiki',
+  'checkuserwiki', 'otrs_wikiwiki', 'wikimania2005wiki',
+]);
+
 /**
  * Wikipedia recent changes.
  *
@@ -36,9 +46,15 @@ export function wikipedia({
   onlyPeople = false,
   humanity = null, // a judge from createHumanity(), for tests or a shared memory
 } = {}) {
-  const wikis = explicitWikis
+  // `langs: ['all']` is every Wikipedia at once: any wiki named `xxwiki` that
+  // is not one of the sister projects, which share the suffix.
+  const every = !explicitWikis && langs.includes('all');
+  const wikis = every
+    ? null
+    : explicitWikis
     ? new Set(explicitWikis)
     : new Set(langs.map((l) => l + (project === 'wikipedia' ? 'wiki' : project)));
+  const wanted = (wiki) => (wikis ? wikis.has(wiki) : /wiki$/.test(wiki || '') && !SISTER_WIKIS.has(wiki));
 
   const judge = humanity || createHumanity();
 
@@ -89,7 +105,7 @@ export function wikipedia({
       url: 'https://stream.wikimedia.org/v2/stream/recentchange',
       onStatus,
       map(d) {
-        if (!d || !wikis.has(d.wiki)) return null;
+        if (!d || !wanted(d.wiki)) return null;
 
         if (d.type === 'log') {
           if (!welcomeNewUsers || d.log_type !== 'newusers') return null;
@@ -128,6 +144,7 @@ export function wikipedia({
   }
 
   if (backend !== 'wikimon') throw new Error('Unknown Wikipedia backend: ' + backend);
+  if (every) throw new Error('every Wikipedia at once needs the eventstreams backend');
 
   // One socket per language, as the original did.
   const secure = typeof location === 'undefined' || location.protocol === 'https:';

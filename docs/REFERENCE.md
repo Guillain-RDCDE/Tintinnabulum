@@ -1762,6 +1762,64 @@ for good. The console can keep the same hours (*Run the programme on this
 screen too*), for a room with only one screen in it; a click on the dark wakes
 it for ten minutes, which is what somebody opening up early actually wants.
 
+#### An exhibition
+
+A programme is a list somebody wrote. An **exhibition** is what a room does
+when nobody writes the list: the whole catalogue hangs in turn, a few minutes
+each, in an order drawn from a number, and each time a work comes round it
+wears a palette drawn from the ones that suit it -- those on its own ground,
+so a night work stays a night work -- and a variation drawn fresh. The same
+picture is never seen twice the same way, and nothing comes back before
+everything has hung once. The sound changes more slowly than the picture: one
+instrument is held across three works, then another, because a room where the
+sound changed with every image would be a zapping and not a show. Between two
+works the picture dips to its ground and comes back up (ten seconds, `fade`),
+never a cut.
+
+```
+project.html?exhibition=1&full=1
+```
+
+That one word sets the room: every Wikipedia at once, people alone ringing
+(see *Only people*), the sound on the wall itself, the recorded day to fall
+back on, and the whole catalogue. Each can be said otherwise:
+
+| | |
+|---|---|
+| `minutes=4` | per work, 2 to 10 |
+| `hold=3` | works per instrument |
+| `seed=tintinnabulum` | the draw; any word or number. Two screens on the same seed hang the same dress at the same moment |
+| `fade=10` | seconds of dip between works; `0` cuts |
+| `works=a,b,c` / `room=Night` | a hand-picked set, or one room of the Gallery |
+| `feed=wikipedia&langs=all&people=1` | the defaults; `langs=en,fr` narrows, `people=0` lets everything ring |
+| `sound=1&volume=0.7` | the instrument plays on the wall. **One touch** of the screen starts it (the browser allows no sound before a gesture), the same touch `full=1` uses |
+| `standby=recordings/a-day.json.gz` | the recorded day; `off` for none |
+| `quiet=90` | seconds of silence before the recording stands in |
+| `reload=24` | hours of uptime after which the page reloads itself, between two works |
+| `open=10:00-18:00` | the room's hours, as for a programme |
+
+Where in the exhibition we are is read from the clock, like a programme, so a
+machine rebooted overnight comes back where the show is. The arithmetic is in
+`src/exhibition.js`, checked in Node (`test/exhibition.test.mjs`).
+
+**The recorded day.** A wall in a room outlives its network, and a piece whose
+whole point is that every bell is a person writing cannot run for a day on
+invented bells. So a day is recorded -- real edits, real titles, real sizes,
+the real seconds between them, judged as the wall judges them -- and when the
+live feed has said nothing for `quiet` seconds the recording takes over from
+the time of day it is, at its own cadence, while the live feed is restarted
+behind it; the moment the world speaks again the recording stops. A recording
+shorter than a day is laid end to end. `npm run record -- --hours 24` writes
+`demo/recordings/a-day.json` and its gzip, saving every few minutes as it
+goes, so a recording cut short is still a recording; the page loads the gzip
+and inflates it itself. The watch is `watchedSource` and the player
+`replaySource`, both in `src/sources/replay.js`.
+
+**The journal.** What happened while nobody was in the room -- the start, each
+hanging, the sound coming on, the world going quiet and coming back, a reload
+-- is kept in the browser (`projection.journal` in the console, five hundred
+lines at most) and printed as it happens.
+
 #### The wall label
 
 A gallery tells you what you are looking at. So does the wall: when the work
@@ -1913,6 +1971,13 @@ scene that has several and for everything on the Paper and print shelf; the
 whole catalogue, with every work's own dials, is `tools/follows-the-feed.mjs`,
 which `test:feed` runs with `--strict`.
 
+The judge behind *Only people* (`test/humanity.test.mjs`) and the exhibition,
+the recorded day and the watch (`test/exhibition.test.mjs`) are Node suites:
+arithmetic and a fake clock, no browser. The main browser suite then checks
+that the wall obeys them, including a silent feed stood in for by the
+recording at `demo/recordings/a-day.json.gz`, written by `npm run record`
+(`tools/record-day.mjs`).
+
 ### Layout
 
 Everything public is re-exported from [`src/index.js`](../src/index.js), so the
@@ -1972,10 +2037,14 @@ src/visual/
   color.js              OKLab shading, gamut fitting, per-event variation
   shapes.js             mark geometry
 src/works.js            finished pieces: a scene, a sound and a frame, titled
+src/show.js             a programme: which work hangs, for how long, when the room is open
+src/exhibition.js       an exhibition: the catalogue in a drawn order, each work dressed anew
 src/sources/
   transports.js         WebSocket, SSE, poll, manual, random, ingest
   feeds.js              Bitcoin, Coinbase, earthquakes, Bluesky, GitHub, NOAA, HN
   wikimedia.js          Wikipedia and its editions
+  humanity.js           who rang: a person or a machine, for the Wikipedia feed alone
+  replay.js             a recorded day played at its own pace, and the watch that falls back on it
 server/
   ingest.mjs            zero-dependency ingest, fan-out and static server
   runner.mjs            drives descriptors: fetch or listen, de-duplicate, pace
@@ -1998,7 +2067,8 @@ tools/
 demo/
   demo.js               the sandbox page
   shell.js              the tabs, the inspector, the dock, the keys, fading away
-  project.html/.js      the projection window: the picture, full screen, alone
+  project.html/.js      the projection window: the picture, full screen, alone; an exhibition, with sound and the recorded day
+  recordings/           a recorded day for the wall to fall back on (npm run record)
   studio.js             the Create tab: every scene as a small tool on a bench
   play.html             forwards the old playground address to the Create tab
   broadcast.js          forwarding events to that window

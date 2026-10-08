@@ -12,3 +12,6 @@ Thumbs.db
 # The model's originals: kept for regenerating masks, not published.
 art/plates-raw/
 tmp-audition/
+
+# A recording is shipped gzipped; the plain JSON beside it is the tool's working copy.
+demo/recordings/*.json

@@ -31,18 +31,29 @@ import { parseColor, lightnessOf } from '../src/visual/color.js';
 import { parseShow, parseHours, showAt, isOpen, untilOpen, formatClock } from '../src/show.js';
 import {
   CanvasSink, PALETTES, WORKS, SCENES, Mapper, normalize, mediumOf, workSettings, drawQr,
-  FINISHES, GROUNDS, MATS, KITS, LIVING,
+  FINISHES, GROUNDS, MATS, KITS, LIVING, Sonifier, variedParams,
+  exhibition, exhibitionAt, describeExhibition,
+  replaySource, loadRecording, watchedSource,
   wikipedia, bitcoin, coinbase, earthquakes, bluesky, github, noaaAlerts, hackerNews, randomSource,
 } from '../src/index.js';
 
 const CHANNEL = 'tintinnabulum';
 const params = new URLSearchParams(location.search);
 
+// An exhibition is the whole room in one word: the catalogue in a drawn
+// order, every Wikipedia, people alone ringing, sound on, and the recorded
+// day to fall back on. Each of those can still be said otherwise.
+const exhibiting = params.get('exhibition') === '1';
+const option = (name, whenExhibiting, otherwise) => {
+  const v = params.get(name);
+  return v !== null ? v : exhibiting ? whenExhibiting : otherwise;
+};
+
 /** The feeds a wall may be pointed at on its own, without a console. */
 const FEEDS = {
   wikipedia: () => wikipedia({
-    langs: (params.get('langs') || 'en').split(',').filter(Boolean),
-    onlyPeople: params.get('people') === '1',
+    langs: option('langs', 'all', 'en').split(',').filter(Boolean),
+    onlyPeople: option('people', '1', '0') === '1',
   }),
   commons: () => wikipedia({ wikis: ['commonswiki'], mainNamespaceOnly: false }),
   bitcoin: () => bitcoin(),
@@ -64,7 +75,7 @@ const body = document.body;
 // own share of it, so the picture crosses the seam instead of stopping at it.
 // Told what to hang -- a work, or a programme -- rather than following a
 // console. See the hello below.
-const selfDirected = Boolean(params.get('work') || params.get('show'));
+const selfDirected = Boolean(params.get('work') || params.get('show') || exhibiting);
 const across = Math.max(1, Math.min(8, Number(params.get('of') || 1)));
 const panel = Math.max(1, Math.min(across, Number(params.get('wall') || 1)));
 
@@ -229,6 +240,69 @@ window.addEventListener('keydown', (e) => {
   if (e.key === 'i' || e.key === 'I') toggleCartel();
 });
 
+// --- the journal --------------------------------------------------------
+//
+// What happened to the wall while nobody was in the room: when it started,
+// when the world went quiet and the recording took over, when it came back,
+// when the page reloaded itself. Kept in the browser, read from the console
+// or from `projection.journal`, five hundred lines at most.
+const JOURNAL_KEY = 'tintinnabulum.journal';
+function journal(entry) {
+  const line = { at: entry.at || Date.now(), ...entry };
+  try {
+    const kept = JSON.parse(localStorage.getItem(JOURNAL_KEY) || '[]');
+    kept.push(line);
+    if (kept.length > 500) kept.splice(0, kept.length - 500);
+    localStorage.setItem(JOURNAL_KEY, JSON.stringify(kept));
+  } catch (e) { /* storage refused: the console still has it */ }
+  console.info('[wall]', new Date(line.at).toISOString(), line.what, line.note || '');
+}
+function readJournal() {
+  try { return JSON.parse(localStorage.getItem(JOURNAL_KEY) || '[]'); } catch (e) { return []; }
+}
+
+// --- sound --------------------------------------------------------------
+//
+// A projection used to be the silent half of the piece, heard on a phone
+// through the label's code. A room has speakers. With `sound=1` (on by
+// default in an exhibition) the wall plays the work's instrument itself,
+// once a touch or a key has let the browser start audio -- the same gesture
+// fullscreen needs, so one touch does both.
+const wantSound = option('sound', '1', '0') === '1';
+const son = wantSound ? new Sonifier({ kit: 'synth', mapping: { mode: 'adaptive', scale: 'chromatic', range: 27, jitter: 0.5 }, voices: { maxVoices: 16 }, volume: Number(params.get('volume') || 0.7) }) : null;
+let soundOn = false;
+let currentKit = null;
+let wantedKit = null;
+let wantedSpace = 'none';
+
+async function startSound() {
+  if (!son || soundOn) return;
+  son.engine.resumeSync();
+  const status = await son.unlock();
+  soundOn = Boolean(status.audible);
+  journal({ what: 'sound', note: soundOn ? 'on' : 'blocked: ' + JSON.stringify(status) });
+  if (soundOn && wantedKit) await playKit(wantedKit, wantedSpace);
+}
+
+/** The instrument and the room it plays in, swapped only once they can sound. */
+async function playKit(kit, space = 'none') {
+  wantedKit = kit;
+  wantedSpace = space;
+  if (!son || !soundOn || !KITS[kit]) return;
+  if (kit !== currentKit) {
+    currentKit = kit;
+    await son.setKit(kit);
+    // The bed is tied to a connected source in the sandbox; the wall feeds
+    // its sink by hand, so the bed is asked for by hand too.
+    son.audio.setBed(KITS[kit].bed || null);
+  }
+  son.space = space;
+}
+
+if (son) {
+  for (const ev of ['pointerdown', 'keydown']) window.addEventListener(ev, startSound, { once: true, passive: true });
+}
+
 // --- listening ----------------------------------------------------------
 let seen = false;
 let last = performance.now();
@@ -242,6 +316,7 @@ function arrive(ev) {
   }
   last = performance.now();
   sink.handle(ev);
+  if (son && soundOn) son.audio.handle(ev);
 }
 
 /** Apply whatever the sandbox says its settings are. */
@@ -301,20 +376,56 @@ channel.onmessage = (m) => {
 const mapper = new Mapper({ mode: 'adaptive' });
 let source = null;
 
+// --- the recorded day ---------------------------------------------------
+//
+// `standby=recordings/a-day.json.gz` (the default in an exhibition; `off` to
+// have none) is a day of real edits the wall plays when the live feed has
+// said nothing for `quiet` seconds, from the time of day it is, until the
+// feed speaks again. See src/sources/replay.js. It is loaded in its own
+// time, and a wall whose recording cannot be found simply has none.
+const standbyUrl = option('standby', 'recordings/a-day.json.gz', 'off');
+let standby = null;
+let recording = null;
+if (standbyUrl && standbyUrl !== 'off') {
+  loadRecording(new URL(standbyUrl, location.href).href)
+    .then((rec) => {
+      recording = rec;
+      standby = replaySource(rec, { name: 'standby' });
+      journal({ what: 'standby-loaded', note: `${rec.events.length} events, ${rec.minutes || '?'} min` });
+    })
+    .catch((e) => journal({ what: 'standby-missing', note: e.message }));
+}
+const QUIET = Number(params.get('quiet') || 90) * 1000;
+
 /** Listen to the world directly, for a wall with no console beside it. */
 function listenAlone(name) {
   const make = FEEDS[name];
   if (!make) return false;
   try {
-    source = make();
-    source.start((raw) => {
+    const hear = (raw) => {
       const ev = normalize(raw);
       if (!ev) return;
       ev.map = mapper.map(ev.magnitude);
       arrive(ev);
-    });
+    };
+    // The world, watched: a feed that falls silent is restarted, and the
+    // recording stands in meanwhile. A lazily loaded recording is found by
+    // the watch when it is needed, not when the watch was made.
+    source = standbyUrl && standbyUrl !== 'off'
+      ? watchedSource({
+          live: make,
+          quiet: QUIET,
+          journal,
+          standby: {
+            start: (emit) => { if (standby) standby.start(emit); },
+            stop: () => { if (standby) standby.stop(); },
+          },
+        })
+      : make();
+    source.start(hear);
     return true;
   } catch (e) {
+    journal({ what: 'feed-failed', note: String(e && e.message) });
     return false;
   }
 }
@@ -382,8 +493,13 @@ function close(yes) {
   } else {
     note.hidden = true;
     if (feed) listenAlone(feed);
-    const now = showAt(programme, new Date());
-    if (now) hang(now.work);
+    if (ex) {
+      slot = null;
+      followExhibition();
+    } else {
+      const now = showAt(programme, new Date());
+      if (now) hang(now.work);
+    }
   }
 }
 
@@ -402,9 +518,92 @@ function followProgramme() {
   if (now && now.work !== labelled) hang(now.work);
 }
 
-// The address is the installation: a programme, or a single work, and a feed.
-const feed = params.get('feed');
-if (programme.length) {
+// --- the exhibition -------------------------------------------------------
+//
+// `exhibition=1`: the whole catalogue in a drawn order, a few minutes each,
+// every work dressed anew each time it comes round, the instrument held
+// across several works. Where in it we are is read from the clock, like a
+// programme. `minutes`, `hold`, `seed` and `fade` tune it; `works=a,b,c`
+// narrows it to a hand-picked set; `room=Night` to one room of the Gallery.
+const FADE = Math.max(0, Math.min(30, Number(option('fade', '10', '10')))) * 1000;
+const UPTIME_RELOAD = Number(params.get('reload') || 0) * 3600 * 1000; // hours, 0 for never
+const startedAt = Date.now();
+const room = params.get('room');
+const picked = (params.get('works') || '').split(',').filter((k) => WORKS[k]);
+const ex = exhibiting
+  ? exhibition({
+      works: picked.length ? picked : room ? Object.keys(WORKS).filter((k) => WORKS[k].room === room) : undefined,
+      seed: params.get('seed') || 'tintinnabulum',
+      minutes: params.get('minutes') || 4,
+      hold: params.get('hold') || 3,
+    })
+  : null;
+let slot = null; // the slot number showing, so a change is seen once
+let changing = 0;
+
+/**
+ * Hang a work in the dress the exhibition drew for it: its palette, a fresh
+ * variation of its dials, and its instrument, through a dip of `fade` ms
+ * rather than a cut. The scene is swapped at the bottom of the dip by the
+ * sink itself; everything else is set at that same moment, under cover.
+ */
+function hangDressed(at, { instant = false } = {}) {
+  const w = WORKS[at.work];
+  if (!w || !SCENES[w.scene]) return false;
+  const s = workSettings(w, SCENES);
+  const dials = variedParams(SCENES[s.scene], at.variation, 1, s.params);
+  const dress = {
+    scene: s.scene, palette: at.palette, finish: s.finish, ground: s.ground,
+    mat: s.mat, grain: s.grain, living: s.living, pace: s.pace,
+    params: { [s.scene]: dials },
+  };
+  const apply = () => {
+    const dipping = sink.sceneFading;
+    // The sink swaps the scene itself at the bottom of a dip; setting it
+    // here as well would only restart it.
+    applySettings(dipping ? { ...dress, scene: undefined } : dress);
+    if (PALETTES[at.palette]) dressCartel(PALETTES[at.palette].colors);
+    labelled = at.work;
+    if (params.get('label') !== 'off') showCartel(at.work);
+  };
+  clearTimeout(changing);
+  if (instant || !FADE || !seen) {
+    apply();
+  } else {
+    sink.fadeScene(s.scene, FADE);
+    changing = setTimeout(apply, FADE / 2);
+  }
+  playKit(at.kit, s.space);
+  return true;
+}
+
+/** Where the exhibition is now; a new slot is a new dress. */
+function followExhibition() {
+  const when = new Date();
+  if (hours) close(!isOpen(hours, when));
+  if (closed || !ex) return;
+  const at = exhibitionAt(ex, when);
+  if (!at || at.slot === slot) return;
+  const first = slot === null;
+  slot = at.slot;
+  journal({ what: 'hang', note: `${at.work} in ${at.palette}, variation ${at.variation}, ${at.kit}`, slot: at.slot });
+  hangDressed(at, { instant: first });
+  // A page that has run for days is reloaded between two works, where a
+  // second of black is a change of programme and not a fault.
+  if (UPTIME_RELOAD && Date.now() - startedAt > UPTIME_RELOAD && !first) {
+    journal({ what: 'reload', note: 'uptime' });
+    setTimeout(() => location.reload(), 1500);
+  }
+}
+
+// The address is the installation: an exhibition, a programme, or a single
+// work, and a feed.
+const feed = option('feed', 'wikipedia', null);
+if (ex) {
+  journal({ what: 'start', note: describeExhibition(ex) });
+  followExhibition();
+  setInterval(followExhibition, 5000);
+} else if (programme.length) {
   followProgramme();
   setInterval(followProgramme, 5000);
 } else {
@@ -420,6 +619,11 @@ if (programme.length) {
 }
 if (feed && !closed) listenAlone(feed);
 if (params.get('full') === '1') addEventListener('pointerdown', goFullscreen, { once: true });
+if (son && !seen) {
+  // Until the touch that starts sound and fullscreen, say so, once, quietly.
+  note.hidden = false;
+  note.innerHTML = '<b>Touch the screen once</b>to start the sound' + (params.get('full') === '1' ? ' and take the whole screen.' : '.');
+}
 
 // Announce ourselves, so the sandbox sends its current settings rather than
 // leaving this window on defaults until somebody changes something.
@@ -442,6 +646,13 @@ window.projection = {
   sink, channel, showWork, goFullscreen, showCartel, hideCartel, addressOf,
   wall: { panel, across },
   programme, hours, followProgramme,
+  exhibition: ex, followExhibition, hangDressed,
+  get slot() { return slot; },
+  get journal() { return readJournal(); },
+  get standby() { return Boolean(standby); },
+  get recording() { return recording; },
+  get onStandby() { return Boolean(source && source.onStandby); },
+  get sound() { return { wanted: Boolean(son), on: soundOn, kit: currentKit, wantedKit }; },
   get closed() { return closed; },
   get untilOpen() { return untilOpen(hours, new Date()); },
   get labelled() { return cartel.classList.contains('show') ? labelled : null; },

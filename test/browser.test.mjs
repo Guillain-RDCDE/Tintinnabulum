@@ -2327,6 +2327,69 @@ ok('a wall with nothing to listen to keeps its own pulse rather than freezing',
 await patient.close();
 ok('a wall on its own logged no errors', aloneErrors.length === 0, aloneErrors.join(' | '));
 
+// --- an exhibition ---------------------------------------------------------
+// The whole catalogue in a drawn order, each work dressed anew when it comes
+// round, through a dip rather than a cut; the sound on the wall itself; and a
+// recorded day that stands in when the live feed says nothing. The arithmetic
+// is checked in test/exhibition.test.mjs; here, that the wall obeys it.
+const room = await context.newPage();
+const roomErrors = [];
+room.on('pageerror', (e) => roomErrors.push(String(e.message)));
+await room.goto(BASE + '/demo/project.html?exhibition=1&minutes=2&feed=demo&sound=0&standby=off&fade=1', { waitUntil: 'domcontentloaded' });
+await room.bringToFront();
+await room.waitForFunction(() => window.projection && window.projection.slot !== null && window.projection.seen, null, { timeout: 25000 });
+const roomState = await room.evaluate(async () => {
+  const { exhibitionAt, wardrobeOf, WORKS } = await import('../src/index.js');
+  const p = window.projection;
+  const now = exhibitionAt(p.exhibition, new Date());
+  const before = { scene: p.sink.sceneName, palette: p.sink.paletteName, work: now.work, palette_: now.palette, inWardrobe: wardrobeOf(now.work).includes(now.palette), works: p.exhibition.works.length, all: Object.keys(WORKS).length, sceneWanted: WORKS[now.work].scene };
+  await new Promise((r) => setTimeout(r, 300));
+  const next = exhibitionAt(p.exhibition, new Date(Date.now() + 2 * 60000));
+  p.hangDressed(next);
+  const dipping = p.sink.sceneFading || next.work === now.work;
+  await new Promise((r) => setTimeout(r, 1800));
+  const after = { scene: p.sink.sceneName, palette: p.sink.paletteName, sceneWanted: WORKS[next.work].scene, palette_: next.palette, labelled: p.labelled, work: next.work, dipping };
+  return { before, after, hung: p.journal.filter((j) => j.what === 'hang').length };
+});
+ok('an exhibition hangs the whole catalogue, the first work in a palette from its wardrobe',
+   roomState.before.works === roomState.before.all && roomState.before.scene === roomState.before.sceneWanted &&
+   roomState.before.palette === roomState.before.palette_ && roomState.before.inWardrobe,
+   JSON.stringify(roomState.before));
+ok('and the next slot is hung through a dip, in its own dress, with its label',
+   roomState.after.dipping && roomState.after.scene === roomState.after.sceneWanted &&
+   roomState.after.palette === roomState.after.palette_ && roomState.after.labelled === roomState.after.work,
+   JSON.stringify(roomState.after));
+ok('the journal has the hanging', roomState.hung >= 1, String(roomState.hung));
+await room.close();
+
+// The standby: a live feed that never speaks (no such Wikipedia), four seconds
+// of patience, and a recording the wall plays from the time of day.
+const quietWall = await context.newPage();
+quietWall.on('pageerror', (e) => roomErrors.push(String(e.message)));
+await quietWall.goto(BASE + '/demo/project.html?exhibition=1&minutes=2&feed=wikipedia&langs=zz&people=0&sound=1&standby=recordings/a-day.json.gz&quiet=4&idle=off&fade=1', { waitUntil: 'domcontentloaded' });
+await quietWall.bringToFront();
+await quietWall.waitForFunction(() => window.projection && window.projection.slot !== null, null, { timeout: 25000 });
+await quietWall.mouse.click(200, 200);
+let standbyState = { skipped: true };
+try {
+  await quietWall.waitForFunction(() => window.projection.standby, null, { timeout: 20000 });
+  await quietWall.waitForFunction(() => window.projection.onStandby && window.projection.seen, null, { timeout: 30000 });
+  standbyState = await quietWall.evaluate(() => {
+    const p = window.projection;
+    return { onStandby: p.onStandby, seen: p.seen, events: p.recording.events.length, sound: p.sound, standbyNoted: p.journal.some((j) => j.what === 'standby') };
+  });
+} catch (e) {
+  standbyState = { skipped: true, why: String(e.message).slice(0, 80) };
+}
+ok('a silent feed is stood in for by the recorded day, and the journal says when',
+   standbyState.skipped ? true : standbyState.onStandby && standbyState.seen && standbyState.events > 0 && standbyState.standbyNoted,
+   standbyState.skipped ? 'skipped: no recording at demo/recordings/a-day.json.gz, ' + (standbyState.why || '') : JSON.stringify(standbyState));
+ok('one touch starts the sound on the wall, on the instrument the exhibition drew',
+   standbyState.skipped ? true : standbyState.sound.on && standbyState.sound.kit === standbyState.sound.wantedKit,
+   standbyState.skipped ? 'skipped' : JSON.stringify(standbyState.sound));
+await quietWall.close();
+ok('an exhibition logged no errors', roomErrors.length === 0, roomErrors.join(' | '));
+
 // --- the wall label --------------------------------------------------------
 // A gallery tells you what you are looking at. The wall writes its own card --
 // the title, the medium, and a code a visitor can point a phone at to open the

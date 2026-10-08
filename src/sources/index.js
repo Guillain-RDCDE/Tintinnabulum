@@ -27,3 +27,4 @@ export {
 } from './wikimedia.js';
 
 export { createHumanity, lookupGroups, lookupGlobalBots, categoryFor } from './humanity.js';
+export { replaySource, loadRecording, watchedSource, rowToEvent, offsetInto, seekTo } from './replay.js';

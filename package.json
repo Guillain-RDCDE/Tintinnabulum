@@ -22,13 +22,14 @@
   ],
   "scripts": {
     "serve": "node server/ingest.mjs",
-    "test": "node test/core.test.mjs && node test/qr.test.mjs && node test/show.test.mjs && node test/expr.test.mjs && node test/profile.test.mjs && node test/source.test.mjs && node test/humanity.test.mjs && node test/server.test.mjs && node test/ingest.test.mjs",
+    "test": "node test/core.test.mjs && node test/qr.test.mjs && node test/show.test.mjs && node test/expr.test.mjs && node test/profile.test.mjs && node test/source.test.mjs && node test/humanity.test.mjs && node test/exhibition.test.mjs && node test/server.test.mjs && node test/ingest.test.mjs",
     "test:browser": "node test/browser.test.mjs",
     "test:audio": "node test/browser-audio.test.mjs",
     "test:perf": "node test/browser-perf.test.mjs",
     "test:feed": "node tools/follows-the-feed.mjs --strict --sheets --works",
     "check": "npm test && npm run test:browser",
     "sheet": "node tools/contact-sheet.mjs",
+    "record": "node tools/record-day.mjs --people --gzip --out demo/recordings/a-day.json",
     "social": "node tools/make-social-preview.mjs"
   },
   "keywords": [
