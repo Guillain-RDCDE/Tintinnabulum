@@ -766,6 +766,33 @@ export const WORKS = {
     mat: 'gallery', pace: UNHURRIED,
     cartel: 'A city in sodium orange sliding beneath the wing, headlights moving along its streets. Music for the terminal below.',
   }),
+
+  // The sketchbook: pencil and watercolour by the brush engine, on cold-pressed paper.
+  sketchwashes: work('Daylight', 'calm', 'Washes in a sketchbook', {
+    scene: 'sketchbook', palette: 'vellum', kit: 'musicbox', space: 'room',
+    ground: 'coldpress', mat: 'gallery', pace: SLOW, dials: { figure: 0 },
+    cartel: 'Ochre, green, blue and red laid in watercolour on cream paper, each wash running out at its edge and drying darker there, the paper showing through where the brush ran thin; now and then one is drawn round in pencil, a little off the paint. Where two washes cross they mix as paint does. A music box; every event is a wash, and a full page is turned.',
+  }),
+  sketchnotes: work('Dawn', 'calm', 'Colour notes', {
+    scene: 'sketchbook', palette: 'daylight', kit: 'glassy', space: 'room',
+    ground: 'coldpress', mat: 'thin', pace: UNHURRIED, dials: { figure: 0, pages: 30 },
+    cartel: 'Blue, green, violet and red put down in quick washes, as a painter tries colours on the corner of a sheet, and ringed in pencil. Blue over green goes deeper, red over blue goes violet. Glass; the page is turned every thirty marks.',
+  }),
+  sketchhatched: work('Daylight', 'calm', 'Hatched studies', {
+    scene: 'sketchbook', palette: 'papyrus', kit: 'strings', space: 'room',
+    ground: 'coldpress', mat: 'thin', pace: SLOW, dials: { figure: 1 },
+    cartel: 'Shapes hatched by one hand at one slant, in graphite, soft graphite, coloured pencil and charcoal by the kind of event, a large one washed first and hatched across. Strings; every event is another study.',
+  }),
+  sketchhills: work('Dawn', 'calm', 'A walk in the hills', {
+    scene: 'sketchbook', palette: 'papyrus', kit: 'birds', space: 'hall',
+    ground: 'coldpress', mat: 'gallery', pace: UNHURRIED, dials: { figure: 2 },
+    cartel: 'A sky washed in blue with the clouds left as paper, a low sun, and hills in green, red and ochre inked along the ridge and shaded under it in pencil. Birdsong; small events are birds crossing the sky, larger ones trees on the hills, the largest another hill in front.',
+  }),
+  sketchsummer: work('Daylight', 'lively', 'Summer, sketched', {
+    scene: 'sketchbook', palette: 'daylight', kit: 'aviary', space: 'room',
+    ground: 'coldpress', mat: 'gallery', pace: REAL_TIME, dials: { figure: 2, pages: 60 },
+    cartel: 'The same walk on a brighter day: a blue sky, a red sun, hills of green, violet and red, trees arriving on them as fast as the feed brings them. An aviary.',
+  }),
 };
 
 /** The works in a room, in the order they are hung. */

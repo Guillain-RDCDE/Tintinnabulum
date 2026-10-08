@@ -50,6 +50,7 @@ export const CATALOGUE = {
   aura: S('Painting', 'Wide soft clouds of colour drifting into one another, like light through frosted glass.'),
   asemic: S('Paper and print', 'A page written in a hand nobody can read, one letter for every event.'),
   rise: S('Painting', 'Rings and rays in two colours trading places where they cross, and each event running out through them.'),
+  sketchbook: S('Painting', 'A sketchbook in pencil and watercolour: washes that run and pool at the rim and mix as paint mixes, shapes hatched in graphite and charcoal, or a landscape that birds and trees arrive in. Every event is a mark, and a full page is turned.'),
 
   // --- nature ------------------------------------------------------------
   murmuration: S('Nature', 'Starlings at dusk, one cloud folding into a ribbon and back again.'),

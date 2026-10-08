@@ -976,5 +976,69 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   }));
 }
 
+// --- the brush engine: paint mixing, hatching, the wash mask, the queue ---
+{
+  const { spectralMix, packColour, hatchLines, drainJobs, Paper, BRUSHES } = await import('../src/visual/brush.js');
+  const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const green = rgb(spectralMix('#0000ff', '#ffff00', 0.5));
+  ok('blue and yellow mix as paint, to a green', green[1] > green[0] + 40 && green[1] > green[2] + 20, spectralMix('#0000ff', '#ffff00', 0.5));
+  ok('a mix of nothing of the second is the first', spectralMix('#1d5fa8', '#dc2626', 0) === '#1d5fa8');
+  ok('a mix of all of the second is the second', spectralMix('#1d5fa8', '#dc2626', 1) === '#dc2626');
+  ok('a colour mixed with itself is itself', spectralMix('#7c3aed', '#7c3aed', 0.4) === '#7c3aed');
+  ok('colours are read in hex and rgb()', packColour('#fff') === 0xffffff && packColour('rgb(18, 52, 86)') === 0x123456);
+
+  const square = [[0, 0], [100, 0], [100, 100], [0, 100]];
+  const lines = hatchLines(square, { dist: 10, angle: 0 });
+  ok('a square hatched level is ten lines ten apart', lines.length === 10 && lines.every((l) => Math.abs(l.x2 - l.x1) > 99), `n=${lines.length}`);
+  const slant = hatchLines(square, { dist: 10, angle: 45 });
+  const inside = slant.every((l) => [l.x1, l.y1, l.x2, l.y2].every((v) => v > -0.01 && v < 100.01));
+  ok('hatching stays inside its shape at a slant', slant.length > 10 && inside, `n=${slant.length}`);
+  const ring = [];
+  for (let i = 0; i < 40; i++) ring.push([50 + 40 * Math.cos((i / 40) * Math.PI * 2), 50 + 40 * Math.sin((i / 40) * Math.PI * 2)]);
+  ok('hatching a circle pairs its crossings', hatchLines(ring, { dist: 7, angle: 30 }).every((l) => Math.hypot(l.x1 - 50, l.y1 - 50) < 40.5));
+
+  // The mask is laid without a canvas, so it can be checked here.
+  const sheet = { width: 64, height: 64, getContext: () => ({}) };
+  const paper = new Paper(sheet, { scale: 1 });
+  paper._fillPolygon([{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 30, y: 30 }, { x: 10, y: 30 }], 0.5);
+  const covered = paper.fill.reduce((n, v) => n + (v > 0 ? 1 : 0), 0);
+  ok('a square laid into the mask covers its area', covered === 400 && paper.fill[20 * 64 + 20] === 128, `covered=${covered}`);
+  paper._fillPolygon([{ x: 10, y: 10 }, { x: 30, y: 10 }, { x: 30, y: 30 }, { x: 10, y: 30 }], 0.5);
+  ok('two layers gather as a canvas gathers them', paper.fill[20 * 64 + 20] === 192, String(paper.fill[20 * 64 + 20]));
+  paper._eraseDisc(20, 20, 4, 1);
+  ok('a disc rubbed out takes the paint away', paper.fill[20 * 64 + 20] === 0 && paper.fill[11 * 64 + 11] > 0);
+  paper.reset();
+  // A bow tie crosses itself; the nonzero rule lays the crossing once.
+  paper._fillPolygon([{ x: 10, y: 10 }, { x: 50, y: 50 }, { x: 50, y: 10 }, { x: 10, y: 50 }], 0.5);
+  const most = paper.fill.reduce((m, v) => Math.max(m, v), 0);
+  ok('a shape that crosses itself is laid once where it crosses', most === 128 && paper.fill[30 * 64 + 20] === 128 && paper.fill[15 * 64 + 30] === 0);
+  paper.reset();
+  paper._strokePolygon([{ x: 10, y: 10 }, { x: 50, y: 10 }, { x: 50, y: 50 }, { x: 10, y: 50 }], 3, 0.2);
+  const stroked = paper.fill.reduce((m, v) => Math.max(m, v), 0);
+  ok('an outline lays each pixel once however its dabs overlap', stroked === 51 && paper.fill[30 * 64 + 30] === 0);
+  paper.reset();
+  paper._fillPolygon([{ x: 0, y: 0 }, { x: 64, y: 0 }, { x: 64, y: 64 }, { x: 0, y: 64 }], 5 / 255);
+  paper._eraseDisc(32, 32, 20, 0.066);
+  ok('a faint wash rubbed out a little rounds back, as on a canvas', paper.fill[32 * 64 + 32] === 5);
+  ok('every standard brush is described in full', Object.values(BRUSHES).every((b) => b.weight > 0 && b.spacing > 0 && b.curve.length === 2 && b.range.length === 2));
+
+  // The queue: a step that says it was heavy ends the frame's work.
+  const done = [];
+  function* job(name) {
+    done.push(name + 1);
+    yield false;
+    done.push(name + 2);
+    yield true;
+    done.push(name + 3);
+  }
+  const jobs = [job('a'), () => done.push('f'), job('b')];
+  drainJobs(jobs, 10);
+  ok('a heavy step ends the frame', done.join() === 'a1,a2' && jobs.length === 3, done.join());
+  drainJobs(jobs, 10);
+  ok('the queue runs in order and drops what is finished', done.join() === 'a1,a2,a3,f,b1,b2' && jobs.length === 1, done.join());
+  drainJobs(jobs, 1);
+  ok('steps are counted, not timed', done.length === 7 && jobs.length === 0);
+}
+
 console.log(fails ? `\n${fails} FAILURE(S): ${failedNames.join(' | ')}` : '\nall core checks passed');
 process.exit(fails ? 1 : 0);

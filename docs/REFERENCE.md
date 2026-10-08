@@ -1050,6 +1050,42 @@ Both sheets are printed once onto a buffer and only what changes is drawn
 again. Sixteen works hang on it, in a **white border**, the flat white margin
 a print is trimmed with.
 
+#### Sketchbook
+
+**Sketchbook** (`sketchbook`, on the *Painting* shelf, in
+[`brushed.js`](../src/visual/scenes/brushed.js)) draws the way a hand does,
+with pencils that skip on the grain of the paper and watercolour that runs,
+pools at its rim and lets the paper through. *Washes* lays a wash in the
+event's colour where it lands, glazes a large one again, and now and then
+rings one in pencil a little off the paint. *Hatching* hatches a shape in
+graphite, soft graphite, coloured pencil or charcoal by the event's kind, all
+at one hand's slant, and washes a large one first. *Landscape* opens on a sky
+with its clouds left as paper, a sun and three hills, washed, inked along the
+ridge and shaded under it; small events are birds, larger ones trees standing
+on the hills, the largest another hill in front. The **pages** dial is how
+many marks a page takes before it is turned. The paper is the palette's ground
+if it is light and cream if not, so the scene suits light palettes and
+reads well on the *cold-press* ground. Five works hang on it.
+
+Every mark goes through [`brush.js`](../src/visual/brush.js), a port of
+[p5.brush](https://github.com/acamposuribe/p5.brush) to Canvas 2D, usable by
+any scene:
+
+| | |
+|---|---|
+| **`new Paper(canvas, { scale })`** | A sheet to draw on. `scale` is the size of a brush unit in pixels; p5.brush's look is about a two-hundredth of the sheet's shorter side. |
+| **`paper.stroke(points, { colour, brush, weight, wobble })`** | A stroke along a path with one of the brushes in `BRUSHES`: `pen`, `rotring`, `2B`, `HB`, `2H`, `cpencil`, `charcoal`, `crayon`, `pastel`, `spray`, `marker`. It is a walk of small soft dots under a pressure curve drawn afresh for each stroke, gathered in a mask and mixed in by `paper.flush()`; dense graphite is darker. |
+| **`paper.watercolourSteps(points, { colour, opacity, bleed, texture, border })`** | A watercolour fill, after Tyler Hobbs: the shape grown by midpoint displacement and laid as twenty translucent layers at three sizes, the paper rubbed out between them, the rim darkened where the layers end. A generator, a layer or a band of rows a step; `paper.watercolour()` lays it at once. |
+| **`paper.wash(points, colour, opacity)`** | A flat wash, laid once. |
+| **`paper.hatch(points, { dist, angle, rand, gradient }, pen)`** | Parallel strokes across a shape; `hatchLines()` gives the lines alone. |
+| **`spectralMix(a, b, t)`** | Two colours mixed as paint, by Kubelka-Munk over thirty-eight bands after [spectral.js](https://github.com/rvanwijnen/spectral.js): blue and yellow make green. Every mark is mixed into the sheet this way. |
+| **`drainJobs(jobs, steps)`** | Runs queued generators a few steps a frame, stopping after a heavy one, counted rather than timed so a seeded picture is the same on any machine. |
+
+The port keeps p5.brush's brush table, pressure model, fill growth and blend
+rules. It departs where a CPU needs it to: a wash's mask is a typed array
+filled by scanline at a resolution tied to the brush, not a canvas, and the
+mixes are remembered. Credits and licences are in [NOTICE](../NOTICE).
+
 #### Nature and night
 
 Nine places rather than patterns. Each paints its own sky or ground, since a
