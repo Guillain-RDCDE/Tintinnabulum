@@ -98,7 +98,7 @@ export const CATALOGUE = {
   chladni: S('Materials', 'Sand on a singing metal plate, gathering on the lines where it is still.'),
   substrate: S('Materials', 'Cracks spreading across drying clay until they draw the plan of a city.'),
   reaction: S('Materials', "Two colours feeding on each other, making the spots and stripes of an animal's coat."),
-  burin: S('Materials', 'The picture cut as an old engraving, its lines swelling where things are busy.'),
+  burin: S('Materials', 'An engraving drawn with a pen, its lines swelling where things are busy and lifting off the paper where they are not.'),
   metaballs: S('Materials', 'Blobs of liquid light that merge before they touch.'),
   frost: S('Materials', 'Ice spreading across a cold window, feathering out from every speck it started at.'),
   fracture: S('Materials', 'A pane struck once, then again: cracks running out and stopping dead on the ones already there.'),

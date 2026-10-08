@@ -1022,6 +1022,38 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('a faint wash rubbed out a little rounds back, as on a canvas', paper.fill[32 * 64 + 32] === 5);
   ok('every standard brush is described in full', Object.values(BRUSHES).every((b) => b.weight > 0 && b.spacing > 0 && b.curve.length === 2 && b.range.length === 2));
 
+  // The pen that draws engravings: a line given a seed is the same line again,
+  // and a change of tone in one place leaves the rest of it as it was.
+  {
+    const mk = () => new Paper({ width: 120, height: 60, getContext: () => ({}) }, { scale: 1 });
+    const along = (t) => [5 + t * 110, 30];
+    const a = mk();
+    const b = mk();
+    const c = mk();
+    a.engrave(along, () => 0.9, { seed: 42, weight: 3 });
+    b.engrave(along, (x) => (x < 60 ? 0.02 : 0.9), { seed: 42, weight: 3 });
+    c.engrave(along, () => 0.9, { seed: 42, weight: 3 });
+    let changed = 0;
+    for (let y = 0; y < 60; y++) for (let x = 70; x < 120; x++) if (a.mask[y * 120 + x] !== b.mask[y * 120 + x]) changed++;
+    ok('an engraved line drawn again is the same line', a.mask.every((v, i) => v === c.mask[i]));
+    ok('a change of tone at one end leaves the other end of the line alone', changed === 0, `changed=${changed}`);
+    let left = 0;
+    for (let y = 0; y < 60; y++) for (let x = 0; x < 55; x++) left += b.mask[y * 120 + x];
+    ok('where the tone is light the pen lifts', left === 0);
+    const { burin } = await import('../src/visual/engrave.js');
+    const d = mk();
+    burin(d, along, () => 0.9, { weight: 3, seed: 42 });
+    ok('the burin hands its line to a pen when given a sheet', d.mask.some((v) => v > 0));
+  }
+  {
+    // Light rather than paint: on a dark sheet a pale ink lies over it.
+    const px = new Uint8ClampedArray([20, 20, 30, 255]);
+    const sheet = { width: 1, height: 1, getContext: () => ({ getImageData: () => ({ data: px }), putImageData: () => {} }) };
+    const lamp = new Paper(sheet, { scale: 1, light: true });
+    lamp._composite([0, 0, 0, 0], () => 1, () => 0xf0f0f0);
+    ok('a sheet mixed as light takes a pale ink on a dark ground', px[0] > 200 && px[2] > 200, Array.from(px).join());
+  }
+
   // The queue: a step that says it was heavy ends the frame's work.
   const done = [];
   function* job(name) {

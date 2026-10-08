@@ -17,6 +17,7 @@
 
 import { scratch } from './paint.js';
 import { TAU, inkOf, papers } from './shared.js';
+import { Paper, hatchLines, drainJobs } from '../brush.js';
 
 export const DRAWN_SCENES = {
   // --- comb -------------------------------------------------------------------------------
@@ -177,7 +178,7 @@ export const DRAWN_SCENES = {
   hatched: {
     label: 'Hatchwork',
     note: 'A picture divided into fields, and not one of them flat: every field is filled in by hand, with parallel rules, with crossed hatching, with graphite scribbled until it is nearly solid. That is the whole difference between this and a picture of coloured shapes -- the eye can see that somebody sat and filled each one, and it reads the work that went in before it reads the composition. Now and then a division comes out as a thin slice rather than a field, and those are the coloured rails that cross the whole sheet. Every event picks a field and fills it again, in its own colour.',
-    how: 'The sheet is split in two, and each half in two, down to a depth the dial sets, with the split placed off centre and now and then so far off that one side is a rail. A field is re-hatched only when it changes, at a few fields a frame, so the cost of the picture is the cost of what has just been redrawn rather than of everything on it. The wobble in a rule is a sine with a random phase, which is nearer a hand than noise is: a hand wanders, it does not jitter.',
+    how: 'The sheet is split in two, and each half in two, down to a depth the dial sets, with the split placed off centre and now and then so far off that one side is a rail. Every field is filled through the brush engine, a port of p5.brush: rules in graphite or fine pen whose lines skip on the grain, swell and fade along their length and wander as a hand does, scribble in soft graphite or coloured pencil, the densest fields in charcoal, all mixed into the sheet as pigment rather than painted over it. A field is queued when it changes and filled a few strokes a frame, so the cost of the picture is the cost of what is being drawn now.',
     positional: true,
     preview: { frames: 200, dt: 50 },
     params: {
@@ -210,11 +211,19 @@ export const DRAWN_SCENES = {
     frame(ctx, api) {
       const s = api.scene;
       if (!s.panels) return;
-      const buf = scratch(api, 'buf');
-      const b = s.bufCtx;
+      const buf = scratch(api, 'hatchbuf', true);
       if (!s.cleared) {
-        b.fillStyle = api.palette.background;
-        b.fillRect(0, 0, api.w, api.h);
+        const pool = api.buffers;
+        let pen = pool && pool.hatchPaper;
+        if (!pen || pen.cv !== buf) {
+          pen = new Paper(buf, { scale: Math.min(api.w, api.h) / 200 });
+          if (pool) pool.hatchPaper = pen;
+        }
+        pen.reset();
+        pen.light = !papers(api).pale;
+        pen.ground(api.palette.background);
+        s.pen = pen;
+        s.jobs = [];
         s.cleared = true;
       }
       // A hand goes on working whether or not anything arrives.
@@ -225,17 +234,19 @@ export const DRAWN_SCENES = {
         const paper = papers(api);
         dress(s.panels[(Math.random() * s.panels.length) | 0], api, paper, null);
       }
-      // One field a frame, and no more. Filling a field is a few thousand
-      // strokes and three at once is ten thousand, which is a spike with no
-      // reason to exist: a field that waits one more frame to be filled costs
-      // nobody anything, and a page showing several of these at once has only
-      // the one main thread between them.
+      // A field asked for is queued once, and filled a few strokes a frame:
+      // a field is a few hundred lines of pencil, and a page showing several
+      // of these at once has only the one main thread between them.
       for (const panel of s.panels) {
         if (panel.done) continue;
-        fill(b, panel, api);
         panel.done = true;
-        break;
+        s.jobs.push(fillSteps(s.pen, panel, api));
       }
+      // A burst re-dressing field after field lets go of the oldest fills
+      // still waiting rather than falling behind the feed.
+      while (s.jobs.length > 8) s.jobs.splice(1, 1);
+      drainJobs(s.jobs, 4);
+      s.pen.flush();
       ctx.drawImage(buf, 0, 0);
     },
   },
@@ -458,109 +469,83 @@ function dress(panel, api, paper, color) {
   panel.done = false;
 }
 
-/** Fill one field by hand. */
-function fill(b, p, api) {
+/**
+ * Fill one field by hand, through the brush engine: graphite and fine pens
+ * whose lines skip on the grain, swell and fade along their length and
+ * wander as a hand does, mixed into the sheet as pigment is. A generator, a
+ * few strokes a step, so a large field is filled over several frames as a
+ * hand would fill it, and no frame pays for all of it.
+ */
+function* fillSteps(pen, p, api) {
   const paper = papers(api);
   const hatchDial = api.param('hatch');
   const wob = api.param('wobble');
   const unit = Math.min(api.w, api.h);
-  b.save();
-  b.beginPath();
-  b.rect(p.x, p.y, p.w, p.h);
-  b.clip();
   // The ground under the field, so a re-hatched field is not laid over the
   // last one and read as mud.
-  b.fillStyle = paper.pale ? paper.card : api.palette.background;
-  b.fillRect(p.x, p.y, p.w + 1, p.h + 1);
+  pen.flush();
+  const g = pen.g;
+  g.save();
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = paper.pale ? paper.card : api.palette.background;
+  g.fillRect(Math.floor(p.x), Math.floor(p.y), Math.ceil(p.w) + 1, Math.ceil(p.h) + 1);
+  g.restore();
+  yield;
+  if (p.style === 'blank') return;
 
-  b.strokeStyle = p.color;
-  b.lineCap = 'round';
+  const box = [[p.x, p.y], [p.x + p.w, p.y], [p.x + p.w, p.y + p.h], [p.x, p.y + p.h]];
   const gap = Math.max(1.2, (unit * 0.0075) / hatchDial);
-  const amp = unit * 0.0035 * wob;
-
-  /** One wobbly rule across the field. */
-  const rule = (x0, y0, x1, y1, phase) => {
-    const len = Math.hypot(x1 - x0, y1 - y0);
-    const n = Math.max(2, Math.min(28, Math.round(len / 22)));
-    const nx = -(y1 - y0) / (len || 1);
-    const ny = (x1 - x0) / (len || 1);
-    b.beginPath();
-    for (let i = 0; i <= n; i++) {
-      const t = i / n;
-      const off = Math.sin(phase + t * 5.4) * amp;
-      const x = x0 + (x1 - x0) * t + nx * off;
-      const y = y0 + (y1 - y0) * t + ny * off;
-      if (i) b.lineTo(x, y);
-      else b.moveTo(x, y);
+  // A dark ink or a pale card is graphite or chalk; a colour is a fine pen.
+  const neutral = p.color === paper.ink || p.color === paper.card;
+  const per = 8;
+  const lines = function* (h, brush, weight) {
+    const ls = hatchLines(box, h);
+    for (let i = 0; i < ls.length; i++) {
+      const l = ls[i];
+      pen.stroke([[l.x1, l.y1], [l.x2, l.y2]], { colour: p.color, brush, weight: weight * (0.9 + Math.random() * 0.2), wobble: 0.5 * wob });
+      if (i % per === per - 1) yield;
     }
-    b.stroke();
   };
 
-  if (p.style === 'blank') {
-    b.restore();
-    return;
-  }
   if (p.style === 'scribble') {
-    // Graphite: short strokes in every direction until the field is nearly
-    // solid, which is what a pencil does and what no fill can imitate.
-    b.lineWidth = Math.max(0.35, gap * 0.13);
-    b.globalAlpha = 0.34;
-    const strokes = Math.min(1800, Math.round((p.w * p.h) / (gap * gap * 1.5)));
-    // A pencil goes back and forth along one rough direction rather than in
-    // every direction at once: a scatter of sticks reads as confetti, and
-    // that is what the first version drew.
+    // Graphite: short strokes back and forth along one rough direction until
+    // the field is nearly solid, which is what a pencil does and what no fill
+    // can imitate.
     const lean = Math.random() * TAU;
+    const strokes = Math.min(700, Math.round((p.w * p.h) / (gap * gap * 4)));
     for (let i = 0; i < strokes; i++) {
       const x = p.x + Math.random() * p.w;
       const y = p.y + Math.random() * p.h;
       const a = lean + (Math.random() - 0.5) * 0.9;
-      const r = gap * (1.2 + Math.random() * 3);
-      b.beginPath();
-      b.moveTo(x, y);
-      b.lineTo(x + Math.cos(a) * r, y + Math.sin(a) * r);
-      b.stroke();
+      const r = gap * (2 + Math.random() * 4);
+      const x1 = Math.max(p.x, Math.min(p.x + p.w, x + Math.cos(a) * r));
+      const y1 = Math.max(p.y, Math.min(p.y + p.h, y + Math.sin(a) * r));
+      pen.stroke([[x, y], [x1, y1]], { colour: p.color, brush: neutral ? '2B' : 'cpencil', weight: 1.1 });
+      if (i % 40 === 39) yield;
     }
-    b.globalAlpha = 1;
-    b.restore();
     return;
   }
 
-  const tight = p.style === 'dense' ? 0.42 : 1;
+  const dense = p.style === 'dense';
   // A ceiling on how many rules a field may take, whatever its size and
-  // however fine the dial. A wobbly rule is a polyline, not a line, so a
-  // large field at a fine pitch came to over thirty thousand segments struck
-  // in a single frame -- and at that pitch they overlap anyway, so the cap
-  // costs the picture nothing it can show.
-  const MOST = 240;
+  // however fine the dial: at that pitch they overlap anyway.
+  const MOST = 160;
   const run = p.turn ? p.h : p.w;
-  const pitch = Math.max(1.1, gap * tight, run / MOST);
-  b.lineWidth = Math.max(0.4, pitch * (p.style === 'dense' ? 0.85 : 0.26));
-  const lines = Math.ceil(run / pitch);
-  for (let i = 0; i <= lines; i++) {
-    const at = i * pitch;
-    if (p.turn) rule(p.x, p.y + at, p.x + p.w, p.y + at, p.seed * 9 + i * 0.7);
-    else rule(p.x + at, p.y, p.x + at, p.y + p.h, p.seed * 9 + i * 0.7);
-  }
+  const pitch = Math.max(1.4, gap * (dense ? 0.55 : 1.15), run / MOST);
+  // Level or upright, a degree or two off, as a hand holds the slope.
+  const slope = (p.turn ? 0 : 90) + (Math.random() - 0.5) * 3;
+  const brush = dense ? (neutral ? 'charcoal' : 'cpencil') : neutral ? 'HB' : 'pen';
+  const weight = dense ? Math.max(1, pitch / (pen.scale * 1.2)) : 1;
+  yield* lines({ dist: pitch, angle: slope, rand: 0.04 }, brush, weight);
   if (p.style === 'cross') {
-    const other = p.turn ? p.w : p.h;
-    const crossPitch = Math.max(pitch, other / MOST);
-    const across = Math.ceil(other / crossPitch);
-    for (let i = 0; i <= across; i++) {
-      const at = i * crossPitch;
-      if (p.turn) rule(p.x + at, p.y, p.x + at, p.y + p.h, p.seed * 5 + i * 0.4);
-      else rule(p.x, p.y + at, p.x + p.w, p.y + at, p.seed * 5 + i * 0.4);
-    }
+    yield* lines({ dist: pitch * 1.1, angle: slope + 90 + (Math.random() - 0.5) * 4, rand: 0.04 }, brush, weight);
   }
   // The division itself, drawn rather than left as the edge of a fill: a
   // ruled boundary is what tells the eye a hand made the arrangement too, and
   // not only the shading inside it.
   if (p.seed > 0.55) {
-    b.strokeStyle = paper.pale ? paper.ink : paper.card;
-    b.lineWidth = Math.max(0.6, unit * 0.0016);
-    b.globalAlpha = 0.8;
-    if (p.seed > 0.78) rule(p.x, p.y, p.x, p.y + p.h, p.seed * 3);
-    rule(p.x, p.y, p.x + p.w, p.y, p.seed * 7);
-    b.globalAlpha = 1;
+    const edge = { colour: paper.pale ? paper.ink : paper.card, brush: 'pen', weight: 1.4, wobble: 0.6 * wob };
+    if (p.seed > 0.78) pen.stroke([[p.x, p.y], [p.x, p.y + p.h]], edge);
+    pen.stroke([[p.x, p.y], [p.x + p.w, p.y]], edge);
   }
-  b.restore();
 }

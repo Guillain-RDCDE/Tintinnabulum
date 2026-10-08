@@ -23,9 +23,9 @@
 // on it, and when nothing arrives a hand adds one small mark now and then.
 
 import { scratch } from './paint.js';
-import { TAU, sizeOf, ambient, clampTo } from './shared.js';
+import { sizeOf, ambient, clampTo } from './shared.js';
 import { sheets } from './sheets.js';
-import { Paper, circlePoints, rectPoints, hatchLines, drainJobs, spectralMix, packColour } from '../brush.js';
+import { Paper, circlePoints, rectPoints, blobPoints, hatchLines, drainJobs, spectralMix, packColour } from '../brush.js';
 import { lightnessOf } from '../color.js';
 
 const CREAM = '#f6f1e6';
@@ -154,16 +154,7 @@ function show(ctx, api) {
 // --- shapes as a hand draws them ----------------------------------------------------------
 
 /** A blob: a circle out of round, squashed and turned. */
-function blob(x, y, r) {
-  const sq = between(0.6, 1);
-  const a = Math.random() * TAU;
-  const c = Math.cos(a);
-  const sn = Math.sin(a);
-  return circlePoints(0, 0, r, { wobble: between(0.6, 1.4) }).map(([u, v]) => {
-    v *= sq;
-    return [x + u * c - v * sn, y + u * sn + v * c];
-  });
-}
+const blob = (x, y, r) => blobPoints(x, y, r);
 
 /** A shape for an event: mostly a blob, now and then a block drawn freehand. */
 function shapeAt(x, y, r) {

@@ -164,7 +164,7 @@ const BAND = 120000;
  * mixes for a sheet rather than one for every grain of the paper, and the
  * grain kept. A transparent pixel is white paper underneath.
  */
-function mixPixel(px, i, pig, t) {
+function mixPixel(px, i, pig, t, light = false) {
   let r0 = px[i];
   let g0 = px[i + 1];
   let b0 = px[i + 2];
@@ -174,6 +174,15 @@ function mixPixel(px, i, pig, t) {
     r0 = Math.round(255 + (r0 - 255) * s);
     g0 = Math.round(255 + (g0 - 255) * s);
     b0 = Math.round(255 + (b0 - 255) * s);
+  }
+  if (light) {
+    // Light rather than paint: a pale ink on a dark sheet, laid over it as
+    // a lamp would be, since pigment cannot be lighter than what it lies on.
+    px[i] = r0 + (((pig >> 16) & 255) - r0) * t + 0.5;
+    px[i + 1] = g0 + (((pig >> 8) & 255) - g0) * t + 0.5;
+    px[i + 2] = b0 + ((pig & 255) - b0) * t + 0.5;
+    px[i + 3] = 255;
+    return;
   }
   const bq = ((r0 & 0xf8) << 16) | ((g0 & 0xf8) << 8) | (b0 & 0xf8) | 0x040404;
   const out = mixCached(bq, pig, Math.round(t * 63));
@@ -244,6 +253,17 @@ function noise1(x, seed) {
   return (h(i) * (1 - u) + h(i + 1) * u) * 2 - 1;
 }
 
+/** A small generator of its own, for marks that must come out the same twice. */
+function chanceOf(seed) {
+  let t = (Math.imul(seed | 0, 2654435761) ^ 0x9e3779b9) >>> 0;
+  return () => {
+    t = (t + 0x6d2b79f5) >>> 0;
+    let r = Math.imul(t ^ (t >>> 15), 1 | t);
+    r ^= r + Math.imul(r ^ (r >>> 7), 61 | r);
+    return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
 // --- the brushes ----------------------------------------------------------------------
 
 /**
@@ -277,10 +297,12 @@ export const BRUSHES = {
  * @param {HTMLCanvasElement|OffscreenCanvas} canvas  what the marks end up on
  * @param {object} [o]
  * @param {number} [o.scale]  how large the brushes are; p5.brush suggests 3 for a 600 pixel sheet
+ * @param {boolean} [o.light] mix as light rather than as paint, for a dark sheet
  */
 export class Paper {
-  constructor(canvas, { scale = 1 } = {}) {
+  constructor(canvas, { scale = 1, light = false } = {}) {
     this.cv = canvas;
+    this.light = light;
     this.W = canvas.width;
     this.H = canvas.height;
     this.g = canvas.getContext('2d', { willReadFrequently: true });
@@ -484,12 +506,22 @@ export class Paper {
    * the mask is dense the pigment is darkened, as pressed graphite is.
    */
   flush() {
+    const it = this.flushSteps();
+    while (!it.next().done);
+  }
+
+  /**
+   * The same, a band of rows at a time, for a mask that covers the sheet --
+   * a plate of hatching -- whose mixing is too much for one frame. Each band
+   * says it was heavy. Nothing else should be drawn until it is done.
+   */
+  * flushSteps() {
     const d = this.dirty;
-    if (!d || this.ink === null) {
-      this.dirty = null;
-      return;
-    }
-    const pig = packColour(this.ink);
+    const ink = this.ink;
+    this.dirty = null;
+    this.ink = null;
+    if (!d || ink === null) return;
+    const pig = packColour(ink);
     const pr = (pig >> 16) & 255;
     const pg = (pig >> 8) & 255;
     const pb = pig & 255;
@@ -506,12 +538,15 @@ export class Paper {
       }
       return v;
     };
-    this._composite(d, (k) => this.mask[k], pigmentAt);
-    // Clear what was used.
     const W = this.W;
-    for (let y = d[1]; y <= d[3]; y++) this.mask.fill(0, y * W + d[0], y * W + d[2] + 1);
-    this.dirty = null;
-    this.ink = null;
+    const band = Math.max(1, Math.floor(BAND / (d[2] - d[0] + 1)));
+    for (let y0 = d[1]; y0 <= d[3]; y0 += band) {
+      const y1 = Math.min(d[3], y0 + band - 1);
+      this._composite([d[0], y0, d[2], y1], (k) => this.mask[k], pigmentAt);
+      // Clear what was used.
+      for (let y = y0; y <= y1; y++) this.mask.fill(0, y * W + d[0], y * W + d[2] + 1);
+      if (y1 < d[3]) yield true;
+    }
   }
 
   /**
@@ -530,7 +565,7 @@ export class Paper {
         const a = amountAt((y0 + yy) * W + x0 + xx, xx, yy);
         if (!(a > 0.002)) continue;
         const t = a > 1 ? 1 : a;
-        mixPixel(px, (yy * w + xx) * 4, pigmentAt(t), t);
+        mixPixel(px, (yy * w + xx) * 4, pigmentAt(t), t, this.light);
       }
     }
     this.g.putImageData(img, x0, y0);
@@ -844,7 +879,7 @@ export class Paper {
           const top = m00 + (m01 - m00) * fu;
           const t = top + (m10 + (m11 - m10) * fu - top) * fv;
           if (!(t > 0.002)) continue;
-          mixPixel(px, (yy * cw + x) * 4, pig, t > 1 ? 1 : t);
+          mixPixel(px, (yy * cw + x) * 4, pig, t > 1 ? 1 : t, this.light);
         }
       }
       this.g.putImageData(img, x0, y0 + b0);
@@ -957,6 +992,113 @@ export class Paper {
       const d = rr(0.03 * minSize, 0.45 * minSize);
       if (i % 5 === 0) continue;
       this._eraseDisc(x, y, d / 2, alpha);
+    }
+  }
+
+  /**
+   * One dot of ink, as a pen touched to the paper and lifted: flick work.
+   * Its wobble comes from where it is, so the same dot is the same twice.
+   */
+  dab(x, y, r, colour = '#1d1a15') {
+    if (this.ink !== null && this.ink !== colour) this.flush();
+    this.ink = colour;
+    const c = chanceOf(Math.round(x * 7) * 65537 + Math.round(y * 7));
+    this._dot(x - 0.3 + 0.6 * c(), y - 0.3 + 0.6 * c(), r * (0.8 + 0.35 * c()), 0.85);
+  }
+
+  /**
+   * An engraver's line drawn with a pen: a path whose width follows a tone,
+   * swelling where it is dark and lifting off the paper where it is light,
+   * laid as ink dots into the pencil mask like any other stroke, so its edge
+   * is ragged with the grain and its course wanders as a hand's does. The
+   * same contract as `burin` in engrave.js, which hands its lines here when
+   * it is given a Paper rather than a canvas.
+   *
+   * @param {(t: number) => number[]} at          the path, t from 0 to 1
+   * @param {(x: number, y: number) => number} tone  0 light to 1 dark
+   * @param {object} [o]
+   * @param {string} [o.colour]
+   * @param {number} [o.weight]  the line's width at full dark, in pixels
+   * @param {number} [o.steps]   samples of the path
+   * @param {number} [o.gamma]
+   * @param {number} [o.min]     a tone below this lifts the pen
+   * @param {number} [o.hand]    how far the line wanders, in pixels
+   */
+  engrave(at, tone, { colour = '#1d1a15', weight = 1.5, steps = 26, gamma = 1, min = 0.04, hand = 0.6, seed = null } = {}) {
+    // A line given a seed is drawn the same way every time, so a plate cut
+    // again over a changing picture changes only where the picture did.
+    const base = seed === null ? (Math.random() * 4294967296) | 0 : seed | 0;
+    const rand = chanceOf(base);
+    const r2 = (a, b) => a + rand() * (b - a);
+    // Each dot's own chance comes from where it is along the line, not from
+    // its turn in a sequence: a dot skipped for want of tone must not change
+    // every dot after it.
+    const dotChance = (k, j) => {
+      let h = Math.imul(k ^ base, 0x27d4eb2d) ^ Math.imul(j + 1, 0x165667b1);
+      h ^= h >>> 15;
+      h = Math.imul(h, 0x85ebca6b);
+      h ^= h >>> 13;
+      return (h >>> 0) / 4294967296;
+    };
+    if (this.ink !== null && this.ink !== colour) this.flush();
+    this.ink = colour;
+    // The path as a polyline, and its length.
+    const xs = new Float32Array(steps + 1);
+    const ys = new Float32Array(steps + 1);
+    const ls = new Float32Array(steps + 1);
+    for (let i = 0; i <= steps; i++) {
+      const p = at(i / steps);
+      xs[i] = p[0];
+      ys[i] = p[1];
+      if (i) ls[i] = ls[i - 1] + Math.hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1]);
+    }
+    const L = ls[steps];
+    if (!(L > 0)) return;
+    // Dots close enough to make a line, and no closer.
+    const step = Math.max(0.35, weight * 0.3);
+    const n = Math.ceil(L / step);
+    const wander = rand() * 1000;
+    const freq = 1 / Math.max(8, 30 * this.scale);
+    // A hand does not rule a line across the plate. It hatches in strokes a
+    // finger's length long, each a little off the slope of the last and
+    // fading at both ends, with a hair of paper between one and the next.
+    const reach = () => r2(18, 46) * this.scale;
+    let from = -r2(0, 1) * reach();
+    let to = from + reach();
+    let tilt = r2(-0.035, 0.035);
+    let lift = 0;
+    // How hard the pen is pressed along this line, a little different from
+    // the last, as a hand never cuts two lines quite alike.
+    const press = r2(0.85, 1.1);
+    let seg = 1;
+    for (let k = 0; k <= n; k++) {
+      const s = (k / n) * L;
+      if (s > to) {
+        from = to + r2(0.6, 1.8) * this.scale * 0.5;
+        to = from + reach();
+        tilt = r2(-0.035, 0.035);
+        lift = r2(-0.4, 0.4) * hand;
+      }
+      if (s < from) continue;
+      while (seg < steps && ls[seg] < s) seg++;
+      const f = (s - ls[seg - 1]) / Math.max(1e-6, ls[seg] - ls[seg - 1]);
+      let x = xs[seg - 1] + (xs[seg] - xs[seg - 1]) * f;
+      let y = ys[seg - 1] + (ys[seg] - ys[seg - 1]) * f;
+      const v = tone(x, y);
+      if (!(v >= min)) continue;
+      const dx = (xs[seg] - xs[seg - 1]) / Math.max(1e-6, ls[seg] - ls[seg - 1]);
+      const dy = (ys[seg] - ys[seg - 1]) / Math.max(1e-6, ls[seg] - ls[seg - 1]);
+      const off = noise1(s * freq, wander) * hand + lift + (s - from) * tilt;
+      x -= dy * off;
+      y += dx * off;
+      // Now and then the pen skips on the grain, more where it is light.
+      if (dotChance(k, 0) < 0.03 + 0.09 * (1 - v)) continue;
+      // Thinner where the stroke begins and ends.
+      const u = (s - from) / (to - from);
+      const ends = Math.min(1, 0.45 + 2.2 * Math.min(u, 1 - u));
+      const r = (Math.pow(v > 1 ? 1 : v, gamma) * weight * press * ends * (0.85 + 0.3 * dotChance(k, 1))) / 2;
+      // Ink is ink: a light passage is a thinner line, not a paler one.
+      this._dot(x - 0.2 + 0.4 * dotChance(k, 2), y - 0.2 + 0.4 * dotChance(k, 3), r, 0.8 + 0.15 * v);
     }
   }
 
@@ -1305,6 +1447,19 @@ export function circlePoints(cx, cy, r, { wobble = 0, n = 0 } = {}) {
     out.push([cx + Math.cos(a) * rr2, cy + Math.sin(a) * rr2]);
   }
   return out;
+}
+
+/**
+ * A blob: a circle out of round, squashed and turned, the shape a loaded
+ * brush leaves when it is touched to the paper.
+ */
+export function blobPoints(cx, cy, r, { squash = rr(0.6, 1), turn = rr(0, Math.PI * 2), wobble = rr(0.6, 1.4) } = {}) {
+  const c = Math.cos(turn);
+  const s = Math.sin(turn);
+  return circlePoints(0, 0, r, { wobble }).map(([u, v]) => {
+    v *= squash;
+    return [cx + u * c - v * s, cy + u * s + v * c];
+  });
 }
 
 /** A rectangle as points, its corners where a hand would put them. */

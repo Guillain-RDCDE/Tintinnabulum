@@ -14,9 +14,86 @@
 // feed, and no machine redraws an hour of history sixty times a second.
 
 import { scratch, toRgb, bufferFor } from './paint.js';
-import { burin, hatch, vignette, gradientTone } from '../engrave.js';
+import { hatch, hatchLines, vignette } from '../engrave.js';
+import { Paper } from '../brush.js';
+import { lightnessOf } from '../color.js';
 
 const TAU = Math.PI * 2;
+
+// --- the burin's plates ------------------------------------------------------------------
+
+/** A sheet for a plate, kept with the renderer's buffers so a rebuild does not make another. */
+function platePaper(api, key) {
+  const cv = scratch(api, key, true);
+  const pool = api.buffers;
+  const id = key + 'Paper';
+  let paper = pool && pool[id];
+  if (!paper || paper.cv !== cv) {
+    paper = new Paper(cv, { scale: Math.min(api.w, api.h) / 200 });
+    if (pool) pool[id] = paper;
+  }
+  return paper;
+}
+
+/** Begin cutting a plate: the ground laid, the lines counted from the first. */
+function startPlate(api, paper) {
+  const s = api.scene;
+  paper.reset();
+  paper.light = lightnessOf(api.palette.background) < 0.5;
+  paper.ground(api.palette.background);
+  s.cut = { paper, phase: 'hatch', line: 0, mixing: null };
+}
+
+/**
+ * Cut some of a plate, at most `budget` lines. False when it is finished.
+ * Hatching, then the crossing set over the darkest passages, then the ink
+ * mixed into the sheet a band at a time.
+ */
+function cutPlate(api, paper, budget) {
+  const s = api.scene;
+  const c = s.cut;
+  if (!c || c.paper !== paper || !s.shaded) return false;
+  const box = { x: 0, y: 0, w: api.w, h: api.h };
+  const angle = (api.param('angle') * Math.PI) / 180;
+  const spacing = api.param('spacing');
+  const weight = api.param('weight');
+  const cross = api.param('cross');
+  const shaded = s.shaded;
+  while (budget > 0) {
+    if (c.phase === 'hatch' || c.phase === 'cross') {
+      const across = c.phase === 'cross';
+      const gap = across ? spacing * 1.15 : spacing;
+      const total = hatchLines(box, gap);
+      const take = Math.min(budget, total - c.line);
+      if (across) {
+        // The second set only where the first has run out of darkness to give.
+        hatch(paper, box, angle + Math.PI / 2.6, (x, y) => {
+          const v = shaded(x, y);
+          return v <= 0.5 ? 0 : ((v - 0.5) / 0.5) * cross;
+        }, { spacing: gap, weight, skip: c.line, take, colour: s.rim || api.palette.default });
+      } else {
+        hatch(paper, box, angle, shaded, { spacing, weight, skip: c.line, take, colour: s.color || api.palette.user });
+      }
+      c.line += take;
+      budget -= take;
+      if (c.line >= total) {
+        c.line = 0;
+        c.phase = !across && cross > 0.02 ? 'cross' : 'mix';
+      }
+    } else if (c.phase === 'mix') {
+      c.mixing = c.mixing || paper.flushSteps();
+      const r = c.mixing.next();
+      budget = budget === Infinity ? budget : 0;
+      if (r.done) {
+        c.phase = 'done';
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+  return true;
+}
 
 export const SYSTEM_SCENES = {
   coral: {
@@ -312,7 +389,7 @@ export const SYSTEM_SCENES = {
     label: 'Burin',
     positional: true,
     preview: { dt: 60, frames: 90 },
-    note: 'The canvas cut as an engraving, with the density of events as the tone. Every line swells where the feed has been busy and tapers to nothing where it has not, which is exactly how a nineteenth-century plate is shaded -- and it is the same engine that cuts the kit cards.',
+    note: 'The canvas engraved, with the density of events as the tone. Every line swells where the feed has been busy and lifts off the paper where it has not, which is how a nineteenth-century plate is shaded -- but drawn with a pen through the brush engine rather than cut by a machine, so the lines are laid in strokes a finger long, each a little off the slope of the last, ragged with the grain of the paper. The plate is drawn again as the tone moves, the same lines in the same places, and an event inks a few strokes where it lands at once.',
     params: {
       spacing: { label: 'Line spacing', min: 3, max: 22, step: 0.5, default: 9 },
       weight: { label: 'Line weight', min: 0.5, max: 8, step: 0.1, default: 3.4 },
@@ -338,6 +415,21 @@ export const SYSTEM_SCENES = {
       s.heat[gy * s.tw + gx] += 0.5 + Math.min(1.6, p.r / 60);
       s.color = p.color;
       s.rim = p.rim;
+      // The pen goes over the place at once, on the plate on show, before
+      // the next plate has the new tone in it.
+      if (s.plates && s.shaded) {
+        const r = Math.min(api.w, api.h) * (0.06 + Math.min(0.12, p.r / 900));
+        const box = { x: p.x - r, y: p.y - r, w: 2 * r, h: 2 * r };
+        const near = (x, y) => {
+          const d = Math.hypot(x - p.x, y - p.y) / r;
+          return d >= 1 ? 0 : Math.max(s.shaded(x, y), 0.55) * (1 - d * d);
+        };
+        const paper = s.plates[s.showing];
+        hatch(paper, box, (api.param('angle') * Math.PI) / 180, near, {
+          spacing: api.param('spacing'), weight: api.param('weight'), colour: p.color, steps: 40,
+        });
+        paper.flush();
+      }
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -425,21 +517,25 @@ export const SYSTEM_SCENES = {
       };
 
       const shaded = vignette(tone, api.w, api.h, { inset: 0.02, soft: 0.08 });
-      const angle = (api.param('angle') * Math.PI) / 180;
-      const spacing = api.param('spacing');
-      const weight = api.param('weight');
+      s.shaded = shaded;
 
-      ctx.fillStyle = s.color || api.palette.user;
-      hatch(ctx, { x: 0, y: 0, w: api.w, h: api.h }, angle, shaded, { spacing, weight });
-      const cross = api.param('cross');
-      if (cross > 0.02) {
-        // The second set only where the first has run out of darkness to give.
-        ctx.fillStyle = s.rim || api.palette.default;
-        hatch(ctx, { x: 0, y: 0, w: api.w, h: api.h }, angle + Math.PI / 2.6, (x, y) => {
-          const v = shaded(x, y);
-          return v <= 0.5 ? 0 : ((v - 0.5) / 0.5) * cross;
-        }, { spacing: spacing * 1.15, weight });
+      // Two plates, drawn with a pen through the brush engine: one on show,
+      // the other being cut a run of lines a frame over the tone as it is
+      // now, and then they change places. A line is the same line every
+      // time it is cut, so the change shows only where the tone has moved.
+      // The first plate is cut whole, so a card or a still has a picture.
+      const shown = s.plates ? s.plates[s.showing] : null;
+      if (!shown || !s.cut) {
+        s.plates = [platePaper(api, 'burinA'), platePaper(api, 'burinB')];
+        s.showing = 0;
+        startPlate(api, s.plates[0]);
+        while (cutPlate(api, s.plates[0], Infinity));
+        startPlate(api, s.plates[1]);
+      } else if (!cutPlate(api, s.plates[1 - s.showing], 24)) {
+        s.showing = 1 - s.showing;
+        startPlate(api, s.plates[1 - s.showing]);
       }
+      ctx.drawImage(s.plates[s.showing].cv, 0, 0, api.w, api.h);
       ctx.globalAlpha = 1;
     },
   },

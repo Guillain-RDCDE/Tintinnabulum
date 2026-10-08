@@ -10,6 +10,7 @@
 // 'layer' buffers, so a change of scene never buys a canvas.
 
 import { scratch, bufferFor } from './paint.js';
+import { Paper, blobPoints, drainJobs } from '../brush.js';
 import { mixColors, lighten, lightnessOf } from '../color.js';
 import { noise2 } from './noise.js';
 import { TAU, seeded } from './shared.js';
@@ -207,105 +208,63 @@ export const WATER_SCENES = {
   washes: {
     label: 'Wet on wet',
     positional: false,
-    note: 'Watercolour dropped onto paper that is still wet: each touch spreads by itself, pale in the middle and darker at the edge, where the pigment gathers as it dries, and washes laid over one another deepen like glazes. Events are touches of the brush.',
+    note: 'Watercolour dropped onto paper that is still wet: each touch spreads by itself, its edge running out ragged and drying darker where the pigment gathers, the paper showing through where the water pushed the colour aside, and washes laid over one another mix as paint does and deepen like glazes. Every so often the sheet is washed back a little with clean water, so the oldest touches fade under the new. Events are touches of the brush.',
+    how: 'Every touch is a watercolour from the brush engine, a port of p5.brush: a blob grown by midpoint displacement and laid as twenty translucent layers, a few a frame, so it is seen spreading; the wetter the paper, the further its edge runs. Colours mix by Kubelka-Munk. Every eight touches a film of the paper colour is laid over the whole sheet, which is how it forgets.',
     params: {
       spread: { label: 'How far a wash spreads', min: 0.4, max: 2, step: 0.05, default: 1 },
       dry: { label: 'How long the paper stays wet', min: 0.5, max: 3, step: 0.05, default: 1 },
     },
     init(api) {
       const s = api.scene;
-      s.cx = new Float32Array(32);
-      s.cy = new Float32Array(32);
-      s.r = new Float32Array(32);
-      s.t0 = new Float32Array(32).fill(-1e9);
-      s.seed = new Float32Array(32);
-      s.ink = new Array(32).fill('');
-      s.next = 0;
-      s.bufClean = false;
-      s.paperKey = '';
+      const cv = scratch(api, 'washbuf', true);
+      const pool = api.buffers;
+      let paper = pool && pool.washPaper;
+      if (!paper || paper.cv !== cv) {
+        paper = new Paper(cv, { scale: Math.min(api.w, api.h) / 200 });
+        if (pool) pool.washPaper = paper;
+      }
+      paper.reset();
+      s.paperColour = paperOf(api.palette);
+      paper.ground(s.paperColour);
+      s.paper = paper;
+      s.jobs = [];
+      s.touches = 0;
     },
     event(p, api) {
       const s = api.scene;
-      const i = s.next++ % 32;
-      s.cx[i] = p.x;
-      s.cy[i] = p.y;
-      s.r[i] = (18 + p.r * 0.9) * api.param('spread');
-      s.t0[i] = api.now;
-      s.seed[i] = Math.random() * 100;
-      s.ink[i] = p.color;
+      if (!s.paper) return;
+      const P = s.paper;
+      const wet = api.param('dry');
+      const R = (18 + p.r * 0.9) * api.param('spread');
+      // Wetter paper runs further and dries softer at the edge.
+      s.jobs.push(P.watercolourSteps(blobPoints(p.x, p.y, R * 0.75), {
+        colour: p.color,
+        opacity: 150 + Math.random() * 50,
+        bleed: Math.min(0.45, 0.1 + 0.12 * wet),
+        texture: 0.25 + Math.random() * 0.25,
+        border: Math.max(0.25, 0.65 - 0.15 * wet),
+      }));
+      // Clean water over the whole sheet now and then, so it forgets.
+      if (++s.touches % 8 === 0) {
+        s.jobs.push(() => {
+          const g = P.g;
+          g.save();
+          g.setTransform(1, 0, 0, 1, 0, 0);
+          g.globalAlpha = 0.14;
+          g.fillStyle = s.paperColour;
+          g.fillRect(0, 0, P.W, P.H);
+          g.restore();
+        });
+      }
+      // A burst lets go of the oldest touches still waiting, not the newest,
+      // so the sheet keeps up with the feed.
+      while (s.jobs.length > 10) s.jobs.splice(1, 1);
     },
     frame(ctx, api) {
       const s = api.scene;
-      const pal = api.palette;
-      const W = api.w;
-      const H = api.h;
-      const dt = Math.min(50, api.dt);
-      const cv = scratch(api);
-      const g = bufferFor(api);
-      if (!g) return;
-      fadeBuffer(g, cv, 0.012, dt);
-      const dur = 2600 * api.param('dry');
-      for (let i = 0; i < 32; i++) {
-        const age = api.now - s.t0[i];
-        if (age < 0 || age > dur || !s.ink[i]) continue;
-        const u = age / dur;
-        const grow = 1 - Math.pow(1 - u, 3);
-        const R = s.r[i] * (0.25 + 0.75 * grow);
-        const sd = s.seed[i];
-        g.beginPath();
-        for (let k = 0; k <= 56; k++) {
-          const a = (k / 56) * TAU;
-          const ca = Math.cos(a);
-          const sa = Math.sin(a);
-          // The edge wanders with noise sampled round a circle, so it closes.
-          const rr = R * (1 + 0.22 * noise2(sd + ca * 1.3, sd + sa * 1.3) + 0.07 * noise2(sd * 2 + ca * 4, sa * 4 + u));
-          const x = s.cx[i] + ca * rr;
-          const y = s.cy[i] + sa * rr;
-          if (k === 0) g.moveTo(x, y);
-          else g.lineTo(x, y);
-        }
-        g.closePath();
-        g.fillStyle = s.ink[i];
-        g.globalAlpha = 0.03 * (1 - u * 0.5);
-        g.fill();
-        // Pigment runs to the edge as the water there dries first.
-        g.strokeStyle = s.ink[i];
-        g.globalAlpha = 0.02 + 0.05 * u;
-        g.lineWidth = 1.2 + R * 0.03;
-        g.stroke();
-        // Late in the drying, water creeping back into the wash leaves the
-        // small ragged blooms watercolourists call cauliflowers.
-        if (u > 0.6 && Math.random() < 0.1) {
-          const a = Math.random() * TAU;
-          g.globalAlpha = 0.05;
-          g.beginPath();
-          g.arc(s.cx[i] + Math.cos(a) * R * 0.9, s.cy[i] + Math.sin(a) * R * 0.9, R * (0.08 + Math.random() * 0.12), 0, TAU);
-          g.stroke();
-        }
-      }
-      g.globalAlpha = 1;
-      ctx.fillStyle = paperOf(pal);
-      ctx.fillRect(0, 0, W, H);
-      // The tooth of the paper, laid once per size.
-      const layer = scratch(api, 'layer');
-      const lg = s.layerCtx;
-      const key = `${layer.width}x${layer.height}`;
-      if (s.paperKey !== key) {
-        lg.setTransform(1, 0, 0, 1, 0, 0);
-        lg.clearRect(0, 0, layer.width, layer.height);
-        const rnd = seeded(71);
-        lg.fillStyle = '#000';
-        for (let i = 0; i < 3200; i++) {
-          lg.globalAlpha = rnd() * 0.05;
-          lg.fillRect(rnd() * layer.width, rnd() * layer.height, 1 + rnd() * 1.5, 1 + rnd() * 1.5);
-        }
-        lg.globalAlpha = 1;
-        s.paperKey = key;
-      }
-      ctx.drawImage(layer, 0, 0, W, H);
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.drawImage(cv, 0, 0, W, H);
-      ctx.globalCompositeOperation = 'source-over';
+      if (!s.paper) return;
+      drainJobs(s.jobs, 6);
+      ctx.drawImage(s.paper.cv, 0, 0, api.w, api.h);
     },
   },
 

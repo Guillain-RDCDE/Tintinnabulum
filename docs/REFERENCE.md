@@ -965,7 +965,7 @@ disturbing something that then goes on by itself.
 | **Coral** | Diffusion-limited aggregation, after Witten and Sander, 1981. A particle wanders until it touches what is there, and sticks. It is how frost, soot, copper and coral all grow, and the branching is not in the rule — it emerges because the tips reach the wanderers first. |
 | **Attractor** | Clifford Pickover's map, iterated. Four numbers decide the whole of it, and events move them. |
 | **Voronoi** | Every point takes the colour of the nearest event. The boundary is where the first and second nearest are equally far, so it needs no edge detection — it falls out of the distance. |
-| **Burin** | The canvas engraved, with event density as the tone, cut by the burin engine. |
+| **Burin** | The canvas engraved, with event density as the tone, drawn with a pen through the brush engine: two plates, one on show while the other is drawn over the tone as it is now, the same lines in the same places, and an event inks a few strokes where it lands at once. |
 
 The sandpile topples in **sweeps over the whole grid** rather than from a work
 queue, and that is not an optimisation. A queue is the obvious way and it is
@@ -1116,16 +1116,18 @@ any scene:
 
 | | |
 |---|---|
-| **`new Paper(canvas, { scale })`** | A sheet to draw on. `scale` is the size of a brush unit in pixels; p5.brush's look is about a two-hundredth of the sheet's shorter side. |
+| **`new Paper(canvas, { scale, light })`** | A sheet to draw on. `scale` is the size of a brush unit in pixels; p5.brush's look is about a two-hundredth of the sheet's shorter side. `light` mixes as light rather than as paint, for a pale ink on a dark sheet. |
 | **`paper.stroke(points, { colour, brush, weight, wobble })`** | A stroke along a path with one of the brushes in `BRUSHES`: `pen`, `rotring`, `2B`, `HB`, `2H`, `cpencil`, `charcoal`, `crayon`, `pastel`, `spray`, `marker`. It is a walk of small soft dots under a pressure curve drawn afresh for each stroke, gathered in a mask and mixed in by `paper.flush()`; dense graphite is darker. |
 | **`paper.watercolourSteps(points, { colour, opacity, bleed, texture, border })`** | A watercolour fill, after Tyler Hobbs: the shape grown by midpoint displacement and laid as twenty translucent layers at three sizes, the paper rubbed out between them, the rim darkened where the layers end. A generator, a layer or a band of rows a step; `paper.watercolour()` lays it at once. |
 | **`paper.wash(points, colour, opacity)`** | A flat wash, laid once. |
 | **`paper.hatch(points, { dist, angle, rand, gradient }, pen)`** | Parallel strokes across a shape; `hatchLines()` gives the lines alone. |
+| **`paper.engrave(path, tone, { colour, weight, seed })`** | An engraver's line drawn with a pen: swelling where `tone` is dark, lifting where it is light, laid in strokes a finger long. `engrave.js` hands its lines here when given a Paper, which is how the *Engraved* finish and *Burin* are drawn. A seed makes the line the same every time. |
 | **`spectralMix(a, b, t)`** | Two colours mixed as paint, by Kubelka-Munk over thirty-eight bands after [spectral.js](https://github.com/rvanwijnen/spectral.js): blue and yellow make green. Every mark is mixed into the sheet this way. |
 | **`drainJobs(jobs, steps)`** | Runs queued generators a few steps a frame, stopping after a heavy one, counted rather than timed so a seeded picture is the same on any machine. |
 
-The port keeps p5.brush's brush table, pressure model, fill growth and blend
-rules. It departs where a CPU needs it to: a wash's mask is a typed array
+Besides the Sketchbook, *Wet on wet*, *Hatchwork*, *Burin* and the
+*Engraved* finish are drawn through it. The port keeps p5.brush's brush
+table, pressure model, fill growth and blend rules. It departs where a CPU needs it to: a wash's mask is a typed array
 filled by scanline at a resolution tied to the brush, not a canvas, and the
 mixes are remembered. Credits and licences are in [NOTICE](../NOTICE).
 
@@ -1216,7 +1218,7 @@ crossing into the grid and makes the solver find its way round it.
 | | |
 |---|---|
 | **Colour in water** | Drops of watercolour falling into a glass. Each drop is seventy parcels of pigment that sink, slow, spread from where the drop went in and are then taken by small curls of the water, laid down as soft discs that grow as they thin and multiplied onto the water, so where two clouds meet the colours mix. |
-| **Wet on wet** | Washes touched onto wet paper: each spreads with an edge wandering by noise sampled round a circle, so it closes; pigment gathers at the edge as it dries, and late in the drying the small ragged blooms watercolourists call cauliflowers appear. |
+| **Wet on wet** | Watercolour touched onto wet paper through the brush engine: every touch is grown by midpoint displacement and laid as twenty translucent layers a few a frame, so it is seen spreading, its edge running further the wetter the paper and drying darker where the pigment gathers; washes mix as paint does. Every eight touches a film of clean water washes the sheet back a little, which is how it forgets. |
 | **Falling petals** | Cherry blossom turning as it falls, with its shadow on the water below; it lands with a ring and drifts on a current made visible only by the petals. |
 | **Water lilies** | A pond in broken strokes, colour chosen by where each stroke is so the reflected sky comes in patches rather than speckle; the water is repainted a little every frame, and events open flowers. |
 | **Raked garden** | Straight raked lines broken wherever a stone's rings own the gravel, and rings kept only where they are nearer, in proportion, to their own stone than to any other -- which is how two sets of rings meet. Laid once, and again only while a new stone's rings are growing. |
@@ -1420,12 +1422,18 @@ sink.setPace(0.5);
 #### Engraved
 
 The others are printing: the picture is drawn, then a press is put over it.
-This one is **cutting**. An engraving has no greys — every tone in it is made
-by how thick a line is and how close it runs to its neighbour — so the frame
-becomes a tone, and the tone is engraved with the burin in `engrave.js`, the
-same one that cuts the kit cards: parallel lines that swell where the form
-turns away from the light, a second set crossing them in the darkest passages
-only, and flick work between.
+This one is **engraving**. An engraving has no greys — every tone in it is
+made by how thick a line is and how close it runs to its neighbour — so the
+frame becomes a tone, and the tone is engraved by `engrave.js`: lines that
+swell where the form turns away from the light, a second set crossing them in
+the darkest passages only, and flick work between. The lines are drawn with a
+pen through the brush engine ([`brush.js`](../src/visual/brush.js)) rather
+than cut as polygons: each is laid in strokes a finger long, a little off the
+slope of the last and thinner at both ends, its edge ragged with the grain, so
+the plate reads as a hand at work rather than a ruling machine. Every line has
+a seed of its own, so a plate drawn again over a changing picture changes
+only where the picture did, and the tone is read between its cells rather
+than from the nearest, so a curve is not drawn as a staircase.
 
 The tone is measured from the picture rather than from the palette. The ground
 on screen is textured, lit, and often printed on paper already, so measuring
@@ -1441,10 +1449,10 @@ graphics card is holding makes it finish everything it had queued, and on a
 wall-sized frame a quarter-size read cost a hundred and seventy-five
 milliseconds where an eighth-size one cost five. A plate is re-cut a few times
 a second rather than every frame, since a mark takes seconds to fade. And a
-re-cut is spread across frames, a few dozen lines at a time, with the last
-plate still showing — cutting one at the size of a wall is sixty milliseconds,
-which is a stutter anybody can see. The first plate is cut whole, because a
-still has one call and has to come back finished.
+re-cut is spread across frames, a couple of dozen lines at a time and the ink
+mixed into the paper a band of rows at a time, with the last plate still
+showing. The first plate is drawn whole, because a still has one call and has
+to come back finished.
 
 ### Paper
 
@@ -2013,7 +2021,9 @@ src/audio/
   recorder-sink.js      the recorder: what you are hearing, captured to a file
 src/visual/
   canvas-sink.js        the canvas loop
-  engrave.js            the burin: hatching, contour, stipple, white line
+  engrave.js            the burin: hatching, contour, stipple, white line;
+                        given a Paper, drawn with a pen through brush.js
+  brush.js              natural media after p5.brush: pencils, pens, watercolour
   mosaic.js             the colour pool the kit and room cards take from
   kit-art.js            the colour on each kit card
   living.js             living colour: drift, time of day, mood of the feed

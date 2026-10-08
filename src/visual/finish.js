@@ -20,6 +20,7 @@
 
 import { lightnessOf, mixColors, lighten, parseColor } from './color.js';
 import { hatch, hatchLines, crossHatch, stipple } from './engrave.js';
+import { Paper } from './brush.js';
 
 export const FINISH_ORDER = [
   'none', 'paper', 'watercolour', 'ink', 'riso', 'lino',
@@ -41,7 +42,7 @@ export const FINISHES = {
   gold: { label: 'Gold leaf', note: 'Marks laid in gold on black lacquer, catching a slow light.' },
   pointillist: { label: 'Pointillism', note: 'The picture rebuilt from dots of colour set side by side, left for the eye to mix.' },
   dither: { label: 'Dither', note: 'The picture reduced to the palette\'s own inks and a fine pattern of dots, as an early computer screen would have shown it.' },
-  engraved: { label: 'Engraved', note: 'The picture cut as a copper plate: one ink, parallel burin lines that swell where the form turns away from the light, a second set crossing them in the darkest passages, and flick work between.' },
+  engraved: { label: 'Engraved', note: 'The picture as a pen-and-ink engraving: one ink, hatching that swells where the form turns away from the light and lifts off the paper where it faces it, laid by hand in short strokes ragged with the grain, a second set crossing it in the darkest passages, and flick work between.' },
 };
 
 export const MAT_ORDER = ['none', 'thin', 'gallery', 'frame', 'border'];
@@ -194,7 +195,16 @@ const APPLY = {
     const src = snapshot(ctx, pool, W, H);
     const m = Math.min(W, H);
     const plate = buffer(pool, 'finish:plate', W, H);
-    const cutting = buffer(pool, 'finish:plateCut', W, H);
+    // The plate is drawn with a pen through the brush engine, onto a sheet of
+    // its own: an engraving in lines that swell and lift as a burin's do, but
+    // whose edges are ragged with the grain and whose course wanders, so it
+    // reads as a hand at work and not as a machine ruling a screen.
+    const cutting = buffer(pool, 'finish:platePen', W, H);
+    let pen = pool['finish:platePaper'];
+    if (!pen || pen.cv !== cutting) {
+      pen = new Paper(cutting, { scale: m / 200 });
+      pool['finish:platePaper'] = pen;
+    }
     const state = pool['finish:plateState'] || (pool['finish:plateState'] = {
       at: -1e9, w: 0, h: 0, phase: null, line: 0, ready: false,
     });
@@ -295,24 +305,33 @@ const APPLY = {
       }
       const range = Math.max(0.12, far * 0.62);
       state.tone = (x, y) => {
-        const sx = x <= 0 ? 0 : x >= W ? cw - 1 : (x * cw / W) | 0;
-        const sy = y <= 0 ? 0 : y >= H ? ch - 1 : (y * ch / H) | 0;
+        // Read between the cells, not from the nearest: a tone taken cell by
+        // cell turns every curve in the picture into a staircase of hatching.
+        let u = (x * cw) / W - 0.5;
+        let v = (y * ch) / H - 0.5;
+        u = u < 0 ? 0 : u > cw - 1 ? cw - 1 : u;
+        v = v < 0 ? 0 : v > ch - 1 ? ch - 1 : v;
+        const iu = u | 0;
+        const iv = v | 0;
+        const fu = u - iu;
+        const fv = v - iv;
+        const iu1 = iu + 1 < cw ? iu + 1 : iu;
+        const r0 = iv * cw;
+        const r1 = (iv + 1 < ch ? iv + 1 : iv) * cw;
+        const top = lum[r0 + iu] + (lum[r0 + iu1] - lum[r0 + iu]) * fu;
+        const L = top + (lum[r1 + iu] + (lum[r1 + iu1] - lum[r1 + iu]) * fu - top) * fv;
         // The paper keeps its own quiet: a small departure is texture, not a
         // mark, and an engraver leaves it uncut. The curve above that keeps
         // the light half of the picture open too -- a plate that hatches every
         // mid-tone is a rubbing rather than a picture.
-        const away = (Math.abs(lum[sy * cw + sx] - ground) - range * 0.1) / range;
+        const away = (Math.abs(L - ground) - range * 0.1) / range;
         return away <= 0 ? 0 : away >= 1 ? 1 : away * away * (1.7 - 0.7 * away);
       };
 
       const inkL = lightnessOf(palette.text || '#1d1a15');
       state.ink = inkL < 0.45 ? palette.text || '#1d1a15' : '#241d16';
-      const cg = cutting.getContext('2d');
-      cg.save();
-      cg.setTransform(1, 0, 0, 1, 0, 0);
-      cg.fillStyle = paperOf(palette);
-      cg.fillRect(0, 0, W, H);
-      cg.restore();
+      pen.reset();
+      pen.ground(paperOf(palette));
       state.phase = 'hatch';
       state.line = 0;
       state.w = W;
@@ -321,18 +340,15 @@ const APPLY = {
 
     // --- cut it, a run of lines at a time ---------------------------------
     if (state.phase) {
-      const cg = cutting.getContext('2d');
-      cg.save();
-      cg.setTransform(1, 0, 0, 1, 0, 0);
-      cg.fillStyle = state.ink;
+      const ink = state.ink;
       // The first plate is cut whole: a still has one call and must come back
       // finished. Later ones are sliced, so a live picture never stutters.
-      let budget = state.ready ? 56 : Infinity;
+      let budget = state.ready ? 28 : Infinity;
       while (budget > 0 && state.phase) {
         if (state.phase === 'hatch') {
           const total = hatchLines(box, spacing);
           const take = Math.min(budget, total - state.line);
-          hatch(cg, box, -0.42, state.tone, { spacing, weight, gamma: 1.05, min: 0.05, steps, skip: state.line, take });
+          hatch(pen, box, -0.42, state.tone, { spacing, weight, gamma: 1.05, min: 0.05, steps, skip: state.line, take, colour: ink });
           state.line += take;
           budget -= take;
           if (state.line >= total) {
@@ -342,8 +358,8 @@ const APPLY = {
         } else if (state.phase === 'cross') {
           const total = hatchLines(box, crossSpacing);
           const take = Math.min(budget, total - state.line);
-          crossHatch(cg, box, 0.72, state.tone, {
-            spacing: crossSpacing, weight: weight * 0.8, from: 0.62, steps, skip: state.line, take,
+          crossHatch(pen, box, 0.72, state.tone, {
+            spacing: crossSpacing, weight: weight * 0.8, from: 0.62, steps, skip: state.line, take, colour: ink,
           });
           state.line += take;
           budget -= take;
@@ -351,12 +367,25 @@ const APPLY = {
             state.phase = 'flick';
             state.line = 0;
           }
-        } else {
+        } else if (state.phase === 'flick') {
           // Flick work: dots where the tone is neither dark enough for a line
           // nor light enough for nothing. Cheap, so it goes in one pass.
-          stipple(cg, box, state.tone, {
-            count: Math.round((W * H) / 2600), size: Math.max(0.55, spacing * 0.17), band: [0.08, 0.5], seed: 7,
+          stipple(pen, box, state.tone, {
+            count: Math.round((W * H) / 2600), size: Math.max(0.55, spacing * 0.17), band: [0.08, 0.5], seed: 7, colour: ink,
           });
+          // The ink is mixed into the paper once, at the end, and a band at
+          // a time: the lines cross the whole plate, so mixing as they went
+          // was mixing the whole plate every frame.
+          state.mixing = pen.flushSteps();
+          state.phase = 'mix';
+          budget -= 1;
+        } else if (state.phase === 'mix') {
+          // A band a frame, unless this is the first plate.
+          let r = state.mixing.next();
+          while (!state.ready && !r.done) r = state.mixing.next();
+          budget = 0;
+          if (!r.done) continue;
+          state.mixing = null;
           state.phase = null;
           state.at = now;
           state.ready = true;
@@ -368,7 +397,6 @@ const APPLY = {
           g.restore();
         }
       }
-      cg.restore();
     }
 
     if (state.ready) ctx.drawImage(plate, 0, 0);

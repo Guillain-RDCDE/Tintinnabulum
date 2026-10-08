@@ -56,7 +56,14 @@ export function seeded(seed) {
  * @param {number} [o.gamma]    <1 spreads the darks, >1 holds them back
  * @param {number} [o.min]      tone below this cuts the line entirely
  */
-export function burin(ctx, at, tone, { weight = 1.5, steps = 26, gamma = 1, min = 0.04 } = {}) {
+export function burin(ctx, at, tone, { weight = 1.5, steps = 26, gamma = 1, min = 0.04, colour, seed = null } = {}) {
+  // Given a sheet from the brush engine rather than a canvas, the line is
+  // drawn with a pen instead of cut as a polygon: the same swelling and
+  // lifting, with an edge ragged by the grain and a course that wanders.
+  if (typeof ctx.engrave === 'function') {
+    ctx.engrave(at, tone, { weight, steps, gamma, min, colour, seed });
+    return;
+  }
   const upper = [];
   const lower = [];
   const flush = () => {
@@ -113,7 +120,7 @@ export function hatchLines(box, spacing = 4) {
 }
 
 export function hatch(ctx, box, angle, tone, o = {}) {
-  const { spacing = 4, weight = 1.6, gamma = 1, min = 0.04 } = o;
+  const { spacing = 4, weight = 1.6, gamma = 1, min = 0.04, colour } = o;
   // A plate can be cut a few lines at a time rather than all at once: `skip`
   // and `take` select a run of them. A card is cut in one go, but a wall is
   // sixty milliseconds of hatching and that is a stutter you can see, so the
@@ -138,17 +145,24 @@ export function hatch(ctx, box, angle, tone, o = {}) {
   const py = dx;
   const lines = Math.ceil((reach * 2) / spacing);
   let at = -1;
+  // Drawn with a pen, the lines are not set out by a ruling machine: each is
+  // a little off its place, by an amount that is the same every time the
+  // plate is cut, so a re-cut plate does not shimmer.
+  const hand = typeof ctx.engrave === 'function' ? spacing * 0.18 : 0;
   for (let i = -lines; i <= lines; i++) {
     at++;
     if (at < skip) continue;
     if (at >= skip + take) break;
-    const ox = cx + px * i * spacing;
-    const oy = cy + py * i * spacing;
+    const j = hand ? (Math.sin(i * 12.9898 + angle * 78.233) * 43758.5453 % 1) * hand : 0;
+    const ox = cx + px * (i * spacing + j);
+    const oy = cy + py * (i * spacing + j);
     burin(
       ctx,
       (t) => [ox + dx * (t * 2 - 1) * reach, oy + dy * (t * 2 - 1) * reach],
       tone,
-      { weight, steps, gamma, min }
+      // The line's own seed, by its place and its slope, so cut again it is
+      // the same line.
+      { weight, steps, gamma, min, colour, seed: (i * 7919) ^ Math.round(angle * 1000) }
     );
   }
 }
@@ -176,10 +190,10 @@ export function crossHatch(ctx, box, angle, tone, o = {}) {
  * point, where u runs along each line and v selects the line: give it the
  * parameterisation of the surface and the shading comes out right.
  */
-export function contour(ctx, path, tone, { lines = 14, steps = 30, weight = 1.6, gamma = 1, min = 0.04 } = {}) {
+export function contour(ctx, path, tone, { lines = 14, steps = 30, weight = 1.6, gamma = 1, min = 0.04, colour } = {}) {
   for (let i = 0; i < lines; i++) {
     const v = lines === 1 ? 0.5 : i / (lines - 1);
-    burin(ctx, (u) => path(u, v), tone, { weight, steps, gamma, min });
+    burin(ctx, (u) => path(u, v), tone, { weight, steps, gamma, min, colour });
   }
 }
 
@@ -188,8 +202,9 @@ export function contour(ctx, path, tone, { lines = 14, steps = 30, weight = 1.6,
  * nothing. Real engravers call it flick work and use it to stop mid-tones
  * looking ruled; here it does the same job.
  */
-export function stipple(ctx, box, tone, { count = 260, size = 0.7, seed = 11, band = [0.12, 0.7] } = {}) {
+export function stipple(ctx, box, tone, { count = 260, size = 0.7, seed = 11, band = [0.12, 0.7], colour } = {}) {
   const rnd = seeded(seed);
+  const pen = typeof ctx.dab === 'function';
   for (let i = 0; i < count; i++) {
     const x = box.x + rnd() * box.w;
     const y = box.y + rnd() * box.h;
@@ -198,6 +213,10 @@ export function stipple(ctx, box, tone, { count = 260, size = 0.7, seed = 11, ba
     // Rejection against the tone, so the density follows the shading rather
     // than being uniform inside a band.
     if (rnd() > (v - band[0]) / (band[1] - band[0])) continue;
+    if (pen) {
+      ctx.dab(x, y, size * (0.6 + v * 0.8), colour);
+      continue;
+    }
     ctx.beginPath();
     ctx.arc(x, y, size * (0.6 + v * 0.8), 0, TAU);
     ctx.fill();
