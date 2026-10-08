@@ -209,7 +209,7 @@ export const WATER_SCENES = {
     label: 'Wet on wet',
     positional: false,
     note: 'Watercolour dropped onto paper that is still wet: each touch spreads by itself, its edge running out ragged and drying darker where the pigment gathers, the paper showing through where the water pushed the colour aside, and washes laid over one another mix as paint does and deepen like glazes. Every so often the sheet is washed back a little with clean water, so the oldest touches fade under the new. Events are touches of the brush.',
-    how: 'Every touch is a watercolour from the brush engine, a port of p5.brush: a blob grown by midpoint displacement and laid as twenty translucent layers, a few a frame, so it is seen spreading; the wetter the paper, the further its edge runs. Colours mix by Kubelka-Munk. Every eight touches a film of the paper colour is laid over the whole sheet, which is how it forgets.',
+    how: 'Every touch is a watercolour from the brush engine, a port of p5.brush: a blob grown by midpoint displacement and laid as twenty translucent layers, one every sixty milliseconds and slower on wetter paper, so it is seen spreading; the wetter the paper, the further its edge runs. Colours mix by Kubelka-Munk. Every eight touches a film of the paper colour is laid over the whole sheet, which is how it forgets.',
     params: {
       spread: { label: 'How far a wash spreads', min: 0.4, max: 2, step: 0.05, default: 1 },
       dry: { label: 'How long the paper stays wet', min: 0.5, max: 3, step: 0.05, default: 1 },
@@ -229,6 +229,7 @@ export const WATER_SCENES = {
       s.paper = paper;
       s.jobs = [];
       s.touches = 0;
+      s.wet = 0;
     },
     event(p, api) {
       const s = api.scene;
@@ -258,12 +259,21 @@ export const WATER_SCENES = {
       }
       // A burst lets go of the oldest touches still waiting, not the newest,
       // so the sheet keeps up with the feed.
-      while (s.jobs.length > 10) s.jobs.splice(1, 1);
+      while (s.jobs.length > 4) s.jobs.splice(1, 1);
     },
     frame(ctx, api) {
       const s = api.scene;
       if (!s.paper) return;
-      drainJobs(s.jobs, 6);
+      // A touch spreads at the pace of the water, not of the frames: a layer
+      // every sixty milliseconds on paper of ordinary wetness, slower the
+      // wetter it is, so a touch is seen running out for a second or more.
+      const every = 60 * api.param('dry');
+      s.wet = s.jobs.length ? s.wet + api.dt : 0;
+      const steps = Math.min(6, Math.floor(s.wet / every));
+      if (steps > 0) {
+        s.wet -= steps * every;
+        drainJobs(s.jobs, steps);
+      }
       ctx.drawImage(s.paper.cv, 0, 0, api.w, api.h);
     },
   },

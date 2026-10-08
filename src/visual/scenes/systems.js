@@ -17,6 +17,7 @@ import { scratch, toRgb, bufferFor } from './paint.js';
 import { hatch, hatchLines, vignette } from '../engrave.js';
 import { Paper } from '../brush.js';
 import { lightnessOf } from '../color.js';
+import { kick, tempo } from './shared.js';
 
 const TAU = Math.PI * 2;
 
@@ -234,6 +235,7 @@ export const SYSTEM_SCENES = {
       s.nudge.c += (((p.pick * 13) % 1) - 0.5) * k * 0.6;
       s.nudge.d += (((p.pick * 29) % 1) - 0.5) * k * 0.6;
       s.color = p.color;
+      kick(s);
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -255,7 +257,11 @@ export const SYSTEM_SCENES = {
       const ox = api.w / 2;
       const oy = api.h / 2;
 
-      const n = Math.min(40000, Math.round(api.param('rate') * (api.dt / 1000)));
+      // The dust falls at the rate things arrive: a busy minute draws the form
+      // in, a quiet one leaves it nearly as it was. Drawn at a steady rate it
+      // changed a quiet second as much as a busy one.
+      const pace = tempo(s, api, 0.05);
+      const n = Math.min(40000, Math.round(api.param('rate') * pace * (api.dt / 1000)));
       g.fillStyle = s.color || api.palette.user;
       g.globalAlpha = 0.22;
       let x = s.x;
@@ -275,7 +281,7 @@ export const SYSTEM_SCENES = {
       if (keep < 0.999) {
         g.save();
         g.globalCompositeOperation = 'destination-out';
-        g.fillStyle = `rgba(0,0,0,${(1 - keep) * Math.min(0.05, api.dt / 1000) * 2})`;
+        g.fillStyle = `rgba(0,0,0,${(1 - keep) * Math.min(0.05, api.dt / 1000) * 2 * pace})`;
         g.fillRect(0, 0, cv.width, cv.height);
         g.restore();
       }

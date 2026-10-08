@@ -358,7 +358,7 @@ export const PAINTER_SCENES = {
         const d = Math.hypot(s.pos[i * 2] * api.w - p.x, s.pos[i * 2 + 1] * api.h - p.y);
         if (d < bd) { bd = d; best = i; }
       }
-      s.vel[best] += (Math.random() < 0.5 ? -1 : 1) * 0.00018;
+      s.vel[best] += (Math.random() < 0.5 ? -1 : 1) * 0.0004;
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -368,8 +368,12 @@ export const PAINTER_SCENES = {
       const base = [...inks(pal), pal.default];
       const R0 = Math.min(api.w, api.h) * (n > 3 ? 0.23 : 0.32);
       for (let i = 0; i < n; i++) {
-        s.vel[i] *= Math.exp(-api.dt / 12000);
-        s.spin[i] += (s.vel[i] + 0.000012) * api.dt;
+        // A push is spent in a second or two, and the discs left to
+        // themselves barely turn. Pushes that took twelve seconds to die,
+        // over a steady turn, kept a quiet room spinning nearly as fast as
+        // a busy one, and the feed could not be told from the drift.
+        s.vel[i] *= Math.exp(-api.dt / 1500);
+        s.spin[i] += (s.vel[i] + 0.000003) * api.dt;
         const cx = s.pos[i * 2] * api.w;
         const cy = s.pos[i * 2 + 1] * api.h;
         const R = R0 * (0.7 + ((i * 37) % 10) / 30);

@@ -21,7 +21,7 @@
 
 import { scratch, bufferFor, fade } from './paint.js';
 import { cap } from './budget.js';
-import { TAU, seeded } from './shared.js';
+import { TAU, seeded, kick, tempo } from './shared.js';
 
 export const AUTOMATA_SCENES = {
   life: {
@@ -58,11 +58,16 @@ export const AUTOMATA_SCENES = {
         s.grid[(r + dy) * s.cols + (c + dx)] = 1;
       }
       s.tint = p.color;
+      kick(s);
     },
     frame(ctx, api) {
       const s = api.scene;
       if (!s.grid) return;
-      s.acc += (api.param('rate') * api.dt) / 1000;
+      // The generations come at the rate events do. At a steady nine a
+      // second a board in a quiet room changed as much as one in a busy
+      // room, and the feed was a few gliders lost in it.
+      const pace = tempo(s, api, 0.05);
+      s.acc += (api.param('rate') * api.dt * pace) / 1000;
       const steps = Math.min(4, Math.floor(s.acc));
       s.acc -= steps;
       const { cols, rows } = s;
