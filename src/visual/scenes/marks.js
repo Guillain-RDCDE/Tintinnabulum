@@ -126,7 +126,11 @@ export const MARK_SCENES = {
       ctx.lineWidth = 1.4;
       for (const p of api.particles) {
         const age = (api.now - p.born) / 1000;
-        const fade = 1 - (api.now - p.born) / p.life;
+        // A ripple on a pond is gone in three seconds, whatever the life of
+        // the event that made it. Spread over the whole of that life, the
+        // rings went on travelling long after the feed had stopped, and a
+        // quiet second changed half as much as a busy one.
+        const fade = 1 - (api.now - p.born) / Math.min(p.life, 3200);
         if (fade <= 0) continue;
         const lead = age * 110;
         for (let k = 0; k < 4; k++) {

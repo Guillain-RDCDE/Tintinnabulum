@@ -374,7 +374,11 @@ export const FANTASIA_SCENES = {
       if (!g || !s.row) return;
       const rule = Math.round(api.param('rule')) & 255;
       s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.03 + Math.min(1, s.drive);
+      // The floor is a hundredth: at three hundredths a still flock still
+      // shifted every one of its birds by a fraction of a pixel a frame, and
+      // that alone changed as much of a quiet second as a third of a busy
+      // one, which the audit rightly calls deaf.
+      const pace = 0.01 + Math.min(1, s.drive);
       s.acc += (api.param('rate') * api.dt * pace) / 1000;
       const rows = Math.min(30, Math.floor(s.acc));
       s.acc -= rows;
@@ -447,7 +451,11 @@ export const FANTASIA_SCENES = {
       // is crossing the frame anyway; a flock that hangs and then goes is
       // the feed itself.
       s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.03 + Math.min(1, s.drive);
+      // The floor is a hundredth: at three hundredths a still flock still
+      // shifted every one of its birds by a fraction of a pixel a frame, and
+      // that alone changed as much of a quiet second as a third of a busy
+      // one, which the audit rightly calls deaf.
+      const pace = 0.01 + Math.min(1, s.drive);
       const speed = api.param('speed') * Math.min(2.5, api.dt / 16) * pace;
       const n = s.b.length;
       for (let i = 0; i < n; i++) {
