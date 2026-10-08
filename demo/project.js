@@ -40,7 +40,10 @@ const params = new URLSearchParams(location.search);
 
 /** The feeds a wall may be pointed at on its own, without a console. */
 const FEEDS = {
-  wikipedia: () => wikipedia({ langs: (params.get('langs') || 'en').split(',').filter(Boolean) }),
+  wikipedia: () => wikipedia({
+    langs: (params.get('langs') || 'en').split(',').filter(Boolean),
+    onlyPeople: params.get('people') === '1',
+  }),
   commons: () => wikipedia({ wikis: ['commonswiki'], mainNamespaceOnly: false }),
   bitcoin: () => bitcoin(),
   coinbase: () => coinbase(),

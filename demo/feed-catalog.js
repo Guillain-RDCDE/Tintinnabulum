@@ -23,17 +23,18 @@ import {
  * @param {object} io
  * @param {() => string[]} io.getLangs       Wikipedia editions currently chosen
  * @param {() => string}   io.getBackend     'eventstreams' or 'wikimon'
+ * @param {() => boolean}  io.getOnlyPeople  whether only people may ring (see src/sources/humanity.js)
  * @param {() => string}   io.getIngestUrl   where the ingest stream lives
  * @param {Function}       io.onStatus       connection reporter
  */
-export function createFeedCatalog({ getLangs, getBackend, getIngestUrl, onStatus }) {
+export function createFeedCatalog({ getLangs, getBackend, getOnlyPeople = () => false, getIngestUrl, onStatus }) {
   return {
     wikipedia: {
       label: 'Wikipedia',
       blurb: 'Live edits worldwide',
       langs: true,
       note: 'Every mark is somebody editing an article right now. A bell means text was added, a plucked string means it was removed.',
-      make: () => wikipedia({ langs: getLangs(), backend: getBackend(), onStatus }),
+      make: () => wikipedia({ langs: getLangs(), backend: getBackend(), onlyPeople: getOnlyPeople(), onStatus }),
     },
     bitcoin: {
       label: 'Bitcoin',

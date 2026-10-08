@@ -184,11 +184,54 @@ Bluesky labels carry the size of a post rather than its text: an unfiltered
 firehose is not something to put on someone's screen unasked. The full record
 stays in `event.data`.
 
+### Only people
+
+`wikipedia({ onlyPeople: true })` lets the bell ring for people alone. It is
+a property of this one feed — the judge lives in `src/sources/humanity.js`
+and nothing else in the pipeline knows it exists — and it answers a question
+that has no symmetric answer. An edit cannot be proven human; it can be shown
+machine by any one of several signs. So the rule runs one way: **a bell rings
+only when nothing betrays a machine**, and everything else goes to the `bot`
+category, which the kits and palettes already treat as the breath under the
+bells. A person lost to the breath costs the picture nothing; a robot ringing
+would cost it everything.
+
+Every edit gets a verdict and a reason, carried as `event.humanity` whether
+the option is on or not:
+
+| Verdict | Reason | What was seen |
+|---|---|---|
+| `machine` | `flag` | the edit carries Wikimedia's bot flag |
+| `machine` | `group` | the account is in the wiki's `bot` group, or the `global-bot` group, flag or no flag |
+| `machine` | `name` | a name a wiki requires of its robots (`…Bot`, `Bot…`, `robot`), or a Foundation maintenance account |
+| `machine` | `cadence` | more than eight distinct pages in two minutes: no hand keeps that up |
+| `machine` | `wikidata` | the whole wiki is machine work by construction |
+| `unsure` | `tool` | a tool signed the summary — AWB, HotCat, Huggle, Twinkle, QuickStatements, "automatically" in several languages |
+| `unsure` | `revert` | a revert, in several languages: a hand clicking, not writing |
+| `unsure` | `unknown-account` / `unanswered` | the wiki has not vouched for the account, or did not answer |
+| `human` | `no-account` | an IP address: nobody registers a robot without an account |
+| `human` | `account` | the wiki was asked and the account is in no bot group |
+
+The question to the wiki is one request per account never seen before
+(`list=users` with groups, local and global, in one call), remembered for the
+session. An edit from such an account is **held for up to 1.2 s** while the
+wiki answers, then emitted with its final verdict; a wiki that does not
+answer makes it `unsure`, never `human`. The second edit from that account is
+not held at all.
+
+What this cannot see, and the dossier should say: a person who pastes a
+paragraph a machine wrote passes. Nobody detects that reliably, Wikipedia
+included. The bell is for the act of publishing into the common memory, not
+for the purity of the pen.
+
+The sandbox has the switch under **Listen → Fine-tune → Only people**; a wall
+takes `project.html?feed=wikipedia&people=1`.
+
 And the generic adapters:
 
 | Factory | Use |
 |---|---|
-| `wikipedia({langs, backend})` | `'eventstreams'` (Wikimedia's own HTTPS SSE) or `'wikimon'` (adds `geo_ip`, `hashtags`, `mentions`) |
+| `wikipedia({langs, backend, onlyPeople})` | `'eventstreams'` (Wikimedia's own HTTPS SSE) or `'wikimon'` (adds `geo_ip`, `hashtags`, `mentions`); `onlyPeople` is described above |
 | `sseSource({url, map})` | Any Server-Sent Events feed |
 | `websocketSource({url, map})` | Any WebSocket, with exponential-backoff reconnect |
 | `pollSource({url, interval, map})` | Any JSON endpoint, with de-duplication by id |

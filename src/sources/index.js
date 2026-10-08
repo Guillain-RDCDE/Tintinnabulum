@@ -25,3 +25,5 @@ export {
   WIKIPEDIA_FLAG_CC,
   WIKIPEDIA_LANGUAGES,
 } from './wikimedia.js';
+
+export { createHumanity, lookupGroups, lookupGlobalBots, categoryFor } from './humanity.js';

@@ -1,6 +1,7 @@
 // Wikimedia: the encyclopedias and their sister projects.
 
 import { sseSource, websocketSource } from './transports.js';
+import { createHumanity, categoryFor } from './humanity.js';
 
 const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$|:/;
 
@@ -13,6 +14,14 @@ const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$|:/;
  *
  * backend 'wikimon' keeps the original Hatnote WebSockets, which carry extras
  * EventStreams does not: geo_ip, hashtags, mentions, is_anon.
+ *
+ * `onlyPeople` makes the bell ring for people alone. Every edit is judged
+ * (see humanity.js): a machine, a tool, a revert or an account the wiki has
+ * not vouched for goes to the 'bot' category, the breath; only a person
+ * keeps 'user' or 'anon'. An edit from an account never seen before waits
+ * up to a second for the wiki's answer before it sounds. The verdict and its
+ * reason ride along as `event.humanity` either way, so a picture can show
+ * them; without the option nothing else changes.
  */
 export function wikipedia({
   langs = ['en'],
@@ -24,13 +33,58 @@ export function wikipedia({
   // enwiktionary and so on. Overrides `langs` when given.
   wikis: explicitWikis = null,
   onStatus = null,
+  onlyPeople = false,
+  humanity = null, // a judge from createHumanity(), for tests or a shared memory
 } = {}) {
   const wikis = explicitWikis
     ? new Set(explicitWikis)
     : new Set(langs.map((l) => l + (project === 'wikipedia' ? 'wiki' : project)));
 
+  const judge = humanity || createHumanity();
+
+  // Judge an edit and, when only people may ring, let its category follow.
+  // An unknown account hands back a promise: the source holds that one event
+  // until the wiki answers or the hold runs out, then emits it.
+  function judged(ev, d, anon) {
+    const first = judge.judge(d);
+    ev.humanity = first;
+    if (!onlyPeople) return ev;
+    if (first.reason !== 'unknown-account') {
+      ev.category = categoryFor(first.verdict, anon);
+      return ev;
+    }
+    ev.hold = judge.settle(d).then((final) => {
+      ev.humanity = final;
+      ev.category = categoryFor(final.verdict, anon);
+      delete ev.hold;
+      return ev;
+    });
+    return ev;
+  }
+
+  // Wrap a source so a held event is emitted once its hold resolves.
+  function holding(inner) {
+    return {
+      name: inner.name,
+      url: inner.url,
+      children: inner.children,
+      get status() {
+        return inner.status;
+      },
+      start(emit) {
+        inner.start((ev) => {
+          if (ev && ev.hold) ev.hold.then(emit);
+          else emit(ev);
+        });
+      },
+      stop() {
+        inner.stop();
+      },
+    };
+  }
+
   if (backend === 'eventstreams') {
-    return sseSource({
+    return holding(sseSource({
       name: 'wikipedia/eventstreams',
       url: 'https://stream.wikimedia.org/v2/stream/recentchange',
       onStatus,
@@ -59,7 +113,7 @@ export function wikipedia({
         // EventStreams has no is_anon flag; an IP-shaped username is the
         // standard proxy for it.
         const anon = IP_RE.test(d.user || '');
-        return {
+        return judged({
           magnitude: Math.abs(delta),
           polarity: Math.sign(delta),
           id: d.title,
@@ -68,9 +122,9 @@ export function wikipedia({
           category: d.bot ? 'bot' : anon ? 'anon' : 'user',
           source: d.wiki,
           data: d,
-        };
+        }, d, anon);
       },
-    });
+    }));
   }
 
   if (backend !== 'wikimon') throw new Error('Unknown Wikipedia backend: ' + backend);
@@ -103,7 +157,7 @@ export function wikipedia({
         if (mainNamespaceOnly && d.ns !== 'Main') return null;
         const size = Number(d.change_size);
         if (!Number.isFinite(size)) return null;
-        return {
+        return judged({
           magnitude: Math.abs(size),
           polarity: Math.sign(size),
           id: d.page_title,
@@ -112,12 +166,12 @@ export function wikipedia({
           category: d.is_bot ? 'bot' : d.is_anon ? 'anon' : 'user',
           source: lang,
           data: d, // keeps geo_ip, hashtags, mentions, rev_id available downstream
-        };
+        }, { ...d, wiki: lang + 'wiki', server_url: `https://${lang}.wikipedia.org` }, Boolean(d.is_anon));
       },
     })
   );
 
-  return {
+  return holding({
     name: 'wikipedia/wikimon',
     children,
     start(emit) {
@@ -126,7 +180,7 @@ export function wikipedia({
     stop() {
       children.forEach((c) => c.stop());
     },
-  };
+  });
 }
 
 /** Legacy per-language ports, only needed for the plain-ws fallback. */

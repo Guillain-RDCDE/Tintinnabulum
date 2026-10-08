@@ -158,6 +158,7 @@ function setStatus(state, name) {
 const FEEDS = createFeedCatalog({
   getLangs: () => langs,
   getBackend: () => $('#backend').value,
+  getOnlyPeople: () => $('#humans').value === '1',
   getIngestUrl: () => $('#ingest-url').value.trim() || '/events',
   onStatus: setStatus,
 });
@@ -248,6 +249,9 @@ $('#langs').addEventListener('change', () => {
   if (startBtn.dataset.on === 'true' && FEEDS[feed].langs) startFeed();
 });
 $('#backend').addEventListener('change', () => {
+  if (startBtn.dataset.on === 'true' && FEEDS[feed].langs) startFeed();
+});
+$('#humans').addEventListener('change', () => {
   if (startBtn.dataset.on === 'true' && FEEDS[feed].langs) startFeed();
 });
 
