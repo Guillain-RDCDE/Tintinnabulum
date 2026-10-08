@@ -927,7 +927,7 @@ something anyone can look up, which is the rule the whole section follows.
 | **Apollonian gasket** | Circles packed into the gaps between circles. Apollonius posed it; Descartes gave the relation between four touching curvatures in 1643. An event fills the circle it landed in. |
 | **Maze** | Recursive division: cut the room in two, leave one door, repeat. The oldest maze algorithm there is, and the only one whose output looks built rather than grown. |
 | **Rule 30** | Wolfram's elementary automaton. Eight bits of rule, no randomness anywhere in it, and a column that passes randomness tests. Events flip cells in the live row. |
-| **Boids** | Craig Reynolds, 1986: keep your distance, match your neighbours, head for the middle of them. Nothing in the code mentions a flock. |
+| **Boids** | Craig Reynolds, 1986: keep your distance, match your neighbours, head for the middle of them. Nothing in the code mentions a flock. It flies at the rate things arrive, and in a quiet room it hangs almost still. |
 | **Interruptions** | Vera Molnar, 1968. A field of identical strokes with some removed; she called the removals the piece. Here the feed decides what is missing, so the holes are the data. |
 
 #### Five that are run rather than drawn
@@ -936,7 +936,7 @@ These have a state and a rule, and the picture is wherever the rule has got to.
 
 | | |
 |---|---|
-| **Life** | John Conway, 1970. Three neighbours and a cell is born, two or three and it survives. That is the whole rule, and it is Turing complete. Events drop a glider — the five-cell shape that walks across the board forever. |
+| **Life** | John Conway, 1970. Three neighbours and a cell is born, two or three and it survives. That is the whole rule, and it is Turing complete. Events drop a glider — the five-cell shape that walks across the board forever — and the generations come at the rate events do. |
 | **Langton's ant** | Chris Langton, 1986. Turn, flip the square, step. Ten thousand steps of apparent chaos, and then it builds a diagonal highway and runs down it. Nobody has proved it always does. |
 | **Random walk** | The drunkard's walk. Robert Brown watched pollen do this in 1827 and could not say why; Einstein explained it in 1905 and got the first good estimate of the size of an atom. |
 | **Blue noise** | Mitchell's best-candidate, 1991: try a handful of positions and keep the one furthest from everything already placed. No clumps and no lattice, which is how a retina arranges its cones. |
@@ -963,7 +963,7 @@ disturbing something that then goes on by itself.
 | | |
 |---|---|
 | **Coral** | Diffusion-limited aggregation, after Witten and Sander, 1981. A particle wanders until it touches what is there, and sticks. It is how frost, soot, copper and coral all grow, and the branching is not in the rule — it emerges because the tips reach the wanderers first. |
-| **Attractor** | Clifford Pickover's map, iterated. Four numbers decide the whole of it, and events move them. |
+| **Attractor** | Clifford Pickover's map, iterated. Four numbers decide the whole of it, and events move them; the dust falls at the rate they arrive. |
 | **Voronoi** | Every point takes the colour of the nearest event. The boundary is where the first and second nearest are equally far, so it needs no edge detection — it falls out of the distance. |
 | **Burin** | The canvas engraved, with event density as the tone, drawn with a pen through the brush engine: two plates, one on show while the other is drawn over the tone as it is now, the same lines in the same places, and an event inks a few strokes where it lands at once. |
 
@@ -977,7 +977,7 @@ time.
 
 #### Painting
 
-Twelve pictures in the spirit of twentieth-century painting. They are homages to
+Eleven pictures in the spirit of twentieth-century painting. They are homages to
 ways of painting, never copies of paintings, and the painters are named only in
 the notes. Nobody living is imitated.
 
@@ -986,7 +986,7 @@ the notes. Nobody living is imitated.
 | **Nested squares** | After Josef Albers: squares inside squares, their centres a little low, in colours close enough to change one another. An event shifts one square's colour, slowly. |
 | **Colour fields** | After Mark Rothko: soft-edged rectangles on a coloured ground, feathered by stacked glazes rather than a blur. Busy moments brighten a field. |
 | **Paper cut-outs** | After Matisse's late cut-outs: scissor-cut fronds, each a single closed outline, turning slowly. |
-| **Simultaneous discs** | After Sonia Delaunay: discs cut into rings and quarters. An event gives the nearest a push. |
+| **Simultaneous discs** | After Sonia Delaunay: discs cut into rings and quarters. An event gives the nearest a push, spent in a second or two; left alone the discs barely turn. |
 | **Night signs** | After Miró's *Constellations*: stars, crescents, eyes and spots strung on fine threads, one sign per event. |
 | **Hanging mobile** | After Calder: a three-level balance of arms, each a damped pendulum. An event is a breath on one arm. |
 | **Bauhaus** | Circles, bars, half-moons and triangles on a strict grid; an event swaps one cell. |
@@ -1288,7 +1288,7 @@ The full set:
 | **Bloom** | The original: each event opens once and fades, with a shockwave in its own shape |
 | **Constellation** | Events become stars and join to their neighbours; bursts draw themselves as clusters |
 | **Flow field** | Each event releases a mote into a slowly turning noise field, and it draws where it drifts |
-| **Ripples** | Concentric wavefronts that cross and interfere |
+| **Ripples** | Concentric wavefronts that cross and interfere, gone in three seconds as on a pond |
 | **Grid** | An ordered grid that each event knocks out of true, settling back — after Vera Molnár |
 | **Truchet** | Quarter-arc tiles that flip as events land, so unbroken curves wander the field |
 
@@ -1646,7 +1646,7 @@ Around the picture, the way a print workshop is laid out:
 |---|---|
 | **The dials** | The tool's own, varied with each number. A dial moves from where the scene ships towards one end or the other and never more than three quarters of the way, so a variation never switches one off. **Shuffle the dials** goes further; **As it ships** puts them back. |
 | **Colour** | A ground and up to five inks, each editable, under the name of the palette they are, if they are one. **New colours** draws a set from a number in three moods -- a pale paper, a dark night, a strong ground -- with the violet band of the wheel removed and every ink kept well clear of the ground in lightness. **Rotate** makes the next ink the ground. Any palette can be taken as a starting point, except those with a violet in them, and a set can be saved. |
-| **Texture** | The fourteen finishes, the nine papers, film grain and the mats. |
+| **Texture** | The fourteen finishes, the ten papers, film grain and the mats. |
 | **Frame** | Eight shapes, from 9:16 to 16:9. |
 | **Motion and sound** | Where the events come from, how many a second on the picture's own rhythm, and **Hear it**: each event of the picture is one note from the chosen instrument, in a pentatonic scale, larger marks lower. It plays through the sandbox's own audio engine, so there is one volume and one permission to play sound. |
 | **Yours** | **K** keeps the picture on screen, with a thumbnail and its title, on this device; a click brings it back exactly. The same pieces hang in the Gallery. |

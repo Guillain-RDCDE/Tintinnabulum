@@ -24,8 +24,10 @@ Nothing to install; it runs in a browser, and on a phone.
 Or open **Create**, the fifth tab: every picture is a small tool. Press
 **Space** for another, change the colours, hear it, keep the ones you like,
 take them away as a picture or a video with its sound, or hang them on the
-wall. Any work in the Gallery has a **Remix** that opens it there, and what you
-hang comes back to the Gallery, in a room of your own.
+wall. Some are drawn as a hand would draw them: pencil that skips on the grain,
+watercolour that runs and dries darker at its edge, pen-and-ink hatching. Any
+work in the Gallery has a **Remix** that opens it there, and what you hang comes
+back to the Gallery, in a room of your own.
 
 <p align="center">
   <img src=".github/create-opwaves.png" width="100%" alt="The Create tab: Optical waves, variation 777, bands of amber and blue swelling across a dark ground, with its dials, inks, frame and export around it">
@@ -51,4 +53,4 @@ said this had to exist.
 
 ---
 
-<sub>The idea — a bell for growth, a plucked string for shrinkage, pitch inversely proportional to the size of the change — comes from <a href="https://github.com/hatnote/listen-to-wikipedia">Listen to Wikipedia</a> by Stephen LaPorte and Mahmoud Hashemi, and through it from <a href="https://www.bitlisten.com/">BitListen</a> by Maximillian Laumeister. The sample banks in <code>sounds/</code> are redistributed from that project under its BSD 3-Clause licence. Tintinnabulum is an independent implementation, not a fork, and is not endorsed by any of the above — see <a href="NOTICE">NOTICE</a>, and use <code>kit: 'synth'</code> to ship no third-party audio at all. BSD 3-Clause, see <a href="LICENSE">LICENSE</a>.</sub>
+<sub>The idea — a bell for growth, a plucked string for shrinkage, pitch inversely proportional to the size of the change — comes from <a href="https://github.com/hatnote/listen-to-wikipedia">Listen to Wikipedia</a> by Stephen LaPorte and Mahmoud Hashemi, and through it from <a href="https://www.bitlisten.com/">BitListen</a> by Maximillian Laumeister. The sample banks in <code>sounds/</code> are redistributed from that project under its BSD 3-Clause licence. Pencil, ink and watercolour are drawn by a port of <a href="https://github.com/acamposuribe/p5.brush">p5.brush</a> by Alejandro Campos Uribe, mixing colours after <a href="https://github.com/rvanwijnen/spectral.js">spectral.js</a> by Ronald van Wijnen, both MIT. Tintinnabulum is an independent implementation, not a fork, and is not endorsed by any of the above — see <a href="NOTICE">NOTICE</a>, and use <code>kit: 'synth'</code> to ship no third-party audio at all. BSD 3-Clause, see <a href="LICENSE">LICENSE</a>.</sub>

@@ -336,8 +336,9 @@ The original project simply played one file per note and was therefore limited t
 including notes above and below anything that was recorded. `step: 0` marks an
 unpitched bank (the swells), which picks a variation at random instead.
 
-**`SynthInstrument`** needs no files at all, which is why twelve of the fifteen kits
-are free of downloads and of licensing entirely. Two engines, plus a `sweep`
+**`SynthInstrument`** needs no files at all, which is why twenty-one of the
+twenty-six kits are free of downloads and of licensing entirely; the other five
+are the Wikipedia bells and the four built on field recordings. Two engines, plus a `sweep`
 parameter that bends the pitch during the attack: a falling water drop rings
 *upward* as the cavity closes, and that bend is the whole difference between a
 drop and a beep. The test suite checks it by counting zero crossings early and
@@ -381,13 +382,13 @@ inside a bigger site, with no configuration.
 - **Lifecycle**: fade over 12 s; a shockwave ring expands from `r+20` to `r+40`
   over 2.2 s on an ease-out; the label shows for 3 s and on hover; oldest
   particles are culled past 800.
-- **Colour** by category, from the active palette — in the default *Blueprint*:
-  near-white for a logged-in user, sky blue anonymous, indigo bot, amber alert. A
+- **Colour** by category, from the active palette — in the default *Marine*:
+  coral for a logged-in user, teal anonymous, deep blue bot, gold alert. A
   category nobody defined falls back to `default`, so custom data always gets a
   visible colour instead of vanishing.
 - Clicking a circle hit-tests newest-first and opens its `url`.
 
-**Palettes.** Seventeen ship with the project and can be swapped at runtime with
+**Palettes.** Ninety-seven ship with the project and can be swapped at runtime with
 `setPalette()`; circles already on screen are recoloured from the category they
 were born with, so the change is immediate rather than waiting for the canvas to
 turn over.
@@ -405,6 +406,24 @@ which is exactly the promise it makes.
 It is Canvas 2D rather than SVG because the original's one-DOM-node-plus-
 transition per circle does not survive a busy multi-language feed, and because
 D3 v3's API was removed in v4 — a migration was a rewrite either way.
+
+**Scenes.** The circles are the default picture, one of 114 scenes — 133
+pictures, counting the scenes that have several sheets — on eight shelves, from
+painting to night, water and pattern. Every one draws the same events and keeps
+to one rule above all others: the picture follows the feed. A quiet second must
+change much less than a busy one. `npm run test:feed` measures that for every
+scene, sheet and work, and fails if any of them runs on by itself.
+
+**Natural media.** Some scenes are drawn rather than rendered: pencil, charcoal,
+pen and watercolour, through `src/visual/brush.js`, a port of
+[p5.brush](https://github.com/acamposuribe/p5.brush) to Canvas 2D. A pencil line
+is a walk of small soft dots under a pressure curve; a watercolour is a polygon
+grown by midpoint displacement and laid as twenty translucent layers, after
+Tyler Hobbs; and every mark is mixed into the sheet by the Kubelka–Munk model of
+[spectral.js](https://github.com/rvanwijnen/spectral.js), so blue over yellow is
+green and not grey. The Sketchbook, Wet on wet, Hatchwork, Burin and the
+Engraved finish are drawn this way. Nothing is imported: the method is ported,
+so the project keeps no dependencies and works offline.
 
 ### 9. Failing loudly
 
@@ -542,6 +561,7 @@ pipeline.
 | **Dimmed instead of discarded** | You can see the traffic you chose not to hear. |
 | **SSE, not WebSocket, for fan-out** | The browser only consumes. `EventSource` reconnects itself, and SSE costs zero dependencies. |
 | **Canvas, not SVG** | One DOM node plus a transition per event does not survive a busy feed. |
+| **Natural media ported, not imported** | p5.brush needs WebGL2 and p5.js. Its method — dots under a pressure curve, layered watercolour, spectral mixing — runs on a 2D canvas in a file of its own, with no dependency added. |
 | **Sample URLs relative to the module** | Works from any mount point without configuration — a local server, a Pages subpath, a subfolder. |
 | **No build step** | Clone it, open it, change a line, refresh. The whole engine is readable in an afternoon. |
 | **Accents bypass the pool** | A rare, important event must not be lost to a crowd of ordinary ones. |
