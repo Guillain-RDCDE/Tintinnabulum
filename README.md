@@ -4,6 +4,14 @@
 
 # Tintinnabulum
 
+<!-- opening -->
+> Every event in a live system becomes a note and a shape. You hear production instead of watching it.
+>
+> Zero-dependency JavaScript: server-sent events in, Web Audio and canvas out; runs in any browser, on a phone, with your own feed plugged in by one curl.
+>
+> Observability people actually use, built from nothing but the browser. Part of the work of [Guillain d’Erceville](https://github.com/Guillain-RDCDE), forward deployed engineer.
+<!-- opening -->
+
 **Hear your data.**
 
 Something happens. You hear a note.
