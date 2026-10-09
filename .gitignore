@@ -15,3 +15,9 @@ tmp-audition/
 
 # A recording is shipped gzipped; the plain JSON beside it is the tool's working copy.
 demo/recordings/*.json
+
+# Shared tool settings are versioned; per-machine ones (settings.local.json) are not
+!.claude/
+.claude/*
+!.claude/settings.json
+!.claude/CLAUDE.md
