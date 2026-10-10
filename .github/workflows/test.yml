@@ -16,6 +16,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      # Every commit is the owner's, written and committed. GitHub's own
+      # address is allowed as committer, for an edit made on the website.
+      - name: every commit is the owner's
+        run: |
+          owner=167749917+Guillain-RDCDE@users.noreply.github.com
+          bad=$(git log --no-merges --format='%h %ae %ce' | awk -v o="$owner" '$2 != o || ($3 != o && $3 != "noreply@github.com")')
+          if [ -n "$bad" ]; then echo "commits not by the owner:"; echo "$bad"; exit 1; fi
       - uses: actions/setup-node@v5
         with:
           node-version: 22
