@@ -793,6 +793,43 @@ export const WORKS = {
     ground: 'coldpress', mat: 'gallery', pace: REAL_TIME, dials: { figure: 2, pages: 60 },
     cartel: 'The same walk on a brighter day: a blue sky, a red sun, hills of green, violet and red, trees arriving on them as fast as the feed brings them. An aviary.',
   }),
+  // Seven views of a patch of a planet's rings: the grains themselves, the
+  // copies of the box that hold them, and long exposures of their tracks.
+  ringpatch: work('Night', 'calm', 'The A ring, close to', {
+    scene: 'rings', palette: 'coal', kit: 'glassy', space: 'hall', pace: UNHURRIED,
+    dials: { colours: 1 },
+    cartel: 'Grains of cream and ochre ice going round a planet together, the inner overtaking the outer, gathered into long slanting wakes. Every event is a meteoroid striking the ring; the grains it throws are stained, and the orbit draws the stain out into a streak. Glass, for every hit.',
+  }),
+  ringuv: work('Night', 'lively', 'Ultraviolet ice', {
+    scene: 'rings', palette: 'coal', kit: 'glacier', space: 'hall', pace: REAL_TIME,
+    dials: { colours: 2, colourBy: 1, bounces: 0.84 },
+    cartel: 'The ring as an ultraviolet camera saw it, coloured by how hard each grain has just been struck: still ice in deep teal, the grains an event has thrown in red and cream, cooling as they collide their speed away.',
+  }),
+  ringcopies: work('Night', 'calm', 'The sliding copies', {
+    scene: 'rings', palette: 'abyss', kit: 'chimes', space: 'room', pace: SLOW,
+    dials: { figure: 1, colours: 3 },
+    cartel: 'A patch of ring in a frame, and the copies of it that keep it whole, sliding past above and below at the speed of the orbit: a grain that leaves at one edge comes back in at the other, moved along. Chimes for the events that strike it.',
+  }),
+  ringexposure: work('Night', 'calm', 'Long exposure of the rings', {
+    scene: 'rings', palette: 'coal', kit: 'handbells', space: 'hall', pace: SLOW,
+    dials: { figure: 2, colours: 1, trail: 0.6 },
+    cartel: 'The ring photographed with the shutter held open: the fast grains at the edges drawn into streaks, those along the middle, where the orbit hardly moves them, left as dots and small loops. A stain from each event runs out along the tracks.',
+  }),
+  ringsunprint: work('Night', 'calm', 'Sun print of a ring', {
+    scene: 'rings', palette: 'abyss', kit: 'waterchime', space: 'room', pace: UNHURRIED,
+    dials: { figure: 2, colours: 6, trail: 0.9 },
+    cartel: 'White tracks on the blue of a cyanotype, as if the rings had been laid on the paper in the sun. Each event leaves a pale ring where it struck and a new stain running out along the tracks.',
+  }),
+  ringembers: work('Dusk', 'lively', 'Struck embers', {
+    scene: 'rings', palette: 'coal', kit: 'gongs', space: 'hall', pace: REAL_TIME,
+    dials: { colours: 4, colourBy: 1, gravity: 1.4, bounces: 0.9 },
+    cartel: 'Dark grains that glow where they are struck and darken again as they collide the heat away. Gongs, and a ring of light for every hard bounce.',
+  }),
+  ringgraphite: work('Daylight', 'calm', 'Graphite rings', {
+    scene: 'rings', palette: 'daylight', kit: 'musicbox', space: 'room', pace: UNHURRIED,
+    mat: 'gallery', grain: true, dials: { colours: 5, spread: 3.2, stains: 1.2 },
+    cartel: 'The ring drawn as graphite spheres on paper, a few boulders among the dust, gathering into slanting bands. Each event a red, a blue or an ochre struck into the grey, drawn out by the orbit.',
+  }),
 };
 
 /** The works in a room, in the order they are hung. */

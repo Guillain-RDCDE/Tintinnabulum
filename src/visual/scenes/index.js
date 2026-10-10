@@ -56,6 +56,7 @@ import { PLOTTED_SCENES } from './plotted.js';
 import { STITCHED_SCENES } from './stitched.js';
 import { TILTED_SCENES } from './tilted.js';
 import { BRUSHED_SCENES } from './brushed.js';
+import { RING_SCENES } from './rings.js';
 import { applyCatalogue, SCENE_SHELVES, shelfOf as shelfIn } from './catalogue.js';
 
 export { noise2 } from './noise.js';
@@ -90,6 +91,7 @@ export const SCENES = {
   ...STITCHED_SCENES,
   ...TILTED_SCENES,
   ...BRUSHED_SCENES,
+  ...RING_SCENES,
 };
 
 // Presentation is applied once, here, across every family at once. See

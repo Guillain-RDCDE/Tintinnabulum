@@ -29,7 +29,7 @@ const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 const el = (id) => document.getElementById(`st-${id}`);
 
 /** The scenes new to the bench, marked as such. */
-const NEW_TOOLS = new Set(['ribbons', 'growth', 'physarum', 'stipple', 'topo', 'roots']);
+const NEW_TOOLS = new Set(['ribbons', 'growth', 'physarum', 'stipple', 'topo', 'roots', 'rings']);
 
 const RATIOS = ['9:16', '3:4', '4:5', '1:1', '5:4', '4:3', '3:2', '16:9'];
 const ratioOf = (r) => r.split(':').map(Number);
