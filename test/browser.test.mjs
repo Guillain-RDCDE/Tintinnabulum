@@ -4070,6 +4070,28 @@ ok('the tools in view are painted', pgPainted >= 8, `${pgPainted} painted`);
 await pg.keyboard.type('hatchwork');
 const pgFiltered = await pg.evaluate(() => [...document.querySelectorAll('.st-card')].filter((c) => !c.hidden).map((c) => c.dataset.tool));
 ok('typing filters the tools', pgFiltered.length === 1 && pgFiltered[0] === 'hatched', pgFiltered.join(','));
+// Seen, not only flagged: a card's own display rule once beat [hidden], and
+// every card stayed on screen whatever was typed.
+const pgOnScreen = await pg.evaluate(() => [...document.querySelectorAll('.st-card')].filter((c) => c.getClientRects().length > 0).length);
+ok('a tool filtered out is gone from the screen', pgOnScreen === 1, `${pgOnScreen} on screen`);
+// The name beats the description: a few words of a title find that tool
+// first, and Enter opens it, though other descriptions hold the same words.
+await pg.evaluate(() => {
+  const f = document.querySelector('#st-find');
+  f.value = 'In the Ring';
+  f.dispatchEvent(new Event('input'));
+});
+const pgRanked = await pg.evaluate(() => ({
+  shown: [...document.querySelectorAll('.st-card')].filter((c) => !c.hidden).length,
+  best: document.querySelector('#st-best b').textContent,
+}));
+ok('the best match comes first and is named', pgRanked.best === 'In the rings' && pgRanked.shown >= 1, JSON.stringify(pgRanked));
+await pg.evaluate(() => {
+  const f = document.querySelector('#st-find');
+  f.value = 'hatchwork';
+  f.dispatchEvent(new Event('input'));
+  f.focus();
+});
 await pg.keyboard.press('Enter');
 await developed();
 ok('Enter opens the first tool', await pg.evaluate(() => location.hash.startsWith('#create/hatched/') && !document.querySelector('#st-bench').hidden));

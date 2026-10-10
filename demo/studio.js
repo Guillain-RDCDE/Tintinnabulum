@@ -337,17 +337,57 @@ export function setupStudio({
     }
   }
 
+  /**
+   * How well a tool answers what was typed, 0 for not at all.
+   *
+   * The name counts far more than the description. Matching every word
+   * anywhere in the text was the first version, and typing "in the ring"
+   * showed every tool whose description happened to hold "in", "the" and a
+   * "spring" -- with the one called In the rings somewhere down the list, and
+   * Enter opening the first of the others. Words in a description must now
+   * start a word there, and the order of the cards follows the score.
+   */
+  function scoreOf(name, q) {
+    if (!q) return 1;
+    const s = SCENES[name];
+    const label = s.label.toLowerCase();
+    const id = name.toLowerCase();
+    if (label === q || id === q) return 100;
+    if (label.startsWith(q) || id.startsWith(q)) return 80;
+    if (label.includes(q)) return 60;
+    const words = q.split(/\s+/);
+    const title = `${label} ${id}`;
+    if (words.every((w) => title.includes(w))) return 40;
+    const text = `${title} ${s.note} ${s.shelf} ${numberOf(name)}`.toLowerCase();
+    const starts = (w) => new RegExp(`(^|[^\\p{L}\\p{N}])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'u').test(text);
+    return words.every(starts) ? 20 : 0;
+  }
+
+  let best = null;
+
   function filterTools() {
     const q = el('find').value.trim().toLowerCase();
     let shown = 0;
+    let top = 0;
+    best = null;
     for (const [name, c] of cards) {
       const s = SCENES[name];
-      const text = `${s.label} ${name} ${s.note} ${s.shelf} ${numberOf(name)}`.toLowerCase();
-      const on = (kind === 'All' || s.shelf === kind) && (!q || q.split(/\s+/).every((w) => text.includes(w)));
+      const score = (kind === 'All' || s.shelf === kind) ? scoreOf(name, q) : 0;
+      const on = score > 0;
       c.el.hidden = !on;
+      // The best answers first; ties keep the catalogue's order.
+      c.el.style.order = q && on ? String(100 - score) : '';
       if (on) shown++;
+      if (on && score > top) {
+        top = score;
+        best = name;
+      }
     }
     el('none').hidden = shown > 0;
+    const say = el('best');
+    say.hidden = !(q && best);
+    if (q && best) say.querySelector('b').textContent = SCENES[best].label;
+    el('go').disabled = !best;
     for (const b of el('kinds').querySelectorAll('.st-chip')) b.setAttribute('aria-pressed', String(b.dataset.kind === kind));
     for (const [name, c] of cards) {
       if (c.el.hidden || c.painted) continue;
@@ -357,9 +397,13 @@ export function setupStudio({
     return shown;
   }
 
-  const firstShown = () => {
-    for (const [name, c] of cards) if (!c.el.hidden) return name;
-    return null;
+  /** The tool Enter opens: the best answer to what was typed, or the first on show. */
+  const firstShown = () => best;
+
+  const openBest = () => {
+    const first = firstShown();
+    if (first) location.hash = `${PREFIX}/${first}`;
+    else el('find').focus();
   };
 
   function showIndex() {
@@ -1426,6 +1470,7 @@ export function setupStudio({
       location.hash = `${PREFIX}/${list[Math.floor(Math.random() * list.length)]}`;
     });
     el('find').addEventListener('input', filterTools);
+    el('go').addEventListener('click', openBest);
     // A button clicked with the mouse gives its focus back, so Space keeps
     // meaning "another one" rather than pressing the last button again.
     studio.addEventListener('click', (e) => {
@@ -1451,8 +1496,7 @@ export function setupStudio({
           return;
         }
         if (e.key === 'Enter' && (t === find || t === document.body)) {
-          const first = firstShown();
-          if (first) location.hash = `${PREFIX}/${first}`;
+          openBest();
           e.preventDefault();
           return;
         }

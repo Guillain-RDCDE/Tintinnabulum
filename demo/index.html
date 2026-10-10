@@ -415,8 +415,15 @@
   .st-hero h2 { font-size: clamp(2rem, 5vw, 3rem); letter-spacing: -.035em; line-height: 1.05; }
   .st-hero .lede { color: var(--muted); font-size: 1.02rem; margin-top: .55rem; max-width: 44rem; }
   .st-finder { display: flex; gap: .6rem; margin-top: 1.3rem; flex-wrap: wrap; }
-  #st-find { flex: 1 1 260px; min-width: 0; border: 1px solid var(--line-strong); background: var(--field); border-radius: 999px; color: var(--fg);
-             padding: .72rem 1.1rem; font: inherit; font-size: 1rem; outline: none; transition: border-color .2s ease; }
+  .st-search { flex: 1 1 260px; min-width: 0; position: relative; display: flex; }
+  #st-find { flex: 1; min-width: 0; border: 1px solid var(--line-strong); background: var(--field); border-radius: 999px; color: var(--fg);
+             padding: .72rem 3rem .72rem 1.1rem; font: inherit; font-size: 1rem; outline: none; transition: border-color .2s ease; }
+  #st-go { position: absolute; right: .3rem; top: 50%; transform: translateY(-50%); width: 2.4rem; height: 2.4rem; border: 0; border-radius: 999px;
+           background: transparent; color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+  #st-go:hover:not(:disabled) { background: var(--field-hover); color: var(--fg); }
+  #st-go:disabled { opacity: .45; cursor: default; }
+  #st-best { color: var(--muted); font-size: .85rem; margin-top: .6rem !important; }
+  #st-best b { color: var(--fg); }
   #st-find:focus { border-color: var(--accent); }
   .st-pill { border: 1px solid var(--line-strong); background: var(--field); color: var(--fg); border-radius: 999px; padding: .45rem .95rem; cursor: pointer;
              font-weight: 600; font-size: .8125rem; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
@@ -437,6 +444,8 @@
   .st-chip .n { opacity: .6; margin-left: .3rem; font-variant-numeric: tabular-nums; }
   .st-hint { color: var(--faint); font-size: .78rem; margin-top: .9rem !important; display: flex; flex-wrap: wrap; gap: .35rem .9rem; }
   .st-tools { max-width: 1320px; margin: 24px auto 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+  /* A card filtered out has to go: display: block below would otherwise win over [hidden]. */
+  .st-card[hidden] { display: none !important; }
   .st-card { display: block; text-align: left; text-decoration: none; color: inherit; border: 1px solid var(--line); background: rgba(255,255,255,.035);
              border-radius: 14px; overflow: hidden; cursor: pointer; position: relative;
              transition: transform .35s var(--bounce), border-color .2s ease, box-shadow .3s ease; }
@@ -602,12 +611,18 @@
       <p class="lede">Every picture is a small tool. Pick one, press <kbd>Space</kbd> until you love what you see, then keep it, hear it, take it with you, or hang it on the wall.</p>
       <div class="st-finder">
         <label class="sr" for="st-find">Find a tool</label>
-        <input id="st-find" type="search" placeholder="Type to find a tool" autocomplete="off" spellcheck="false">
+        <div class="st-search">
+          <input id="st-find" type="search" enterkeyhint="go" placeholder="Type to find a tool" autocomplete="off" spellcheck="false">
+          <button id="st-go" type="button" aria-label="Open the best match" title="Open the best match">
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15.5 15.5 21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+          </button>
+        </div>
         <button id="st-random" class="st-pill strong" type="button">Surprise me</button>
         <button id="st-from-live" class="st-pill" type="button">From what was playing</button>
       </div>
+      <p id="st-best" hidden><kbd>Enter</kbd> opens <b></b></p>
       <div id="st-kinds" class="st-chips" role="group" aria-label="Kinds of tool"></div>
-      <p class="st-hint"><span><kbd>Type</kbd> to filter</span><span><kbd>Enter</kbd> opens the first</span><span><kbd>Esc</kbd> back to listening</span></p>
+      <p class="st-hint"><span><kbd>Type</kbd> to filter</span><span><kbd>Enter</kbd> opens the best match</span><span><kbd>Esc</kbd> back to listening</span></p>
     </div>
     <div id="st-tools" class="st-tools"></div>
     <p id="st-none" hidden>Nothing by that name. Try another word, or let it surprise you.</p>
