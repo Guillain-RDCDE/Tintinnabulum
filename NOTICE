@@ -227,3 +227,31 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+7. Planetary-ring physics -- src/visual/scenes/rings.js
+-------------------------------------------------------
+
+The scene "In the rings" was prompted by the shearing-sheet example of
+
+    REBOUND
+    https://github.com/hannorein/rebound
+    Copyright Hanno Rein and contributors
+    GNU General Public License v3.0 or later
+
+No code from REBOUND is used, ported or loaded, and none was consulted while
+writing it: the scene is an independent implementation in JavaScript, under
+this project's BSD licence, of equations published in the scientific
+literature --
+
+    Hill's equations in a shearing box, with shear-periodic boundaries:
+      Goldreich & Lynden-Bell (1965), MNRAS 130, 125;
+      Wisdom & Tremaine (1988), AJ 95, 925.
+    The velocity-dependent coefficient of restitution of ice,
+    eps = 0.32 (v / 1 cm/s)^-0.234:
+      Bridges, Hatzes & Lin (1984), Nature 309, 333.
+    Self-gravity wakes in dense rings:
+      Salo (1992), Nature 359, 619.
+
+The name REBOUND and its authors are cited for attribution only; they do not
+endorse this project and are not associated with it.

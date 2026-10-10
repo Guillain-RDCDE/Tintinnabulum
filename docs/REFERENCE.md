@@ -1131,6 +1131,44 @@ table, pressure model, fill growth and blend rules. It departs where a CPU needs
 filled by scanline at a resolution tied to the brush, not a canvas, and the
 mixes are remembered. Credits and licences are in [NOTICE](../NOTICE).
 
+#### In the rings
+
+**In the rings** (`rings`, on the *Night* shelf, in
+[`rings.js`](../src/visual/scenes/rings.js)) is a patch of a planet's rings,
+simulated rather than drawn: a few thousand grains of ice in a shearing box,
+the frame that goes round with the ring, where Hill's equations leave three
+things -- the shear that lets the inner grains overtake the outer, the
+Coriolis turn that bends a free grain onto an epicycle, and the tide. The box
+is periodic round the orbit and closed across it by copies of itself that
+slide past at the speed of the shear, so a grain leaving the outer edge comes
+back in at the inner one, moved along. Grains are hard spheres in six sizes on
+a power law, and a collision loses speed the way ice at a hundred kelvin does,
+after Bridges, Hatzes and Lin (1984): `eps = 0.32 (v / v_c)^-0.234`, capped
+at one, so a harder hit keeps less of its speed -- the **how much a hit
+loses** dial is `v_c`. With **how much they pull together** above zero the
+sheet's own gravity, solved on a 64 by 32 grid by an FFT with the thin-sheet
+kernel `-2 pi G / |k|`, gathers it into the long trailing wakes of the dense
+rings.
+
+Every event is a meteoroid striking the patch where it lands: the grains near
+it are thrown outward and stained in the colour of its kind, and the shear
+draws the stain out into a slanting streak that the wakes break up; a hard
+collision flashes as a ring of light, the few hardest against how fast the
+sheet is going at all. The ring turns at the rate things arrive and stains
+fade as it turns, not as the clock runs, so a quiet feed leaves the picture
+nearly still and keeps what the busy one left. *Patch* is the box from above,
+each grain stamped from a lit sphere drawn once per colour and size.
+*Replicas* draws it at half height among the copies that close it, their
+seams dashed and sliding. *Exposure* holds the shutter open: every grain's
+track since the last exposure is laid onto a plate that fades as the ring
+turns, so the fast edges become streaks and the still middle dots and loops.
+**Colour by** stains, or by heat -- how far each grain has been knocked off
+its orbit, against the sheet as a whole. Six colourways besides the palette:
+*saturn*, *ultraviolet*, *moonlit*, *ember*, *graphite* and *cyanotype*. Seven
+works hang on it. The idea of watching this came from REBOUND's
+shearing-sheet example; the scene shares no code with it (see
+[NOTICE](../NOTICE)).
+
 #### Nature and night
 
 Nine places rather than patterns. Each paints its own sky or ground, since a

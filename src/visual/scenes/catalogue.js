@@ -82,6 +82,7 @@ export const CATALOGUE = {
   jellyfish: S('Night', 'Jellyfish pulsing in deep water, lit from inside.'),
   snowfall: S('Night', 'Snow falling past lit windows and settling on the roofs.'),
   constellation: S('Night', 'Events become stars, and the busy ones find each other across the dark. Or a molecule: nested targets bonded into pairs or a whole network.'),
+  rings: S('Night', 'A patch of a planet\'s rings seen from close by: thousands of grains of ice going round together, the inner ones overtaking the outer, gathering into long slanting wakes and knocking into one another with a flash. Every event is a meteoroid striking the ice, staining the grains it throws, and the orbit draws the stain out into a streak. Or the same patch among the copies of itself that slide past it, or a long exposure of every grain\'s track.'),
   digitalrain: S('Night', 'The titles of events falling in green down a black screen, letter by letter, among a softer rain of code.'),
 
   // --- materials ---------------------------------------------------------
