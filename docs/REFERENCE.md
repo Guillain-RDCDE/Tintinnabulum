@@ -1284,7 +1284,7 @@ a work that hangs on a second sheet says so in its `dials`.
 import { sheets } from './src/index.js';
 grid: sheets({ label: 'Grid', note: '...', list: [OUTLINES, CURRENT] }),
 SCENES.grid.params.figure.options;   // ['outlines', 'current']
-SCENES.grid.params.fill.sheets;      // ['current']
+SCENES.grid.params.fullness.sheets;  // ['current']
 ```
 
 #### Dials
@@ -1380,9 +1380,64 @@ registerScene('rain', {
 });
 ```
 
-`api` carries `{ w, h, palette, particles, shape, now, dt, scene, param }`. Every
-scene reads the same particle model, so lifetimes, hit-testing and the event
-contract stay in one place.
+`api` carries `{ w, h, palette, particles, shape, ringLife, now, dt, scene,
+feed, buffers, depth, richness, darkGround, budget, sound, param, fill }`, built
+by one factory (`makeSceneApi`, `scenes/api.js`) for the live canvas and for
+every card, so the two cannot drift. Every scene reads the same particle model,
+so lifetimes, hit-testing and the event contract stay in one place.
+
+**The contract.** Every scene comes in through `defineScene`
+(`scenes/contract.js`) -- the registry's own families and `registerScene`
+alike -- and a scene that breaks it stops with every problem named. A dial
+needs a label, a numeric range, a default inside it and a step that divides
+it; a choice (`options`) has one name per position and says whether a
+variation may move it (`vary`); and a dial may not take the name of a setting
+of the whole picture (`GLOBAL_SETTING_NAMES`: `grain`, `depth`, `hold`, `pace`,
+`fill`, `palette` and the rest). Optional, and checked when given: a dial's
+`role` (`choice`, `count`, `size`, `amount`, `rate`, `time`, `angle`, `ratio`)
+and `unit` (`px`, `ms`, `s`, `deg`, `x`, `fraction`, `items`, `steps`), and the
+scene's `feed: { mode: 'push' | 'pull' }` -- push when it answers in `event`,
+pull when it reads the marks in `frame`; said for it when it does not say.
+
+Nineteen dials that once took a global name were renamed for what they are,
+and their old names are aliases (`DIAL_ALIASES`): a work, a Create address, a
+stored dial or a message to the wall that names `reaction.grain` is read as
+`reaction.cell`, and no picture made with an old name changes.
+
+| Scene | Old name | New name |
+|---|---|---|
+| reaction, quasicrystal, coral, voronoi | `grain` | `cell` |
+| peals | `grain` | `dust` |
+| reaction | `feed` | `feedRate` |
+| attractor, dejong, drip | `hold` | `linger` |
+| apollonian | `depth` | `circles` |
+| penrose | `depth` | `subdivisions` |
+| groove | `depth` | `cut` |
+| grid, glyphs | `fill` | `fullness` |
+| mondrian, packing | `fill` | `filled` |
+| meshes | `fill` | `flat` |
+| harmonograph | `ratio` | `frequency` |
+| sheaf | `inks` | `inkCount` |
+
+**The feed belongs to the runtime.** The rule the whole project rests on --
+the amount of work a picture does comes from the feed -- used to be written
+into each scene by hand: a drive kicked in `event` and let fall in `frame`.
+Now the host (the canvas, a card, Create's bench) keeps one per running scene
+(`scenes/feed.js`), kicks it on every event before the scene hears of it and
+lets it fall before every frame, and the scene only reads it:
+
+```js
+frame(ctx, api) {
+  const pace = api.feed.rate(0.05);   // 0.05 in silence, up to 1.05 under a busy feed
+  s.clock += api.dt * pace;           // ages and lifetimes stay on api.now
+}
+```
+
+`api.feed.drive` is the drive itself, `api.feed.quiet` the time since the last
+arrival, and `api.feed.ambient(every, fn)` the hand that works only in
+silence. A scene that answers harder or softer says so once, in its `feed`
+(`{ kick: 0.28, decay: 1400 }`), or from `init` with `api.feed.configure()`
+when one sheet answers differently from the others.
 
 **On p5.js:** it is a friendly wrapper over the Canvas 2D API this already
 uses, so importing it would cost about a megabyte and the offline guarantee

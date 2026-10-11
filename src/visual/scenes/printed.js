@@ -16,7 +16,7 @@
 
 import { scratch } from './paint.js';
 import { lightnessOf, lighten, mixColors } from '../color.js';
-import { TAU, seeded, hashOf, mostOf, ambient, kick } from './shared.js';
+import { TAU, seeded, hashOf, mostOf, ambient } from './shared.js';
 import { sheets } from './sheets.js';
 
 const ROLES = ['user', 'anon', 'bot', 'default', 'alert'];
@@ -325,6 +325,9 @@ export const PRINTED_SCENES = {
           s.band = s.rows * 0.5;
           s.dir = 1;
           s.phrase = 'emergence and signification   ';
+          // This sheet is kicked softer and let go sooner than the hex beside
+          // it: the press re-sets more of the page per arrival as it is.
+          api.feed.configure({ kick: 0.16, ceiling: 1.4, decay: 900 });
           s.blobs = [];
           s.cleared = false;
         },
@@ -346,7 +349,6 @@ export const PRINTED_SCENES = {
           // A ceiling, as everywhere: a page that kept every stone ever thrown
           // would cost more to print with every event that arrived.
           if (s.blobs.length > 48) s.blobs.shift();
-          s.drive = Math.min(1.4, (s.drive || 0) + 0.16);
         },
         frame(ctx, api) {
           const s = api.scene;
@@ -374,9 +376,8 @@ export const PRINTED_SCENES = {
           // fast in a silent minute as in a busy one, and the only thing the feed
           // changed was where the breakdown was -- which is too subtle to read as
           // an answer at all.
-          s.drive = Math.max(0, (s.drive || 0) - api.dt / 900);
           const total = s.cols * s.rows;
-          const cells = Math.max(24, Math.min(2400, Math.round(total * (0.012 + 0.06 * Math.min(1, s.drive)))));
+          const cells = Math.max(24, Math.min(2400, Math.round(total * (0.012 + 0.06 * Math.min(1, api.feed.drive)))));
           const voice = api.param('voice');
           b.textBaseline = 'alphabetic';
           b.font = `${Math.max(5, Math.round(s.em))}px ${MONO}`;
@@ -748,7 +749,6 @@ function hexInit(api) {
   s.dirty = new Uint8Array(n).fill(1);
   s.all = true;
   s.clock = 1;
-  s.drive = 0;
   s.chips = chipsOf(api);
   // One square ring, from the start; a large event moves it.
   const outer = Math.max(3, Math.round(Math.min(s.cols, s.rows * (s.ch / s.cw)) * 0.3));
@@ -826,7 +826,6 @@ function hexEvent(p, api) {
       }
     }
   }
-  kick(s);
   s.lastAt = api.now;
 }
 
@@ -859,8 +858,7 @@ function hexFrame(ctx, api) {
   const pal = api.palette;
   // The sheet's clock runs at the rate things arrive: a freshly written
   // fingerprint stays lit until the next ones come, not for a fixed time.
-  s.drive = Math.max(0, s.drive - api.dt / 1200);
-  const step = api.dt * (0.03 + s.drive);
+  const step = api.dt * (0.03 + api.feed.drive);
   s.clock += step;
   // In silence, after a pause, a short fingerprint now and then.
   ambient(s, api, 2600, () => hexWrite(s, (Math.random() * s.cols) | 0, (Math.random() * s.rows) | 0, digitsOf((Math.random() * 4294967295) >>> 0, 8)));

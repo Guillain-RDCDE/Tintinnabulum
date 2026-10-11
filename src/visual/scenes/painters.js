@@ -37,7 +37,6 @@ function pastelEvent(p, api) {
     color: Math.random() < 0.6 ? cool : mixColors(cool, p.color, 0.5),
     born: s.clock || 0,
   });
-  kick(s);
   const most = Math.max(6, Math.min(40, Math.floor((api.budget || 800) / 4)));
   if (s.smudges.length > most) s.smudges.splice(0, s.smudges.length - most);
   const title = String(p.label || '').trim();
@@ -64,8 +63,7 @@ function pastelFrame(ctx, api) {
   ctx.fillRect(0, 0, W, H);
   // The sheet's own clock runs at the rate things arrive: in silence the
   // smudges stay where they were rubbed instead of fading on their own.
-  s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-  const step = api.dt * (0.03 + (s.drive || 0));
+  const step = api.dt * (0.03 + api.feed.drive);
   s.clock = (s.clock || 0) + step;
   s.glow[0] = Math.max(0, s.glow[0] - step / 9000);
   // The field: feathered by stacking translucent copies inward, the edge
@@ -664,8 +662,7 @@ export const PAINTER_SCENES = {
     },
     event(p, api) {
       // Not every event changes the thread, or the cloth is confetti -- but
-      // every one of them works the loom.
-      api.scene.drive = Math.min(1.6, (api.scene.drive || 0) + 0.3);
+      // every one of them works the loom: the runtime's feed (feed.js).
       if (Math.random() < 0.35) api.scene.current = (api.scene.current + 1 + Math.floor(Math.random() * 3)) % 5;
     },
     frame(ctx, api) {
@@ -682,7 +679,7 @@ export const PAINTER_SCENES = {
       }
       // The cloth grows at the rate things arrive. It grew in bands of its
       // own colour through a silent hour before, which is a loom on a motor.
-      const pace = tempo(s, api, 0.04);
+      const pace = api.feed.rate(0.04);
       s.acc += (api.param('speed') * api.dt * pace) / 1000;
       while (s.acc >= 1) {
         s.acc -= 1;

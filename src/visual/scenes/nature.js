@@ -228,6 +228,7 @@ export const NATURE_SCENES = {
 
   // --- murmuration ---------------------------------------------------------------------
   murmuration: {
+    feed: { kick: 0.28, decay: 1400 },
     label: 'Murmuration',
     positional: false,
     note: 'Starlings at dusk, thousands of them moving as one cloud that folds, thins to a ribbon and thickens again. Every event is a falcon passing through, and the wave of alarm runs across the flock.',
@@ -259,7 +260,6 @@ export const NATURE_SCENES = {
       // A murmuration that folds at the same rate all evening is a beautiful
       // thing that owes the data nothing; one that hangs almost still and
       // boils when the feed does is the data, seen.
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.28);
     },
     frame(ctx, api) {
       const s = api.scene;
@@ -267,14 +267,13 @@ export const NATURE_SCENES = {
       const pal = api.palette;
       const W = api.w;
       const H = api.h;
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1400);
       // A floor, so a silent wall is not a photograph -- but a low one.
       // Sixteen hundred birds a pixel and a half across flip a great many
       // pixels for very little movement, so a seventh of the working rate
       // still read as a flock in full flight; a twentieth reads as one
       // hanging in the air, which is what an evening flock does between
       // alarms.
-      s.clock = (s.clock || 0) + api.dt * (0.015 + Math.min(1.2, s.drive));
+      s.clock = (s.clock || 0) + api.dt * (0.015 + Math.min(1.2, api.feed.drive));
       const t = s.clock / 1000;
       const dusk = ctx.createLinearGradient(0, 0, 0, H);
       const top = mixColors(pal.background, '#1b2a3a', lightnessOf(pal.background) > 0.5 ? 0.35 : 0.2);
@@ -588,7 +587,6 @@ export const NATURE_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       for (let k = 0; k < 24; k++) {
         const i = s.next++ % 240;
         s.px[i] = p.x + (Math.random() - 0.5) * 30;
@@ -608,8 +606,7 @@ export const NATURE_SCENES = {
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
       // seconds is disturbed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.04 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.04);
       const dt = Math.min(50, api.dt) * pace;
       const warm = mixColors(pal.alert, '#f0a860', 0.35);
       const sky = ctx.createLinearGradient(0, 0, 0, H * 0.6);
@@ -703,7 +700,6 @@ export const NATURE_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const i = s.nc++ % 60;
       const step = Math.max(16, Math.min(api.w, api.h) / 18);
       s.horiz[i] = Math.random() < 0.5 ? 1 : 0;
@@ -724,8 +720,7 @@ export const NATURE_SCENES = {
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
       // seconds is disturbed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.05 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.05);
       const dt = Math.min(50, api.dt) * pace;
       const cv = scratch(api, 'buf');
       const g = s.bufCtx;

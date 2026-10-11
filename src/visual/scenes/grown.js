@@ -56,7 +56,6 @@ export const GROWN_SCENES = {
     event(p, api) {
       const s = api.scene;
       if (!s.grid) return;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       s.whirls.push({ x: p.x, y: p.y, k: (p.pick < 0.5 ? -1 : 1) * (0.6 + p.pick), r: Math.min(api.w, api.h) * (0.12 + p.pick * 0.2) });
       if (s.whirls.length > 6) s.whirls.shift();
       plan(api, p.x, p.y, p.color, 0.6 + (p.r / (Math.min(api.w, api.h) * 0.34)) * 1.4);
@@ -72,8 +71,7 @@ export const GROWN_SCENES = {
       }
       // Ribbons of its own between events, so the sheet keeps filling.
       // Laid at the feed's rate.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.05 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.05);
       s.ambient += api.dt * pace;
       if (s.ambient > 50 && !s.fade) {
         s.ambient = 0;
@@ -145,7 +143,6 @@ export const GROWN_SCENES = {
     event(p, api) {
       const s = api.scene;
       if (!s.x || s.n < 3) return;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       // Grow where the event landed: split the edges nearest it.
       let best = 0;
       let bd = Infinity;
@@ -172,8 +169,7 @@ export const GROWN_SCENES = {
       // It grows and relaxes at the feed's rate. A curve that lengthens on its
       // own reaches the same place whether anything happened or not, and the
       // three edges an arrival splits are lost in it.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.03 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.03);
       const iterations = Math.max(1, Math.round(speed * 2 * pace));
       for (let it = 0; it < iterations; it++) relax(s, R, api.w, api.h);
       // Grow: split the longest edges, a few a frame.
@@ -271,7 +267,6 @@ export const GROWN_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       if (!s.food) return;
       // Food: a small source that keeps giving for a while, as an oat flake
       // does in a dish. A large flood of trail at once only drew every agent
@@ -288,8 +283,7 @@ export const GROWN_SCENES = {
       // the only thing an arrival changed was where a little food landed --
       // which a network already covered in trails swallows whole. It now
       // creeps when nothing is arriving and runs when the feed does.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      s.steps = (s.steps || 0) + 0.06 + 2.1 * Math.min(1, s.drive);
+      s.steps = (s.steps || 0) + 0.06 + 2.1 * Math.min(1, api.feed.drive);
       while (s.steps >= 1) {
         s.steps -= 1;
         feed(s);
@@ -340,7 +334,6 @@ export const GROWN_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       s.held = 0;
       if (!s.spots) return;
       s.spots.push({ x: p.x, y: p.y, r: Math.min(api.w, api.h) * (0.06 + p.pick * 0.14), born: api.now });
@@ -362,7 +355,7 @@ export const GROWN_SCENES = {
         ctx.drawImage(s.buf, 0, 0, api.w, api.h);
         return;
       }
-      s.held = (s.drive || 0) > 0.02 ? 0 : 1e9;
+      s.held = api.feed.drive > 0.02 - api.dt / 1200 ? 0 : 1e9;
       const { n, x, y, sx, sy, cnt, head, next, cols, rows, cell } = s;
       // The grid of dots, for finding the nearest one to a sample.
       head.fill(-1);
@@ -379,8 +372,7 @@ export const GROWN_SCENES = {
       // the samples fell in, and over a few frames all of it -- at the rate
       // the feed is arriving. Relaxing at full speed in silence meant the
       // dots went on crawling towards a tone nothing had changed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const samples = Math.round(n * (0.004 + 0.9 * Math.min(1, s.drive)));
+      const samples = Math.round(n * (0.004 + 0.9 * Math.min(1, api.feed.drive)));
       for (let k = 0; k < samples; k++) {
         const q = sampleDark(api, s);
         const cx = (q[0] / cell) | 0;
@@ -408,7 +400,7 @@ export const GROWN_SCENES = {
         if (cnt[i]) {
           x[i] += (sx[i] / cnt[i] - x[i]) * 0.5;
           y[i] += (sy[i] / cnt[i] - y[i]) * 0.5;
-        } else if (Math.random() < 0.004 * (0.05 + Math.min(1, s.drive))) {
+        } else if (Math.random() < 0.004 * api.feed.rate(0.05)) {
           // Now and then a dot nobody sampled -- one in the light -- is sent to
           // where the picture needs it, so the dots follow the light as it
           // moves. At the feed's rate: four in a thousand of them jumping
@@ -457,6 +449,7 @@ export const GROWN_SCENES = {
 
   // --- topography ---------------------------------------------------------------------------
   topo: {
+    feed: { kick: 0.34, decay: 1500 },
     label: 'Contour survey',
     note: 'A survey map, drawn as a cartographer would: contour lines traced through a height field by marching squares, every fifth one an index contour drawn heavier, and short hachures on the slopes that turn away from the light, set across the slope and closer where it is steeper. The land is value noise, and every event raises a hill or sinks a hollow that swells into it over a few seconds; the whole terrain drifts very slowly, so the lines are always being redrawn.',
     params: {
@@ -476,7 +469,6 @@ export const GROWN_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.34);
       if (!s.hills) return;
       s.hills.push({ x: p.x, y: p.y, r: Math.min(api.w, api.h) * (0.08 + p.pick * 0.16), a: (p.pick < 0.7 ? 1 : -0.7) * (0.25 + p.pick * 0.35), born: api.now });
       if (s.hills.length > 24) s.hills.shift();
@@ -496,8 +488,7 @@ export const GROWN_SCENES = {
       // The land drifts at the feed's rate. It drifted on its own clock
       // before, so a survey of a silent hour was redrawn as busily as one of
       // a storm, and the hills an event raises were lost in the wandering.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1500);
-      s.clock = (s.clock || 0) + api.dt * (0.04 + Math.min(1, s.drive));
+      s.clock = (s.clock || 0) + api.dt * api.feed.rate(0.04);
       const t = s.clock / 20000;
       const sc = 1 / (Math.min(api.w, api.h) * 0.28);
       let lo = Infinity;
@@ -993,7 +984,7 @@ function refreshTone(api, s) {
   // size from it, so a refresh moves the whole picture at once -- and doing
   // that five times a second through a silent minute is the picture redrawing
   // itself for nothing.
-  const gate = 12 + Math.round(200 * (1 - Math.min(1, s.drive || 0)));
+  const gate = 12 + Math.round(200 * (1 - Math.min(1, api.feed.drive)));
   if (s.tg && s.tgw === gw && s.tgh === gh && s.toneAge < gate) return;
   if (!s.tg || s.tgw !== gw || s.tgh !== gh) {
     s.tg = new Float32Array(gw * gh);

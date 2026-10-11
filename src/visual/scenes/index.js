@@ -27,6 +27,7 @@
 
 import { shadeOf, lighten, lightnessOf } from '../color.js';
 import { makeSceneApi } from './api.js';
+import { feedFor } from './feed.js';
 import { defineScene, canonicalDials } from './contract.js';
 import { applyFinish, drawMat, drawGrain } from '../finish.js';
 import { applyGround } from '../grounds.js';
@@ -161,6 +162,9 @@ function cardApi(scene, { w, h, palette, shape = 'circle', dt = 62, depth = true
       return params[name] === undefined ? spec.default : params[name];
     },
     colorFor: (c) => palette[c] || palette.default,
+    // Kicked by the runner on every event and let fall before every frame,
+    // as the live canvas does.
+    feed: feedFor(scene),
   });
 }
 
@@ -219,6 +223,7 @@ export function animateScene(ctx, name, {
     p.born = api.now;
     api.particles.push(p);
     if (api.particles.length > 80) api.particles.splice(0, api.particles.length - 80);
+    api.feed.hit(api.now);
     if (scene.event) {
       try { scene.event(p, api); } catch (e) { /* a card must not take the page down */ }
     }
@@ -243,6 +248,7 @@ export function animateScene(ctx, name, {
       ctx.fillStyle = palette.background;
       ctx.fillRect(0, 0, w, h);
       ctx.save();
+      api.feed.tick(api.dt, api.now);
       try {
         scene.frame(ctx, api);
       } catch (e) {
@@ -326,6 +332,7 @@ export function playScene(ctx, name, {
     p.born = api.now;
     api.particles.push(p);
     if (api.particles.length > 80) api.particles.splice(0, api.particles.length - 80);
+    api.feed.hit(api.now);
     if (scene.event) seeded(() => scene.event(p, api));
     if (!quiet && onArrive && !ev) {
       try {
@@ -356,6 +363,7 @@ export function playScene(ctx, name, {
     ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, w, h);
     ctx.save();
+    api.feed.tick(api.dt, api.now);
     seeded(() => scene.frame(ctx, api));
     ctx.restore();
     ctx.globalAlpha = 1;
@@ -536,12 +544,14 @@ export function previewScene(
       if (b.at !== f) continue;
       b.p.born = api.now;
       particles.push(b.p);
+      api.feed.hit(api.now);
       if (scene.event) seeded(() => scene.event(b.p, api));
     }
     for (let i = particles.length - 1; i >= 0; i--) {
       if (api.now - particles[i].born >= particles[i].life) particles.splice(i, 1);
     }
     ctx.save();
+    api.feed.tick(api.dt, api.now);
     try {
       seeded(() => scene.frame(ctx, api));
     } catch (e) {

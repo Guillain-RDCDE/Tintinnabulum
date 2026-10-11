@@ -59,7 +59,6 @@ export const TERMINAL_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       if (!s.y) return;
       // The column under the event, or the next free one near it.
       let c = Math.max(0, Math.min(s.cols - 1, Math.floor((p.x / api.w) * s.cols)));
@@ -88,8 +87,7 @@ export const TERMINAL_SCENES = {
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
       // seconds is disturbed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.06 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.06);
       const dt = Math.min(50, api.dt) * pace;
       const size = s.size;
       const colW = W / s.cols;

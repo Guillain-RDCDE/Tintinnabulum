@@ -180,7 +180,6 @@ export const AIR_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       let best = 0;
       let bd = Infinity;
       for (let i = 0; i < s.n; i++) {
@@ -203,8 +202,7 @@ export const AIR_SCENES = {
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
       // seconds is disturbed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.06 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.06);
       const dt = Math.min(50, api.dt) * pace;
       s.clock = (s.clock || 0) + api.dt * pace;
       const t = s.clock / 1000;
@@ -340,7 +338,6 @@ export const AIR_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const i = s.next++ % 36;
       s.x[i] = p.x;
       s.y[i] = p.y;
@@ -358,8 +355,7 @@ export const AIR_SCENES = {
       const H = api.h;
       // The film drifts and wobbles at the feed's rate; each bubble still
       // lives out its own life in seconds, so none of them is held open.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.05 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.05);
       const dt = Math.min(50, api.dt) * pace;
       s.clock = (s.clock || 0) + api.dt * pace;
       const t = s.clock / 1000;
@@ -470,7 +466,6 @@ export const AIR_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       if (!s.nw) return;
       for (let tries = 0; tries < 12; tries++) {
         const i = Math.floor(Math.random() * s.nw);
@@ -493,8 +488,7 @@ export const AIR_SCENES = {
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
       // seconds is disturbed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.05 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.05);
       const dt = Math.min(50, api.dt) * pace;
       s.clock = (s.clock || 0) + api.dt * pace;
       const t = s.clock / 1000;
@@ -554,7 +548,7 @@ export const AIR_SCENES = {
       // plainly changes is how much snow there is -- a few flakes through a
       // quiet minute, a blizzard through a busy one -- and that is also what
       // anybody watching a window would say had changed.
-      const falling = Math.max(24, Math.round(s.N * (0.05 + 0.95 * Math.min(1, s.drive))));
+      const falling = Math.max(24, Math.round(s.N * (0.05 + 0.95 * Math.min(1, api.feed.drive))));
       const flakes = (which) => {
         ctx.beginPath();
         for (let i = 0; i < falling; i++) {
@@ -655,7 +649,6 @@ export const AIR_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const i = s.next++ % 6;
       const fromLeft = p.x > api.w / 2;
       s.bx[i] = fromLeft ? -20 : api.w + 20;
@@ -677,8 +670,7 @@ export const AIR_SCENES = {
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
       // seconds is disturbed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.05 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.05);
       const dt = Math.min(50, api.dt) * pace;
       s.clock = (s.clock || 0) + api.dt * pace;
       const t = s.clock / 1000;

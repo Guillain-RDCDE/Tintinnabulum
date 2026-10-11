@@ -2,7 +2,7 @@
 
 import { noise2 } from './noise.js';
 import { cap } from './budget.js';
-import { ambient, kick } from './shared.js';
+import { ambient } from './shared.js';
 import { sheets } from './sheets.js';
 
 const TAU = Math.PI * 2;
@@ -302,7 +302,6 @@ function currentInit(api) {
     s.on[i] = Math.random() < fill * (above ? 1 : 0.7) ? 1 : 0;
   }
   s.clock = 0;
-  s.drive = 0;
   s.lastAt = 0;
   s.ambient = 0;
 }
@@ -333,7 +332,6 @@ function currentEvent(p, api) {
       if (q > 0.6 && Math.random() < 0.3 * k) s.on[i] = s.on[i] ? 0 : 1;
     }
   }
-  kick(s);
   s.lastAt = api.now;
 }
 
@@ -344,8 +342,7 @@ function currentFrame(ctx, api) {
   const inks = [pal.user, pal.anon, pal.bot, pal.alert, pal.default].map((c) => c || pal.default);
   // The sheet's clock runs at the rate things arrive: a stirred patch
   // settles only while the feed is working, and stays turned in silence.
-  s.drive = Math.max(0, s.drive - api.dt / 1200);
-  const step = api.dt * (0.02 + s.drive) / 1000;
+  const step = api.dt * (0.02 + api.feed.drive) / 1000;
   const settle = Math.exp(-step * 1.6);
   const fade = Math.exp(-step * 3);
   ambient(s, api, 3200, () => {

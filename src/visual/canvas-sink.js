@@ -8,6 +8,7 @@ import { SHAPES, DEFAULT_SHAPE } from './shapes.js';
 import { SCENES, DEFAULT_SCENE } from './scenes/index.js';
 import { makeSceneApi, gradientFill } from './scenes/api.js';
 import { dialName, canonicalDials } from './scenes/contract.js';
+import { feedFor } from './scenes/feed.js';
 
 // Canvas 2D rewrite of the original D3 v3 visuals.
 //
@@ -287,6 +288,8 @@ export class CanvasSink {
       now,
       dt: (this._dt || 16) * this.pace,
       scene: second ? this._second : this._scene,
+      // The feed, owned here rather than by the scene: see scenes/feed.js.
+      feed: this._feedOf(second),
       // Offscreen canvases, pooled per renderer rather than per scene: see
       // the note in scenes/paint.js.
       buffers: second ? this._secondBuffers : this._buffers,
@@ -352,8 +355,20 @@ export class CanvasSink {
     };
   }
 
+  /**
+   * The feed of the scene running as `second` or not: kicked here on every
+   * event and let fall before every frame, so the scene only reads it. See
+   * scenes/feed.js. Made fresh whenever the scene starts, as its state is.
+   */
+  _feedOf(second = false) {
+    const key = second ? '_secondFeed' : '_mainFeed';
+    if (!this[key]) this[key] = feedFor(SCENES[second ? this.secondName : this.sceneName]);
+    return this[key];
+  }
+
   _initScene() {
     this._scene = {};
+    this._mainFeed = null;
     const scene = SCENES[this.sceneName];
     if (scene && scene.init) {
       try {
@@ -367,6 +382,7 @@ export class CanvasSink {
 
   _initSecond() {
     this._second = {};
+    this._secondFeed = null;
     const scene = SCENES[this.secondName];
     if (scene && scene.init) {
       try {
@@ -820,6 +836,10 @@ export class CanvasSink {
     }
 
     const second = SCENES[this.secondName];
+    // Every event kicks the feed of each scene running, whether or not the
+    // scene has an event handler of its own.
+    if (second) this._feedOf(true).hit(this._clockNow());
+    if (SCENES[this.sceneName]) this._feedOf(false).hit(this._clockNow());
     if (second && second.event) {
       try {
         second.event(p, this._sceneApi(this._clockNow(), true));
@@ -931,6 +951,7 @@ export class CanvasSink {
 
     const scene = SCENES[this.sceneName] || SCENES[DEFAULT_SCENE];
     const api = this._sceneApi(clock);
+    api.feed.tick(api.dt, clock);
     ctx.save();
     try {
       scene.frame(ctx, api);
@@ -951,7 +972,9 @@ export class CanvasSink {
         lg.save();
         lg.setTransform(this._dpr || 1, 0, 0, this._dpr || 1, -(this._shift || 0) * (this._dpr || 1), 0);
         try {
-          other.frame(lg, this._sceneApi(clock, true));
+          const api2 = this._sceneApi(clock, true);
+          api2.feed.tick(api2.dt, clock);
+          other.frame(lg, api2);
         } catch (e) {
           console.error('scene "' + this.secondName + '" failed', e);
         }

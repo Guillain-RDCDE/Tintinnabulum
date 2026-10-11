@@ -152,7 +152,6 @@ export const RECURSIVE_SCENES = {
       // An event pays out more of the strip. A quiet feed leaves the dragon
       // half unfolded, which is a true statement about the feed.
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       s.owed = (s.owed || 0) + 20 + Math.min(400, p.r * 5);
       s.color = p.color;
     },
@@ -162,8 +161,7 @@ export const RECURSIVE_SCENES = {
       // The breath and the turn belong to the feed too: they scale and
       // rotate the whole sheet every frame, so on their own clock they
       // repainted the picture in a silent minute as busily as in a storm.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.04 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.04);
       const cv = scratch(api);
       const g = bufferFor(api);
       if (!g) return;

@@ -21,6 +21,7 @@
 //                     dial's default; `colorFor` is there for the runner.
 
 import { lighten, lightnessOf } from '../color.js';
+import { makeFeed } from './feed.js';
 
 /**
  * A mark's fill: a shallow radial gradient, cached on the mark, or its flat
@@ -65,10 +66,11 @@ export function gradientFill(ctx, p, depth = true) {
  * @param {Function} [o.fill]       (ctx, p) => a fill; the shared gradient by default
  * @param {boolean} [o.second]
  * @param {Function} [o.colorFor]   (category) => a colour; cards only
+ * @param {object} [o.feed]         the scene's feed (feed.js), which the host kicks and lets fall
  */
 export function makeSceneApi({
   w, h, palette, particles = [], shape = 'circle', ringLife = 2200, now = 0, dt = 16, scene = {},
-  buffers, depth = true, richness = 0.45, darkGround, budget = 800, sound = null, param, fill, second = false, colorFor,
+  buffers, depth = true, richness = 0.45, darkGround, budget = 800, sound = null, param, fill, second = false, colorFor, feed,
 }) {
   const api = {
     second,
@@ -81,6 +83,8 @@ export function makeSceneApi({
     now,
     dt,
     scene,
+    // The feed, kicked and let fall by the host: see feed.js.
+    feed: feed || makeFeed(),
     buffers,
     depth,
     richness,

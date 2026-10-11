@@ -192,7 +192,6 @@ export const MATERIAL_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const i = Math.floor(Math.random() * Math.round(api.param('blobs')));
       s.boost[i] = Math.min(3, s.boost[i] + 1.2);
     },
@@ -209,8 +208,7 @@ export const MATERIAL_SCENES = {
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
       // seconds is disturbed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.05 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.05);
       const dt = Math.min(50, api.dt) * pace;
       const heat = api.param('heat');
       // Each blob rises and sinks on its own slow cycle -- a lamp is far more

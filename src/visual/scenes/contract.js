@@ -72,7 +72,12 @@ export const DIAL_ROLES = Object.freeze(['choice', 'count', 'size', 'amount', 'r
 /** The unit a dial is read in, when a scene says so. */
 export const DIAL_UNITS = Object.freeze(['px', 'ms', 's', 'deg', 'x', 'fraction', 'items', 'steps']);
 
-/** How a scene hears the feed: in `event` as each arrives, or by reading the marks in `frame`. */
+/**
+ * How a scene hears the feed: in `event` as each arrives, or by reading the
+ * marks in `frame`. A scene's `feed` may also say how hard one arrival kicks
+ * the drive the runtime keeps for it (`kick`), the most it holds (`ceiling`)
+ * and how long it takes to fall (`decay`, ms): see feed.js.
+ */
 export const FEED_MODES = Object.freeze(['push', 'pull']);
 
 /**
@@ -154,8 +159,15 @@ export function sceneProblems(name, def) {
     if (spec.role === 'choice' && !Array.isArray(spec.options)) out.push(`${name}.${k} is a choice without options`);
   }
   if (def.feed !== undefined) {
-    if (!def.feed || !FEED_MODES.includes(def.feed.mode)) out.push(`${name}: feed.mode must be one of ${FEED_MODES.join(', ')}`);
-    else if (def.feed.mode === 'push' && typeof def.event !== 'function') out.push(`${name} hears the feed in event() but has none`);
+    const f = def.feed;
+    if (!f || typeof f !== 'object') out.push(`${name}: feed is not an object`);
+    else {
+      if (f.mode !== undefined && !FEED_MODES.includes(f.mode)) out.push(`${name}: feed.mode must be one of ${FEED_MODES.join(', ')}`);
+      else if (f.mode === 'push' && typeof def.event !== 'function') out.push(`${name} hears the feed in event() but has none`);
+      for (const k of ['kick', 'ceiling', 'decay']) {
+        if (f[k] !== undefined && !(Number.isFinite(f[k]) && f[k] > 0)) out.push(`${name}: feed.${k} must be a positive number`);
+      }
+    }
   }
   for (const [from, to] of Object.entries(def.aliases || {})) {
     if (params[from]) out.push(`${name}: alias ${from} is still a dial`);
@@ -182,7 +194,8 @@ export function defineScene(name, def) {
   if (def && DIAL_ALIASES[name]) def.aliases = { ...DIAL_ALIASES[name], ...(def.aliases || {}) };
   const problems = sceneProblems(name, def);
   if (problems.length) throw new Error(`scene "${name}" breaks the contract: ${problems.join('; ')}`);
-  if (!def.feed) def.feed = { mode: typeof def.event === 'function' ? 'push' : 'pull' };
+  // How it hears the feed, and how hard an arrival kicks it (feed.js).
+  def.feed = { mode: typeof def.event === 'function' ? 'push' : 'pull', ...(def.feed || {}) };
   for (const spec of Object.values(def.params || {})) {
     if (Array.isArray(spec.options) && spec.role === undefined) spec.role = 'choice';
   }

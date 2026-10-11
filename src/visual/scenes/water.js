@@ -92,7 +92,6 @@ export const WATER_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
-      s.drive = Math.min(1.6, (s.drive || 0) + 0.3);
       const slot = s.nextInk++ % 24;
       s.inks[slot] = p.color;
       const x0 = p.x;
@@ -123,8 +122,7 @@ export const WATER_SCENES = {
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
       // seconds is disturbed.
-      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1200);
-      const pace = 0.05 + Math.min(1, s.drive);
+      const pace = api.feed.rate(0.05);
       const dt = Math.min(50, api.dt) * pace;
       const cv = scratch(api);
       const g = bufferFor(api);
