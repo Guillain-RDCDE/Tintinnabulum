@@ -309,7 +309,7 @@ export const PRINTED_SCENES = {
         name: 'sentence',
         params: {
           size: { label: 'Size of the type', min: 0.5, max: 2.5, step: 0.05, default: 1, rebuild: true },
-          band: { label: 'How wide the breakdown', min: 0.05, max: 1, step: 0.02, default: 0.3 },
+          band: { label: 'How wide the breakdown', min: 0.05, max: 0.99, step: 0.02, default: 0.3 },
           drift: { label: 'How fast the band moves', min: 0, max: 3, step: 0.05, default: 1 },
           voice: { label: 'How much an event colours its own', min: 0, max: 1, step: 0.02, default: 0.15 },
         },

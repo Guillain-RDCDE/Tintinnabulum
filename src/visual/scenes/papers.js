@@ -206,7 +206,7 @@ export const PAPER_SCENES = {
       count: { label: 'How many planes', min: 2, max: 18, step: 1, default: 10 },
       scale: { label: 'How large', min: 0.4, max: 1.6, step: 0.05, default: 1 },
       wash: { label: 'How much is wet', min: 0, max: 1, step: 0.02, default: 0.45 },
-      veil: { label: 'How transparent', min: 0.15, max: 1, step: 0.02, default: 0.62 },
+      veil: { label: 'How transparent', min: 0.15, max: 0.99, step: 0.02, default: 0.62 },
     },
     init(api) {
       const s = api.scene;

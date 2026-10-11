@@ -1025,14 +1025,14 @@ export const RING_SCENES = {
     positional: true,
     preview: { frames: 60, dt: 50 },
     params: {
-      colours: { label: 'Colourway', options: WAY_NAMES, min: 0, max: WAY_NAMES.length - 1, step: 1, default: 0, rebuild: true },
+      colours: { label: 'Colourway', options: WAY_NAMES, min: 0, max: WAY_NAMES.length - 1, step: 1, default: 0, rebuild: true, vary: false, keepsDraw: true },
       grains: { label: 'How many grains', min: 400, max: 4000, step: 50, default: 1800, rebuild: true },
       thickness: { label: 'How thick the ring', min: 0.2, max: 0.75, step: 0.01, default: 0.48, rebuild: true },
       spread: { label: 'Boulders against dust', min: 1, max: 4, step: 0.1, default: 2.6, rebuild: true },
       gravity: { label: 'How much they pull together', min: 0, max: 2, step: 0.05, default: 1.1 },
       loss: { label: 'How much a hit loses', min: 0, max: 1, step: 0.02, default: 0.78 },
       bounces: { label: 'How many bounces flash', min: 0, max: 1, step: 0.02, default: 0.7 },
-      colourBy: { label: 'Colour by', options: ['stains', 'heat'], min: 0, max: 1, step: 1, default: 0 },
+      colourBy: { label: 'Colour by', options: ['stains', 'heat'], min: 0, max: 1, step: 1, default: 0, vary: false, keepsDraw: true },
       stains: { label: 'How long a stain lasts, in orbits', min: 0.3, max: 8, step: 0.1, default: 2.5 },
     },
     list: [

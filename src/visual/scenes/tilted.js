@@ -379,7 +379,7 @@ export const TILTED_SCENES = {
     positional: true,
     preview: { frames: 30, dt: 60 },
     params: {
-      colours: { label: 'Colourway', options: WAY_NAMES, min: 0, max: WAY_NAMES.length - 1, step: 1, default: 0, rebuild: true },
+      colours: { label: 'Colourway', options: WAY_NAMES, min: 0, max: WAY_NAMES.length - 1, step: 1, default: 0, rebuild: true, vary: false, keepsDraw: true },
       angle: { label: 'How far it leans', min: -90, max: 90, step: 1, default: -28, rebuild: true },
     },
     list: [

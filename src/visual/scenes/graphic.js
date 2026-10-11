@@ -301,8 +301,8 @@ export const GRAPHIC_SCENES = {
     positional: true,
     preview: { frames: 40, dt: 60 },
     params: {
-      tones: { label: 'Tints of the screens', options: TONE_NAMES, min: 0, max: TONE_NAMES.length - 1, step: 1, default: 0, rebuild: true },
-      square: { label: 'The square', options: SQUARE_NAMES, min: 0, max: SQUARE_NAMES.length - 1, step: 1, default: 0 },
+      tones: { label: 'Tints of the screens', options: TONE_NAMES, min: 0, max: TONE_NAMES.length - 1, step: 1, default: 0, rebuild: true, vary: false, keepsDraw: true },
+      square: { label: 'The square', options: SQUARE_NAMES, min: 0, max: SQUARE_NAMES.length - 1, step: 1, default: 0, vary: false, keepsDraw: true },
       turn: { label: 'How far the square is turned', min: -45, max: 45, step: 1, default: 0 },
       count: { label: 'How many swatches', min: 6, max: 20, step: 1, default: 10, rebuild: true },
       scale: { label: 'How large', min: 0.6, max: 1.4, step: 0.05, default: 1, rebuild: true },
@@ -322,9 +322,9 @@ export const GRAPHIC_SCENES = {
     positional: true,
     preview: { frames: 30, dt: 60 },
     params: {
-      colours: { label: 'Colourway', options: GLYPH_WAY_NAMES, min: 0, max: GLYPH_WAY_NAMES.length - 1, step: 1, default: 0, rebuild: true },
+      colours: { label: 'Colourway', options: GLYPH_WAY_NAMES, min: 0, max: GLYPH_WAY_NAMES.length - 1, step: 1, default: 0, rebuild: true, vary: false, keepsDraw: true },
       grid: { label: 'Columns', options: GLYPH_GRIDS.map(String), min: 0, max: GLYPH_GRIDS.length - 1, step: 1, default: 1, rebuild: true, vary: false },
-      rule: { label: 'How the lines are set', options: ['with gutters', 'solid'], min: 0, max: 1, step: 1, default: 0, rebuild: true },
+      rule: { label: 'How the lines are set', options: ['with gutters', 'solid'], min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false, keepsDraw: true },
       fill: { label: 'How full the lines are', min: 0.3, max: 1, step: 0.02, default: 0.8, rebuild: true },
       fades: { label: 'How much is faded', min: 0, max: 1, step: 0.02, default: 0.55, rebuild: true },
     },
