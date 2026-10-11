@@ -449,7 +449,6 @@ export const GROWN_SCENES = {
 
   // --- topography ---------------------------------------------------------------------------
   topo: {
-    feed: { kick: 0.34, decay: 1500 },
     label: 'Contour survey',
     note: 'A survey map, drawn as a cartographer would: contour lines traced through a height field by marching squares, every fifth one an index contour drawn heavier, and short hachures on the slopes that turn away from the light, set across the slope and closer where it is steeper. The land is value noise, and every event raises a hill or sinks a hollow that swells into it over a few seconds; the whole terrain drifts very slowly, so the lines are always being redrawn.',
     params: {
@@ -469,6 +468,11 @@ export const GROWN_SCENES = {
     },
     event(p, api) {
       const s = api.scene;
+      // Its own drive, by hand, not the runtime's (feed.js): the survey is
+      // drawn one frame in eight, and the drive has only ever fallen on the
+      // frames it is drawn -- a drive falling every frame would leave the
+      // land still sooner after a burst.
+      s.drive = Math.min(1.6, (s.drive || 0) + 0.34);
       if (!s.hills) return;
       s.hills.push({ x: p.x, y: p.y, r: Math.min(api.w, api.h) * (0.08 + p.pick * 0.16), a: (p.pick < 0.7 ? 1 : -0.7) * (0.25 + p.pick * 0.35), born: api.now });
       if (s.hills.length > 24) s.hills.shift();
@@ -488,7 +492,8 @@ export const GROWN_SCENES = {
       // The land drifts at the feed's rate. It drifted on its own clock
       // before, so a survey of a silent hour was redrawn as busily as one of
       // a storm, and the hills an event raises were lost in the wandering.
-      s.clock = (s.clock || 0) + api.dt * api.feed.rate(0.04);
+      s.drive = Math.max(0, (s.drive || 0) - api.dt / 1500);
+      s.clock = (s.clock || 0) + api.dt * (0.04 + Math.min(1, s.drive));
       const t = s.clock / 20000;
       const sc = 1 / (Math.min(api.w, api.h) * 0.28);
       let lo = Infinity;
