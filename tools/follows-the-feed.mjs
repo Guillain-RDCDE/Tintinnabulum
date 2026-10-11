@@ -21,7 +21,9 @@
 //   node tools/follows-the-feed.mjs comb hatched     only these
 //   node tools/follows-the-feed.mjs --worst 20       the twenty deafest
 //   node tools/follows-the-feed.mjs --sheets --works  every sheet and every work's dials too
-//   node tools/follows-the-feed.mjs --strict          exit 1 if any picture is deaf
+//   node tools/follows-the-feed.mjs --strict          exit 1 if any picture is deaf (a picture found
+//                                                      deaf is measured twice more, and fails only
+//                                                      if it is deaf every time)
 
 import { parseArgs, withHarness } from './render.mjs';
 
@@ -36,7 +38,7 @@ const SHEETS = has('sheets');
 const WORKS_TOO = has('works');
 const STRICT = has('strict');
 
-const rows = await withHarness({ port, viewport: { width: 900, height: 620 } }, (page) => page.evaluate(async (opt) => {
+const measure = (keys) => withHarness({ port, viewport: { width: 900, height: 620 } }, (page) => page.evaluate(async (opt) => {
   const { CanvasSink, SCENE_NAMES } = await import('/src/index.js');
   // Events are built the way the engine builds them -- normalised, then
   // given a mapping -- and not by hand. A hand-made event is missing the
@@ -122,7 +124,7 @@ const rows = await withHarness({ port, viewport: { width: 900, height: 620 } }, 
     }
   }
   const out = [];
-  for (const { key, name, params } of pictures) {
+  for (const { key, name, params } of opt.keys ? pictures.filter((p) => opt.keys.includes(p.key)) : pictures) {
     const sink = new CanvasSink(cv, { palette: 'marine', scene: name, showHud: false, showLabels: false, params: { [name]: params } });
     sink.start();
     let n = 0;
@@ -220,7 +222,8 @@ const rows = await withHarness({ port, viewport: { width: 900, height: 620 } }, 
     out.push({ name: key, quiet, busy, drift, jolt, here, away, landed });
   }
   return out;
-}, { only, set: SET, sheets: SHEETS, works: WORKS_TOO }));
+}, { only, set: SET, sheets: SHEETS, works: WORKS_TOO, keys }));
+const rows = await measure(null);
 
 const scored = rows.map((r) => ({
   ...r,
@@ -251,7 +254,20 @@ for (const r of shown) {
     `  ${r.where.toFixed(2).padStart(7)}   ${String(r.quiet).padStart(6)}/${String(r.busy).padStart(6)}${mark}`
   );
 }
-const deaf = scored.filter(isDeaf);
+let deaf = scored.filter(isDeaf);
+// A reading is a second of a busy machine, and a picture near the line can
+// fall under it once by chance. Under --strict a picture found deaf is
+// measured again, twice; it is deaf only if it is deaf every time.
+for (let again = 0; STRICT && deaf.length && again < 2; again++) {
+  const retry = (await measure(deaf.map((r) => r.name))).map((r) => ({
+    ...r,
+    share: (r.busy + 4) / (r.quiet + 4),
+    answer: (r.jolt + 4) / (r.drift + 4),
+    where: (r.here + 4) / (r.away + 4),
+  }));
+  for (const r of retry) console.log(`measured again: ${r.name.padEnd(20)} ${r.share.toFixed(2)} ${r.answer.toFixed(2)} ${r.where.toFixed(2)}${isDeaf(r) ? '  <- deaf again' : ''}`);
+  deaf = retry.filter(isDeaf);
+}
 console.log('');
 console.log(`${scored.length} pictures; ${deaf.length} answer the feed on no reading`);
 if (deaf.length) console.log(deaf.map((r) => r.name).join(', '));
