@@ -29,7 +29,7 @@ export const GEOMETRY_SCENES = {
     preview: { dt: 34, frames: 210 },
     note: 'Two pendulums per axis, swinging down. A Victorian parlour instrument that draws while it comes to rest. Each event sets one going; the figure is the record of it dying.',
     params: {
-      ratio: { label: 'Frequency ratio', min: 1, max: 6, step: 0.01, default: 2 },
+      frequency: { label: 'Frequency ratio', min: 1, max: 6, step: 0.01, default: 2, role: 'ratio', unit: 'x' },
       detune: { label: 'Detune', min: 0, max: 0.06, step: 0.001, default: 0.008 },
       damping: { label: 'Damping', min: 0.01, max: 0.5, step: 0.005, default: 0.05 },
       speed: { label: 'Speed', min: 1, max: 20, step: 0.5, default: 7 },
@@ -75,7 +75,7 @@ export const GEOMETRY_SCENES = {
       const cx = api.w / 2;
       const cy = api.h / 2;
       const R = Math.min(api.w, api.h) * 0.44;
-      const ratio = api.param('ratio');
+      const ratio = api.param('frequency');
       // A pair tuned to an exact ratio draws one closed figure and then
       // retraces it forever. The detune is what makes it precess, and it is
       // also honest: no two real pendulums were ever exactly in ratio.

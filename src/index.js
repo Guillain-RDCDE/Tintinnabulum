@@ -53,6 +53,8 @@ export { WORKS, WORK_ROOMS, WORK_ROOM_NOTES, WORK_ENERGIES, worksIn, mediumOf, w
 export { exhibition, exhibitionAt, roundLength, describeExhibition, wardrobeOf, seedOf, exhibitedDials } from './exhibition.js';
 export { sheets, sheetNameOf } from './visual/scenes/sheets.js';
 export { GROUNDS, GROUND_ORDER, applyGround, groundTone, prepareGround, groundReady, sheetOf, groundStats } from './visual/grounds.js';
+export { defineScene, dialName, canonicalDials, DIAL_ALIASES, DIAL_ROLES, DIAL_UNITS, FEED_MODES, GLOBAL_SETTING_NAMES } from './visual/scenes/contract.js';
+export { makeSceneApi } from './visual/scenes/api.js';
 export { inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, seedParams, defaultParams, dialVaries, choicesOf, isViolet, rngOf } from './visual/inks.js';
 export { LIVING, LIVING_ORDER, driftNeighbours, driftColours, daylightColours, moodColours, lightOfHour, busyness } from './visual/living.js';
 

@@ -378,16 +378,16 @@ export const GENERATIVE_SCENES = {
     // stripes, or a culture that divides forever. The whole zoo of Gray-Scott
     // behaviour lives in a small region of them, so they are worth a dial each.
     params: {
-      feed: { label: 'Feed', min: 0.01, max: 0.08, step: 0.0005, default: 0.037 },
+      feedRate: { label: 'Feed', min: 0.01, max: 0.08, step: 0.0005, default: 0.037, role: 'rate' },
       kill: { label: 'Kill', min: 0.04, max: 0.075, step: 0.0002, default: 0.06 },
-      grain: { label: 'Grain', min: 2, max: 12, step: 0.5, default: 4, rebuild: true },
+      cell: { label: 'Grain', min: 2, max: 12, step: 0.5, default: 4, rebuild: true, role: 'size', unit: 'px' },
     },
     init(api) {
       const s = api.scene;
       // Fine enough that the upscale is not a blur. Eighty cells across a
       // laptop screen is fourteen pixels a cell, and smoothing turns that into
       // porridge; this is about four.
-      const grain = api.param('grain') || 4;
+      const grain = api.param('cell') || 4;
       s.gw = Math.max(30, Math.min(260, Math.round(api.w / grain)));
       s.gh = Math.max(20, Math.min(190, Math.round(api.h / grain)));
       const n = s.gw * s.gh;
@@ -424,7 +424,7 @@ export const GENERATIVE_SCENES = {
       const { gw, gh } = s;
       // Read live, so turning a dial changes the chemistry under a pattern that
       // is already growing rather than after a restart.
-      const feed = api.param('feed');
+      const feed = api.param('feedRate');
       const kill = api.param('kill');
       const dA = 1.0;
       const dB = 0.5;

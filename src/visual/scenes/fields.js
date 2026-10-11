@@ -168,7 +168,7 @@ export const FIELD_SCENES = {
         name: 'current',
         params: {
           cell: { label: 'Cell size', min: 16, max: 90, step: 1, default: 40, rebuild: true },
-          fill: { label: 'How full the current is', min: 0.3, max: 1, step: 0.02, default: 0.82, rebuild: true },
+          fullness: { label: 'How full the current is', min: 0.3, max: 1, step: 0.02, default: 0.82, rebuild: true, role: 'amount', unit: 'fraction' },
           turn: { label: 'How far the current turns them', min: 0, max: 1.5, step: 0.05, default: 1 },
           square: { label: 'Square size', min: 0.25, max: 0.95, step: 0.01, default: 0.62 },
         },
@@ -293,7 +293,7 @@ function currentInit(api) {
   s.on = new Uint8Array(n);
   s.twist = new Float32Array(n);
   s.lit = new Float32Array(n);
-  const fill = api.param('fill');
+  const fill = api.param('fullness');
   for (let i = 0; i < n; i++) {
     s.ink[i] = (Math.random() * 5) | 0;
     // Gaps come in loose patches, not as salt: a cell is left out more

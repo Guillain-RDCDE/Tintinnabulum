@@ -341,7 +341,7 @@ export const STITCHED_SCENES = {
     params: {
       figure: { label: 'Which sheet', options: ['meshes', 'stripes'], min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false },
       lattice: { label: 'How fine the lattice of blocks', min: 6, max: 20, step: 1, default: 12, rebuild: true },
-      fill: { label: 'How much flat colour', min: 0, max: 1, step: 0.02, default: 0.55, rebuild: true, sheets: ['stripes'] },
+      flat: { label: 'How much flat colour', min: 0, max: 1, step: 0.02, default: 0.55, rebuild: true, sheets: ['stripes'], role: 'amount', unit: 'fraction' },
       black: { label: 'How much black', min: 0, max: 1, step: 0.02, default: 0.25, rebuild: true, sheets: ['stripes'] },
       tone: { label: 'The lines', options: ['ink', 'colour'], min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false, sheets: ['stripes'] },
       mesh: { label: 'How fine the mesh', min: 0.5, max: 2, step: 0.05, default: 1, rebuild: true },
@@ -376,7 +376,7 @@ export const STITCHED_SCENES = {
       if (s.figure === 1) {
         // One family of inks: the line, the black, two or three colours
         // close to each other, and the ground left bare.
-        s.fill = api.param('fill');
+        s.fill = api.param('flat');
         s.black = api.param('black');
         s.ground = api.palette.background;
         // One hue, the palette's alert, in two or three strengths: the

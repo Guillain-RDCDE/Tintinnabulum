@@ -219,8 +219,19 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     host.append(reset);
   }
 
-  /** Dial positions survive a reload, per scene. */
+  /**
+   * Dial positions survive a reload, per scene. A dial renamed since it was
+   * stored is found under its old name, moved to the new one and the old key
+   * cleared, so the next reload reads it where it now lives.
+   */
   function restoreParams(sceneName) {
+    const aliases = (SCENES[sceneName] && SCENES[sceneName].aliases) || {};
+    for (const [old, name] of Object.entries(aliases)) {
+      const was = store.get(`p:${sceneName}:${old}`);
+      if (!was) continue;
+      if (!store.get(`p:${sceneName}:${name}`)) store.set(`p:${sceneName}:${name}`, was);
+      store.set(`p:${sceneName}:${old}`, '');
+    }
     for (const d of canvas.paramsOf(sceneName)) {
       const held = store.get(`p:${sceneName}:${d.name}`);
       if (held) canvas.setParam(d.name, Number(held), sceneName);

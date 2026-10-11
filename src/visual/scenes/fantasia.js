@@ -42,7 +42,7 @@ export const FANTASIA_SCENES = {
       b: { label: 'b', min: -3, max: 3, step: 0.01, default: 1.902 },
       c: { label: 'c', min: -3, max: 3, step: 0.01, default: 0.316 },
       d: { label: 'd', min: -3, max: 3, step: 0.01, default: 1.525 },
-      hold: { label: 'How long it holds', min: 0, max: 1, step: 0.02, default: 0.985 },
+      linger: { label: 'How long it holds', min: 0, max: 1, step: 0.02, default: 0.985, role: 'amount', unit: 'fraction' },
     },
     init(api) {
       const s = api.scene;
@@ -77,7 +77,7 @@ export const FANTASIA_SCENES = {
         g.fillRect(cx + s.x * scale, cy + s.y * scale, 1, 1);
       }
       g.globalAlpha = 1;
-      fade(g, cv, api.param('hold'), api.dt);
+      fade(g, cv, api.param('linger'), api.dt);
       ctx.drawImage(cv, 0, 0, api.w, api.h);
     },
   },
@@ -191,7 +191,7 @@ export const FANTASIA_SCENES = {
     positional: false,
     note: 'Circles packed into the gaps between circles, forever. Apollonius of Perga posed it; Descartes gave the relation between four mutually touching curvatures in 1643, and Frederick Soddy put it into verse in 1936. This fills gaps in order of size, so an event always lands somewhere still open.',
     params: {
-      depth: { label: 'How many circles', min: 40, max: 900, step: 10, default: 260, rebuild: true },
+      circles: { label: 'How many circles', min: 40, max: 900, step: 10, default: 260, rebuild: true, role: 'count', unit: 'items' },
       weight: { label: 'Line weight', min: 0.3, max: 3, step: 0.1, default: 1 },
     },
     init(api) {
@@ -200,7 +200,7 @@ export const FANTASIA_SCENES = {
       const R = Math.min(api.w, api.h) * 0.46;
       const cx = api.w / 2;
       const cy = api.h / 2;
-      const want = Math.round(api.param('depth'));
+      const want = Math.round(api.param('circles'));
       // Not the true Descartes construction: circles are grown in the largest
       // remaining gap until they touch, which converges on the same picture
       // and needs no complex arithmetic.

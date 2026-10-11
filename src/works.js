@@ -18,6 +18,7 @@
 // instead of producing a work that silently falls back to the defaults.
 
 import { sheetNameOf } from './visual/scenes/sheets.js';
+import { canonicalDials } from './visual/scenes/contract.js';
 
 export const WORK_ROOMS = ['Dawn', 'Daylight', 'Dusk', 'Night'];
 
@@ -416,17 +417,17 @@ export const WORKS = {
   // across the rest, drifting so they crowd and part.
   embers: work('Night', 'calm', 'Current of embers', {
     scene: 'grid', palette: 'ember', kit: 'gongs', space: 'hall',
-    pace: UNHURRIED, dials: { figure: 1, fill: 0.9, square: 0.72 },
+    pace: UNHURRIED, dials: { figure: 1, fullness: 0.9, square: 0.72 },
     cartel: 'Thousands of small squares in amber, red and ash on a dark ground, upright in one corner and turned further across the sheet until they stand on their points, crowding into one another where they turn most. Every event turns and re-inks the squares round where it falls; they settle only while the feed goes on.',
   }),
   primaries: work('Night', 'lively', 'Turned primaries', {
     scene: 'grid', palette: 'ink', kit: 'steelpan', space: 'room',
-    pace: REAL_TIME, dials: { figure: 1, fill: 0.96, square: 0.8 },
+    pace: REAL_TIME, dials: { figure: 1, fullness: 0.96, square: 0.8 },
     cartel: 'The same current packed so close the squares lock into one another, in red, blue, gold, teal and white on black. Every event stirs the patch it falls on and leaves it turned.',
   }),
   scattered: work('Daylight', 'calm', 'Squares, scattered', {
     scene: 'grid', palette: 'blush', kit: 'musicbox', space: 'room',
-    mat: 'gallery', pace: SLOW, dials: { figure: 1, fill: 0.62, square: 0.55 },
+    mat: 'gallery', pace: SLOW, dials: { figure: 1, fullness: 0.62, square: 0.55 },
     cartel: 'A looser current on a pale ground, with wide gaps where whole runs of squares are missing, so the turning reads as a few strands drifting across the sheet. A large event fills some gaps and opens others.',
   }),
   // Four flights of stairs in one palette: bars laid in a progression, each a
@@ -456,47 +457,47 @@ export const WORKS = {
   // each hung in the palette it was read off.
   sheafwasp: work('Night', 'lively', 'Warning stripe', {
     scene: 'sheaf', palette: 'wasp', kit: 'steelpan', space: 'room',
-    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inks: 3, stripes: 24, seam: 7, tone: 0.4, drift: 0.26 },
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inkCount: 3, stripes: 24, seam: 7, tone: 0.4, drift: 0.26 },
     cartel: 'Broad bands of black and a hot yellow with a cream between, all leaning the same way and none of them quite parallel: they open towards the top and close towards the foot, and along the diagonal they crowd into a seam of hairlines. Every event re-inks the band it falls on, the new colour running out along it from where it was struck.',
   }),
   sheafregatta: work('Night', 'calm', 'Racing colours', {
     scene: 'sheaf', palette: 'regatta', kit: 'handbells', space: 'hall',
-    grain: true, mat: 'gallery', pace: SLOW, dials: { inks: 2, stripes: 64, seam: 14, tone: 0.8 },
+    grain: true, mat: 'gallery', pace: SLOW, dials: { inkCount: 2, stripes: 64, seam: 14, tone: 0.8 },
     cartel: 'Navy in three depths, cut across with yellow, the stripes fanning out from a point far off the corner so that the sheet seems to lean. Handbells in a hall; each event re-inks a stripe, and a large one cuts its stripe in pieces.',
   }),
   sheafcabana: work('Daylight', 'lively', 'Beach huts', {
     scene: 'sheaf', palette: 'cabana', kit: 'marimba', space: 'room',
-    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inks: 4, stripes: 100, seam: 22 },
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inkCount: 4, stripes: 100, seam: 22 },
     cartel: 'A hundred stripes in butter, ink, royal blue and sea blue, fine above the diagonal and freer below it, closing into a long seam of hairlines where the two halves meet. A marimba; every event re-inks the stripe it lands on, a middling one a run of them a beat apart.',
   }),
   sheafawning: work('Daylight', 'calm', 'The awning', {
     scene: 'sheaf', palette: 'awning', kit: 'koto', space: 'room',
-    grain: true, mat: 'gallery', pace: UNHURRIED, dials: { inks: 2, stripes: 24, seam: 8, tone: 0.8 },
+    grain: true, mat: 'gallery', pace: UNHURRIED, dials: { inkCount: 2, stripes: 24, seam: 8, tone: 0.8 },
     cartel: 'Green on cream and the green a shade deeper where the cloth is doubled, the stripes running down into a pale field at the foot. A koto in the next room; each event re-inks a stripe, slowly.',
   }),
   sheaforchard: work('Daylight', 'lively', 'Citrus', {
     scene: 'sheaf', palette: 'orchard', kit: 'glassy', space: 'room',
-    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inks: 3, stripes: 26, seam: 8, tone: 0.7, drift: 0.3 },
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inkCount: 3, stripes: 26, seam: 8, tone: 0.7, drift: 0.3 },
     cartel: 'Lemon, olive and orange laid edge to edge, the olive now and then a lighter, greener twin of itself. The stripes lean and gather into hairlines along the diagonal. Every event re-inks the stripe it falls on.',
   }),
   sheafmarquee: work('Daylight', 'calm', 'Show tent', {
     scene: 'sheaf', palette: 'marquee', kit: 'chimes', space: 'room',
-    grain: true, mat: 'gallery', pace: SLOW, dials: { inks: 3, stripes: 22, seam: 6, tone: 0.9 },
+    grain: true, mat: 'gallery', pace: SLOW, dials: { inkCount: 3, stripes: 22, seam: 6, tone: 0.9 },
     cartel: 'Wide grey bands with navy and amber between them, and a black that is the navy taken further. Few stripes and broad ones, so a re-inked band changes the whole sheet. Wind chimes.',
   }),
   sheafkiosk: work('Daylight', 'lively', 'The kiosk', {
     scene: 'sheaf', palette: 'kiosk', kit: 'musicbox', space: 'room',
-    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inks: 4, stripes: 80, seam: 16, tone: 0.1 },
+    grain: true, mat: 'gallery', pace: REAL_TIME, dials: { inkCount: 4, stripes: 80, seam: 16, tone: 0.1 },
     cartel: 'Cream, black, bottle green and orange in eighty stripes, fanned from a point beyond the corner and gathered into a seam. A music box; every event re-inks the stripe it falls on, and a large one cuts it into several.',
   }),
   sheafsuede: work('Dusk', 'calm', 'Worn suede', {
     scene: 'sheaf', palette: 'suede', kit: 'strings', space: 'room',
-    grain: true, mat: 'gallery', pace: SLOW, dials: { inks: 1, stripes: 110, seam: 18, tone: 0.9, drift: 0.1 },
+    grain: true, mat: 'gallery', pace: SLOW, dials: { inkCount: 1, stripes: 110, seam: 18, tone: 0.9, drift: 0.1 },
     cartel: 'One tan at seven depths, from bark to biscuit, in a hundred and ten fine stripes, so the sheet reads as a nap rather than a pattern. Plucked strings; each event turns one stripe a shade lighter or darker.',
   }),
   sheafguava: work('Dawn', 'calm', 'Guava', {
     scene: 'sheaf', palette: 'guava', kit: 'chimes', space: 'room',
-    grain: true, mat: 'gallery', pace: UNHURRIED, dials: { inks: 1, stripes: 60, tone: 0.5, drift: 0.7 },
+    grain: true, mat: 'gallery', pace: UNHURRIED, dials: { inkCount: 1, stripes: 60, tone: 0.5, drift: 0.7 },
     cartel: 'Coral turning to peach and back across sixty stripes, all one colour at different depths, the light ones warmer. Each event moves one stripe along that ramp, the new shade running out from where it fell.',
   }),
   // Seven screentone boards: swatches of printed texture cut and pinned to a
@@ -541,67 +542,67 @@ export const WORKS = {
   // each sheet in the colourway it was printed in.
   glyphsteel: work('Night', 'calm', 'Specimen, steel blue', {
     scene: 'glyphs', palette: 'ironwork', kit: 'handbells', space: 'hall',
-    pace: SLOW, dials: { colours: 1, grid: 2, rule: 0, fill: 0.86 },
+    pace: SLOW, dials: { colours: 1, grid: 2, rule: 0, fullness: 0.86 },
     cartel: 'Twenty columns of small glyphs on black, in cream and a steel blue that fades into the ground: lines three modules high and two, a narrow gutter between. Handbells in a hall; every event re-sets the glyph it falls on.',
   }),
   glyphflamingo: work('Daylight', 'lively', 'Specimen on flamingo pink', {
     scene: 'glyphs', palette: 'linen', kit: 'steelpan', space: 'room',
-    pace: REAL_TIME, dials: { colours: 13, grid: 1, rule: 1, fill: 0.96 },
+    pace: REAL_TIME, dials: { colours: 13, grid: 1, rule: 1, fullness: 0.96 },
     cartel: 'Glyphs set solid on a flamingo pink, in red, orange, saffron, black and cream, every fade running hot. A steel pan; each event re-sets a glyph, a larger one its word, the largest the whole line.',
   }),
   glyphcobalt: work('Daylight', 'calm', 'Specimen, cobalt', {
     scene: 'glyphs', palette: 'linen', kit: 'koto', space: 'room',
-    pace: SLOW, dials: { colours: 7, grid: 1, rule: 0, fill: 0.86 },
+    pace: SLOW, dials: { colours: 7, grid: 1, rule: 0, fullness: 0.86 },
     cartel: 'Black and a cobalt blue on cream, lines of three and two, staircases and fine rules among the discs. A koto; every event re-sets the glyph it lands on, revealed downwards like a shutter.',
   }),
   glyphcarnival: work('Night', 'lively', 'Specimen, carnival', {
     scene: 'glyphs', palette: 'ironwork', kit: 'marimba', space: 'room',
-    pace: REAL_TIME, dials: { colours: 5, grid: 1, rule: 1, fill: 0.96 },
+    pace: REAL_TIME, dials: { colours: 5, grid: 1, rule: 1, fullness: 0.96 },
     cartel: 'A sheet set solid on black in six colours at once -- red, lemon, cornflower, mint, saffron and lilac -- fading into one another and into the ground. A marimba; each event re-sets a glyph.',
   }),
   glyphteal: work('Night', 'calm', 'Specimen, teal', {
     scene: 'glyphs', palette: 'ironwork', kit: 'strings', space: 'room',
-    pace: UNHURRIED, dials: { colours: 2, grid: 1, rule: 0, fill: 0.5 },
+    pace: UNHURRIED, dials: { colours: 2, grid: 1, rule: 0, fullness: 0.5 },
     cartel: 'Half the sheet left black: scattered glyphs in cream and a deep teal, fading into the dark between them. Plucked strings; every event re-sets one glyph, a large one its line.',
   }),
   glyphholly: work('Daylight', 'lively', 'Specimen, holly', {
     scene: 'glyphs', palette: 'linen', kit: 'glassy', space: 'room',
-    pace: REAL_TIME, dials: { colours: 11, grid: 1, rule: 1, fill: 0.7 },
+    pace: REAL_TIME, dials: { colours: 11, grid: 1, rule: 1, fullness: 0.7 },
     cartel: 'Vermilion, scarlet and a holly green on cream, set solid with spaces in it, the reds fading through black. Glass struck; every event re-sets the glyph it falls on.',
   }),
   glyphcoral: work('Dusk', 'lively', 'Specimen, coral', {
     scene: 'glyphs', palette: 'ironwork', kit: 'gongs', space: 'room',
-    pace: REAL_TIME, dials: { colours: 3, grid: 0, rule: 1, fill: 0.86 },
+    pace: REAL_TIME, dials: { colours: 3, grid: 0, rule: 1, fullness: 0.86 },
     cartel: 'Eight wide columns of coral, cream and black, the glyphs large enough to read as letters that are not quite letters. Gongs; each event re-sets a glyph, a larger one its word.',
   }),
   glyphpastel: work('Dawn', 'calm', 'Specimen, pastel', {
     scene: 'glyphs', palette: 'linen', kit: 'musicbox', space: 'room',
-    pace: SLOW, dials: { colours: 12, grid: 1, rule: 0, fill: 0.9 },
+    pace: SLOW, dials: { colours: 12, grid: 1, rule: 0, fullness: 0.9 },
     cartel: 'Mint, pink, cornflower and lilac on cream with a little black, every fade soft. A music box; every event re-sets the glyph it lands on.',
   }),
   glyphmint: work('Dawn', 'calm', 'Specimen, mint', {
     scene: 'glyphs', palette: 'linen', kit: 'chimes', space: 'room',
-    pace: SLOW, dials: { colours: 8, grid: 1, rule: 0, fill: 0.7 },
+    pace: SLOW, dials: { colours: 8, grid: 1, rule: 0, fullness: 0.7 },
     cartel: 'Black and one mint green on cream, arches, discs and slats in lines of three and two. Wind chimes; each event re-sets a glyph.',
   }),
   glyphlemon: work('Daylight', 'lively', 'Specimen, lemon', {
     scene: 'glyphs', palette: 'linen', kit: 'synth', space: 'room',
-    pace: REAL_TIME, dials: { colours: 9, grid: 0, rule: 0, fill: 0.76 },
+    pace: REAL_TIME, dials: { colours: 9, grid: 0, rule: 0, fullness: 0.76 },
     cartel: 'An acid lemon and black on cream in eight broad columns, the lemon fading into the paper. Every event re-sets the glyph it falls on, a large one the whole line.',
   }),
   glyphgold: work('Daylight', 'calm', 'Specimen, gold and blue', {
     scene: 'glyphs', palette: 'linen', kit: 'earthchime', space: 'room',
-    pace: UNHURRIED, dials: { colours: 10, grid: 1, rule: 0, fill: 0.56 },
+    pace: UNHURRIED, dials: { colours: 10, grid: 1, rule: 0, fullness: 0.56 },
     cartel: 'Saffron and a slate blue with black, sparse on cream: more space than glyph. Each event re-sets a glyph or sets one where a space was.',
   }),
   glyphsignal: work('Night', 'lively', 'Specimen, signal red', {
     scene: 'glyphs', palette: 'ironwork', kit: 'hatnote', space: 'room',
-    pace: REAL_TIME, dials: { colours: 4, grid: 2, rule: 0, fill: 0.96 },
+    pace: REAL_TIME, dials: { colours: 4, grid: 2, rule: 0, fullness: 0.96 },
     cartel: 'Twenty columns set close on black in signal red, pink and cream, the reds fading to black. Every event re-sets the glyph it falls on; a busy feed keeps the whole sheet flickering.',
   }),
   glyphbone: work('Night', 'calm', 'Specimen, black and cream', {
     scene: 'glyphs', palette: 'ironwork', kit: 'clay', space: 'room',
-    pace: SLOW, dials: { colours: 6, grid: 0, rule: 0, fill: 0.7 },
+    pace: SLOW, dials: { colours: 6, grid: 0, rule: 0, fullness: 0.7 },
     cartel: 'No colour at all: cream on black and cream fading into black, in eight broad columns. Each event re-sets one glyph.',
   }),
   // Sixteen prints on the tilt: tiled floors, straight or bent, and piles of
@@ -857,7 +858,8 @@ export function workSettings(work, scenes) {
   const scene = scenes[w.scene] || {};
   const params = {};
   for (const [name, spec] of Object.entries(scene.params || {})) params[name] = spec.default;
-  Object.assign(params, w.dials || {});
+  // A work may still name a dial by its old name: read as the new one.
+  Object.assign(params, canonicalDials(scene, w.dials || {}));
   return {
     scene: w.scene,
     palette: w.palette,

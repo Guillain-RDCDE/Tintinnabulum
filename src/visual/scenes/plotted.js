@@ -784,7 +784,7 @@ export const PLOTTED_SCENES = {
     params: {
       rings: { label: 'How close the rings', min: 0.5, max: 2, step: 0.05, default: 1 },
       spread: { label: 'How large a peal', min: 0.5, max: 2, step: 0.05, default: 1 },
-      grain: { label: 'How much dust on the sheet', min: 0, max: 1, step: 0.02, default: 0.4 },
+      dust: { label: 'How much dust on the sheet', min: 0, max: 1, step: 0.02, default: 0.4, role: 'amount', unit: 'fraction' },
       memory: { label: 'How long the sheet remembers', min: 0, max: 1, step: 0.02, default: 0.6 },
       colour: { label: 'How much colour from the event', min: 0, max: 1, step: 0.02, default: 0 },
     },
@@ -811,7 +811,7 @@ export const PLOTTED_SCENES = {
       if (!s.cleared) {
         b.fillStyle = api.palette.background;
         b.fillRect(0, 0, api.w, api.h);
-        dust(b, api, Math.round(api.w * api.h * 0.012 * api.param('grain')), s.ink);
+        dust(b, api, Math.round(api.w * api.h * 0.012 * api.param('dust')), s.ink);
         s.cleared = true;
       }
       ambient(s, api, 2600, () => strikePeal(s, api, Math.random() * api.w, Math.random() * api.h, 0.05, Math.random(), s.ink, 0.35));
@@ -1047,7 +1047,7 @@ function strikePeal(s, api, x, y, q, tone, color, weight) {
     color,
     left: total,
     wash: weight * (0.01 + 0.12 * (1 - memory)) * (0.5 + q),
-    dust: Math.round(api.w * api.h * 0.0004 * api.param('grain') * weight),
+    dust: Math.round(api.w * api.h * 0.0004 * api.param('dust') * weight),
   });
   if (s.peals.length > 40) s.peals.splice(0, s.peals.length - 40);
 }

@@ -237,7 +237,7 @@ export const RECURSIVE_SCENES = {
     params: {
       minimum: { label: 'Smallest cell', min: 8, max: 160, step: 2, default: 34 },
       bias: { label: 'How near the middle', min: 0, max: 0.5, step: 0.01, default: 0.34 },
-      fill: { label: 'Filled cells', min: 0, max: 1, step: 0.02, default: 0.3 },
+      filled: { label: 'Filled cells', min: 0, max: 1, step: 0.02, default: 0.3, role: 'amount', unit: 'fraction' },
       weight: { label: 'Line weight', min: 0.5, max: 8, step: 0.5, default: 3 },
     },
     init(api) {
@@ -259,7 +259,7 @@ export const RECURSIVE_SCENES = {
       // is no limit on a large screen: full window, a flood split it into 418.
       // Past a ceiling a cell is coloured instead, as one too small to split is.
       if (s.cells.length >= 360) {
-        c.fill = Math.random() < api.param('fill') ? p.color : null;
+        c.fill = Math.random() < api.param('filled') ? p.color : null;
         return;
       }
       const minW = api.param('minimum') / Math.max(1, api.w);
@@ -268,7 +268,7 @@ export const RECURSIVE_SCENES = {
       // on saying something after it has run out of room to divide.
       const vertical = c.w / Math.max(1e-6, minW) > c.h / Math.max(1e-6, minH);
       if ((vertical && c.w < minW * 2) || (!vertical && c.h < minH * 2)) {
-        c.fill = Math.random() < api.param('fill') ? p.color : null;
+        c.fill = Math.random() < api.param('filled') ? p.color : null;
         return;
       }
       // The cut is where the event landed, pulled towards the middle: cuts
@@ -320,7 +320,7 @@ export const RECURSIVE_SCENES = {
       growth: { label: 'Growth', min: 4, max: 200, step: 2, default: 46 },
       largest: { label: 'Largest', min: 10, max: 300, step: 5, default: 95 },
       gap: { label: 'Gap', min: 0, max: 12, step: 0.5, default: 2 },
-      fill: { label: 'Filled', min: 0, max: 1, step: 0.02, default: 0.22 },
+      filled: { label: 'Filled', min: 0, max: 1, step: 0.02, default: 0.22, role: 'amount', unit: 'fraction' },
     },
     init(api) {
       api.scene.discs = [];
@@ -346,7 +346,7 @@ export const RECURSIVE_SCENES = {
         done: false,
         color: p.color,
         rim: p.rim,
-        fill: Math.random() < api.param('fill'),
+        fill: Math.random() < api.param('filled'),
       });
     },
     frame(ctx, api) {
@@ -401,12 +401,12 @@ export const RECURSIVE_SCENES = {
     params: {
       waves: { label: 'Waves', min: 3, max: 13, step: 1, default: 7 },
       period: { label: 'Wavelength', min: 4, max: 60, step: 0.5, default: 16 },
-      grain: { label: 'Grain', min: 2, max: 10, step: 1, default: 3, rebuild: true },
+      cell: { label: 'Grain', min: 2, max: 10, step: 1, default: 3, rebuild: true, role: 'size', unit: 'px' },
       drift: { label: 'Drift', min: 0, max: 2, step: 0.02, default: 0.35 },
     },
     init(api) {
       const s = api.scene;
-      const grain = Math.max(2, Math.round(api.param('grain')));
+      const grain = Math.max(2, Math.round(api.param('cell')));
       // A quarter-million samples of a sum of seven cosines is not a per-frame
       // job at full resolution, so it is computed coarse and scaled up. The
       // pattern has no fine detail to lose: it is all low frequencies.

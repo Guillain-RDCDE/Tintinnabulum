@@ -103,14 +103,14 @@ export const SYSTEM_SCENES = {
     preview: { dt: 34, frames: 220 },
     note: 'Diffusion-limited aggregation, after Witten and Sander, 1981. A particle wanders until it touches what is already there, and sticks. It is how frost, soot, copper and coral all grow, and the branching is not in the rule -- it emerges because the tips reach the wanderers first.',
     params: {
-      grain: { label: 'Grain', min: 1.5, max: 8, step: 0.5, default: 3, rebuild: true },
+      cell: { label: 'Grain', min: 1.5, max: 8, step: 0.5, default: 3, rebuild: true, role: 'size', unit: 'px' },
       walkers: { label: 'Walkers per event', min: 1, max: 60, step: 1, default: 14 },
       steps: { label: 'Steps per frame', min: 200, max: 9000, step: 100, default: 2600 },
       stick: { label: 'Stickiness', min: 0.05, max: 1, step: 0.05, default: 1 },
     },
     init(api) {
       const s = api.scene;
-      const grain = api.param('grain');
+      const grain = api.param('cell');
       s.gw = Math.max(40, Math.min(420, Math.round(api.w / grain)));
       s.gh = Math.max(30, Math.min(300, Math.round(api.h / grain)));
       s.grid = new Uint8Array(s.gw * s.gh);
@@ -216,7 +216,7 @@ export const SYSTEM_SCENES = {
       c: { label: 'c', min: -2.5, max: 2.5, step: 0.01, default: 1 },
       d: { label: 'd', min: -2.5, max: 2.5, step: 0.01, default: 0.7 },
       rate: { label: 'Points per second', min: 2000, max: 90000, step: 1000, default: 26000 },
-      hold: { label: 'How long it holds', min: 0, max: 1, step: 0.02, default: 0.97 },
+      linger: { label: 'How long it holds', min: 0, max: 1, step: 0.02, default: 0.97, role: 'amount', unit: 'fraction' },
     },
     init(api) {
       const s = api.scene;
@@ -277,7 +277,7 @@ export const SYSTEM_SCENES = {
       s.y = y;
       g.globalAlpha = 1;
 
-      const keep = api.param('hold');
+      const keep = api.param('linger');
       if (keep < 0.999) {
         g.save();
         g.globalCompositeOperation = 'destination-out';
@@ -295,14 +295,14 @@ export const SYSTEM_SCENES = {
     positional: true,
     note: 'Every point on the canvas takes the colour of the event nearest to it. The cell boundaries are exactly halfway between two events, so the picture is a map of which one owns where -- and it redraws itself completely each time one arrives.',
     params: {
-      grain: { label: 'Grain', min: 2, max: 12, step: 1, default: 4, rebuild: true },
+      cell: { label: 'Grain', min: 2, max: 12, step: 1, default: 4, rebuild: true, role: 'size', unit: 'px' },
       sites: { label: 'Events kept', min: 3, max: 120, step: 1, default: 34 },
       edges: { label: 'Edges', min: 0, max: 1, step: 0.02, default: 0.55 },
       shade: { label: 'Cell shading', min: 0, max: 1, step: 0.02, default: 0.35 },
     },
     init(api) {
       const s = api.scene;
-      const grain = api.param('grain');
+      const grain = api.param('cell');
       s.gw = Math.max(30, Math.min(320, Math.round(api.w / grain)));
       s.gh = Math.max(20, Math.min(220, Math.round(api.h / grain)));
       s.img = null;

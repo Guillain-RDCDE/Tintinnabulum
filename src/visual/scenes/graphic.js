@@ -281,7 +281,7 @@ export const GRAPHIC_SCENES = {
     params: {
       stripes: { label: 'How many stripes', min: 12, max: 140, step: 1, default: 48, rebuild: true },
       seam: { label: 'Hairlines in the seam', min: 0, max: 40, step: 1, default: 16, rebuild: true },
-      inks: { label: 'How many inks', min: 1, max: 5, step: 1, default: 3, rebuild: true },
+      inkCount: { label: 'How many inks', min: 1, max: 5, step: 1, default: 3, rebuild: true, role: 'count', unit: 'items' },
       tone: { label: 'How far a stripe strays from its ink', min: 0, max: 1, step: 0.02, default: 0.3 },
       drift: { label: 'How far it strays in hue', min: 0, max: 1, step: 0.02, default: 0.12 },
       converge: { label: 'How hard the stripes converge', min: 0, max: 1, step: 0.02, default: 0.5, rebuild: true },
@@ -325,7 +325,7 @@ export const GRAPHIC_SCENES = {
       colours: { label: 'Colourway', options: GLYPH_WAY_NAMES, min: 0, max: GLYPH_WAY_NAMES.length - 1, step: 1, default: 0, rebuild: true, vary: false, keepsDraw: true },
       grid: { label: 'Columns', options: GLYPH_GRIDS.map(String), min: 0, max: GLYPH_GRIDS.length - 1, step: 1, default: 1, rebuild: true, vary: false },
       rule: { label: 'How the lines are set', options: ['with gutters', 'solid'], min: 0, max: 1, step: 1, default: 0, rebuild: true, vary: false, keepsDraw: true },
-      fill: { label: 'How full the lines are', min: 0.3, max: 1, step: 0.02, default: 0.8, rebuild: true },
+      fullness: { label: 'How full the lines are', min: 0.3, max: 1, step: 0.02, default: 0.8, rebuild: true, role: 'amount', unit: 'fraction' },
       fades: { label: 'How much is faded', min: 0, max: 1, step: 0.02, default: 0.55, rebuild: true },
     },
     init: setSpecimen,
@@ -348,7 +348,7 @@ const SEAM = Math.PI / 4;
 function sheafInks(api) {
   const pal = api.palette;
   const all = [pal.background, pal.user, pal.anon, pal.bot, pal.alert].filter(Boolean);
-  const n = clampTo(Math.round(api.param('inks')), 1, all.length);
+  const n = clampTo(Math.round(api.param('inkCount')), 1, all.length);
   return all.slice(0, n);
 }
 
@@ -1291,7 +1291,7 @@ function setSpecimen(api) {
   s.u = (W - m * 2) / s.cols;
   s.ox = m;
   s.press = pressOf(api);
-  s.fill = api.param('fill');
+  s.fill = api.param('fullness');
   s.fades = api.param('fades');
   const gutters = Math.round(api.param('rule')) === 0;
   const gap = gutters ? s.u * 0.5 : 0;

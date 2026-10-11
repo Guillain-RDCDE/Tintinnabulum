@@ -19,7 +19,7 @@ import {
   GROUNDS, GROUND_ORDER, prepareGround,
   Sonifier, makeKit, previewScene, animateScene, playScene,
   inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, seedParams, defaultParams, choicesOf, isViolet,
-  workSettings,
+  workSettings, dialName, canonicalDials,
 } from '../src/index.js';
 import { lightnessOf, parseColor } from '../src/visual/color.js';
 import { accentFor } from './shell.js';
@@ -175,7 +175,9 @@ export function setupStudio({
     const specs = SCENES[tool].params || {};
     const dials = {};
     for (const pair of (q.get('d') || '').split(',')) {
-      const [k, v] = pair.split(':');
+      // A dial renamed since the address was written is read by its new name.
+      const [old, v] = pair.split(':');
+      const k = dialName(SCENES[tool], old);
       const n = Number(v);
       if (specs[k] && Number.isFinite(n)) dials[k] = clamp(n, specs[k].min, specs[k].max);
     }
@@ -431,7 +433,7 @@ export function setupStudio({
     const look = toolLook(r.tool);
     state.tool = r.tool;
     state.seed = r.seed || randomSeed();
-    state.params = { ...seedParams(scene, state.seed), ...r.dials };
+    state.params = { ...seedParams(scene, state.seed), ...canonicalDials(scene, r.dials) };
     if (r.inks) state.inks = r.inks;
     else if (fresh || !state.inks.length) state.inks = look.inks.slice();
     if (r.full || fresh) {

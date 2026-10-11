@@ -7,6 +7,7 @@ import { shadeOf, lighten, lightnessOf, mixColors } from './color.js';
 import { SHAPES, DEFAULT_SHAPE } from './shapes.js';
 import { SCENES, DEFAULT_SCENE } from './scenes/index.js';
 import { makeSceneApi, gradientFill } from './scenes/api.js';
+import { dialName, canonicalDials } from './scenes/contract.js';
 
 // Canvas 2D rewrite of the original D3 v3 visuals.
 //
@@ -93,7 +94,9 @@ export class CanvasSink {
     this.sceneName = SCENES[opts.scene] ? opts.scene : DEFAULT_SCENE;
     // Per-scene dial positions, kept by scene name so leaving a visualisation
     // and coming back finds it as you left it.
-    this._params = { ...(opts.params || {}) };
+    // A dial may be named by an old name (scenes/contract.js, DIAL_ALIASES).
+    this._params = {};
+    for (const [scene, values] of Object.entries(opts.params || {})) this._params[scene] = canonicalDials(SCENES[scene], values);
     this._scene = {}; // scratch space owned by the active scene
     // A second scene, drawn over the first as a double exposure. Both are
     // full pictures of the same events -- they share the marks -- and they are
@@ -428,6 +431,7 @@ export class CanvasSink {
 
   /** The current value of one dial, or its default. */
   param(name, sceneName = this.sceneName) {
+    name = dialName(SCENES[sceneName], name);
     const spec = ((SCENES[sceneName] || {}).params || {})[name];
     if (!spec) return undefined;
     const held = (this._params[sceneName] || {})[name];
@@ -444,6 +448,7 @@ export class CanvasSink {
    * picture continuously while somebody is still deciding.
    */
   setParam(name, value, sceneName = this.sceneName) {
+    name = dialName(SCENES[sceneName], name);
     const spec = ((SCENES[sceneName] || {}).params || {})[name];
     if (!spec) return this;
     const n = Number(value);
@@ -465,7 +470,7 @@ export class CanvasSink {
   setParams(values, sceneName = this.sceneName) {
     const specs = (SCENES[sceneName] || {}).params || {};
     let rebuild = false;
-    for (const [name, value] of Object.entries(values || {})) {
+    for (const [name, value] of Object.entries(canonicalDials(SCENES[sceneName], values))) {
       const spec = specs[name];
       const n = Number(value);
       if (!spec || !Number.isFinite(n)) continue;

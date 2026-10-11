@@ -25,13 +25,13 @@ export const TILING_SCENES = {
     positional: false,
     note: 'Roger Penrose, 1974: two rhombs, a fat one and a thin one, that tile the plane and cannot do it periodically. The first proof that aperiodic tiling was possible with so few shapes, and the reason quasicrystals were taken seriously when Shechtman found them. Events light the tiles they land on.',
     params: {
-      depth: { label: 'Subdivisions', min: 2, max: 6, step: 1, default: 4, rebuild: true },
+      subdivisions: { label: 'Subdivisions', min: 2, max: 6, step: 1, default: 4, rebuild: true, role: 'count', unit: 'steps' },
       weight: { label: 'Line weight', min: 0.2, max: 3, step: 0.1, default: 0.8 },
       glow: { label: 'How long it stays lit', min: 500, max: 20000, step: 250, default: 5000 },
     },
     init(api) {
       const s = api.scene;
-      const depth = Math.max(1, Math.round(api.param('depth')));
+      const depth = Math.max(1, Math.round(api.param('subdivisions')));
       const phi = (1 + Math.sqrt(5)) / 2;
       // The deflation construction: start with ten thin triangles round a
       // point, and repeatedly cut each one according to the golden ratio.

@@ -27,6 +27,7 @@
 
 import { shadeOf, lighten, lightnessOf } from '../color.js';
 import { makeSceneApi } from './api.js';
+import { defineScene, canonicalDials } from './contract.js';
 import { applyFinish, drawMat, drawGrain } from '../finish.js';
 import { applyGround } from '../grounds.js';
 import { rngOf } from '../inks.js';
@@ -98,6 +99,12 @@ export const SCENES = {
   ...RING_SCENES,
 };
 
+// Every scene comes in through the contract (contract.js): checked, and
+// completed with what it does not say for itself. A scene that breaks it
+// stops the page here, with every problem named, rather than showing a slider
+// at the wrong end in a panel later.
+for (const [name, def] of Object.entries(SCENES)) defineScene(name, def);
+
 // Presentation is applied once, here, across every family at once. See
 // catalogue.js for why the note shown first is not the one beside the code.
 applyCatalogue(SCENES);
@@ -125,7 +132,9 @@ const ROLES = ['user', 'anon', 'bot', 'user', 'anon'];
  * synthetic clock and particles of its own. Shared by the still preview and
  * the live one, so the two cannot drift apart.
  */
-function cardApi(scene, { w, h, palette, shape = 'circle', dt = 62, depth = true, richness = 0.45, params = {} }) {
+function cardApi(scene, { w, h, palette, shape = 'circle', dt = 62, depth = true, richness = 0.45, params: given = {} }) {
+  // A dial may be named by an old name (contract.js, DIAL_ALIASES).
+  const params = canonicalDials(scene, given);
   // The same factory the live canvas uses (scenes/api.js), with a card's
   // differences said out loud.
   return makeSceneApi({
@@ -566,7 +575,7 @@ export function registerScene(name, def) {
   if (!def || typeof def.frame !== 'function') {
     throw new Error('a scene needs a frame(ctx, api) function');
   }
-  SCENES[name] = { label: def.label || name, note: def.note || '', ...def };
+  SCENES[name] = defineScene(name, { label: def.label || name, note: def.note || '', ...def });
   if (!SCENE_NAMES.includes(name)) SCENE_NAMES.push(name);
   return SCENES[name];
 }

@@ -851,7 +851,7 @@ export const PAINTER_SCENES = {
     positional: false,
     note: "In the spirit of Jackson Pollock's poured paintings: paint flung from a stick across a canvas on the floor, in loops that thin to threads and break into spatter. Every event is one flick of the wrist, and they pile up over each other.",
     params: {
-      hold: { label: 'How long it holds', min: 0, max: 1, step: 0.02, default: 0.995 },
+      linger: { label: 'How long it holds', min: 0, max: 1, step: 0.02, default: 0.995, role: 'amount', unit: 'fraction' },
       loop: { label: 'Loopiness', min: 0.2, max: 3, step: 0.05, default: 1.2 },
     },
     init(api) {
@@ -908,7 +908,7 @@ export const PAINTER_SCENES = {
         const ink = inks(api.palette)[Math.floor(Math.random() * 4)];
         PAINTER_SCENES.drip.event({ x: Math.random() * api.w, y: Math.random() * api.h, r: 20 + Math.random() * 40, color: ink }, api);
       }
-      const keep = api.param('hold');
+      const keep = api.param('linger');
       if (keep < 0.999) {
         g.save();
         g.globalCompositeOperation = 'destination-out';

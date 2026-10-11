@@ -191,7 +191,7 @@ export const HEARD_SCENES = {
     preview: { frames: 200, dt: 45 },
     params: {
       turns: { label: 'How close the turns run', min: 0.4, max: 3, step: 0.05, default: 1 },
-      depth: { label: 'How deep it is cut', min: 0.3, max: 3, step: 0.05, default: 1 },
+      cut: { label: 'How deep it is cut', min: 0.3, max: 3, step: 0.05, default: 1, role: 'size', unit: 'x' },
       speed: { label: 'How fast the stylus travels', min: 0.3, max: 3, step: 0.05, default: 1 },
     },
     init(api) {
@@ -238,7 +238,7 @@ export const HEARD_SCENES = {
       // A steady number of steps a frame: the disc fills at its own rate,
       // whatever the feed is doing.
       const steps = Math.max(2, Math.round(api.dt * 0.16 * api.param('speed')));
-      const cut = m * 0.016 * api.param('depth');
+      const cut = m * 0.016 * api.param('cut');
       for (let i = 0; i < steps; i++) {
         const a0 = s.angle;
         const a1 = s.angle + 0.035;
