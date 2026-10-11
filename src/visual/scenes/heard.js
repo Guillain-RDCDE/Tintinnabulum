@@ -233,9 +233,13 @@ export const HEARD_SCENES = {
       b.lineCap = 'round';
       b.lineWidth = Math.max(0.6, m * 0.0016);
 
-      // A steady number of steps a frame: the disc fills at its own rate,
-      // whatever the feed is doing.
-      const steps = Math.max(2, Math.round(api.dt * 0.16 * api.param('speed')));
+      // The stylus travels while the feed is working, at its full rate as soon
+      // as anything is arriving, and all but stops in silence: a disc that
+      // filled at the same rate through a silent hour was cut by nobody (the
+      // feed rule, measured deaf by follows-the-feed). A steady feed keeps
+      // the drive high enough that the stylus runs as it always did.
+      const travel = Math.min(1, 0.05 + 3 * api.feed.drive);
+      const steps = Math.max(1, Math.round(api.dt * 0.16 * api.param('speed') * travel));
       const cut = m * 0.016 * api.param('cut');
       for (let i = 0; i < steps; i++) {
         const a0 = s.angle;
