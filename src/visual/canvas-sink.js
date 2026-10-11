@@ -6,6 +6,7 @@ import { LIVING, driftColours, daylightColours, moodColours, busyness } from './
 import { shadeOf, lighten, lightnessOf, mixColors } from './color.js';
 import { SHAPES, DEFAULT_SHAPE } from './shapes.js';
 import { SCENES, DEFAULT_SCENE } from './scenes/index.js';
+import { makeSceneApi, gradientFill } from './scenes/api.js';
 
 // Canvas 2D rewrite of the original D3 v3 visuals.
 //
@@ -250,20 +251,8 @@ export class CanvasSink {
    * change -- on resize, and on a palette or richness change.
    */
   fillFor(ctx, p) {
-    if (!this.depth) return p.color;
-    if (p._grad) return p._grad;
-    // Deliberately shallow. A strong highlight turns every mark into a glass
-    // bead, which is a look, but not this one: the point is to keep a large
-    // disc from reading as one dead area of colour, not to render spheres.
-    const g = ctx.createRadialGradient(
-      p.x - p.r * 0.3, p.y - p.r * 0.34, p.r * 0.08,
-      p.x, p.y, p.r * 1.1
-    );
-    g.addColorStop(0, lighten(p.color, 0.07));
-    g.addColorStop(0.6, p.color);
-    g.addColorStop(1, lighten(p.color, -0.05));
-    p._grad = g;
-    return g;
+    // Deliberately shallow: see gradientFill in scenes/api.js.
+    return gradientFill(ctx, p, this.depth);
   }
 
   /**
@@ -281,7 +270,8 @@ export class CanvasSink {
 
   /** The surface handed to the active scene each frame. */
   _sceneApi(now = 0, second = false) {
-    return {
+    // The same factory the cards use, so the two cannot drift: see scenes/api.js.
+    return makeSceneApi({
       // Which of the two this is, so a scene that wants to know can ask --
       // and so the state and the buffers are never crossed.
       second,
@@ -317,7 +307,7 @@ export class CanvasSink {
       // Scenes ask for a fill rather than reading p.color, so the gradient and
       // its caching stay here instead of being copied into every scene.
       fill: (ctx, p) => this.fillFor(ctx, p),
-    };
+    });
   }
 
   /**

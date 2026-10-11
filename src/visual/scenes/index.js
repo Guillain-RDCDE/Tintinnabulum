@@ -26,6 +26,7 @@
 // ordered grid into a study of controlled disorder.
 
 import { shadeOf, lighten, lightnessOf } from '../color.js';
+import { makeSceneApi } from './api.js';
 import { applyFinish, drawMat, drawGrain } from '../finish.js';
 import { applyGround } from '../grounds.js';
 import { rngOf } from '../inks.js';
@@ -125,10 +126,11 @@ const ROLES = ['user', 'anon', 'bot', 'user', 'anon'];
  * the live one, so the two cannot drift apart.
  */
 function cardApi(scene, { w, h, palette, shape = 'circle', dt = 62, depth = true, richness = 0.45, params = {} }) {
-  const particles = [];
-  const darkGround = lightnessOf(palette.background) < 0.5;
-  return {
-    w, h, palette, particles,
+  // The same factory the live canvas uses (scenes/api.js), with a card's
+  // differences said out loud.
+  return makeSceneApi({
+    w, h, palette,
+    particles: [],
     now: 0,
     dt,
     shape,
@@ -136,34 +138,21 @@ function cardApi(scene, { w, h, palette, shape = 'circle', dt = 62, depth = true
     scene: {},
     depth,
     richness,
-    darkGround,
     // A card holds a few dozen events on a thumbnail, so the ceiling the live
     // canvas runs under is irrelevant here; cap() has a floor that keeps every
     // scene from starving at this size.
     budget: 200,
+    // No engine is playing on a card.
+    sound: null,
+    // A card's buffers are the runner's: playScene hands its pool over after.
+    buffers: undefined,
     param: (name) => {
       const spec = (scene.params || {})[name];
       if (!spec) return undefined;
       return params[name] === undefined ? spec.default : params[name];
     },
     colorFor: (c) => palette[c] || palette.default,
-    // The same contract CanvasSink offers, including the per-particle cache:
-    // rebuilding a gradient for every mark on every frame is a hundred times
-    // the work for one picture.
-    fill: (c, p) => {
-      if (!depth) return p.color;
-      if (p._grad) return p._grad;
-      const g = c.createRadialGradient(
-        p.x - p.r * 0.3, p.y - p.r * 0.34, p.r * 0.08,
-        p.x, p.y, p.r * 1.1
-      );
-      g.addColorStop(0, lighten(p.color, 0.07));
-      g.addColorStop(0.6, p.color);
-      g.addColorStop(1, lighten(p.color, -0.05));
-      p._grad = g;
-      return g;
-    },
-  };
+  });
 }
 
 /** One synthetic event for a card, shaded the way the live canvas shades one. */
