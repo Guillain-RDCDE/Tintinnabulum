@@ -10,6 +10,8 @@
 // same-origin only, which is exactly the scope wanted: the wall is another
 // window of the same page, not a stranger's.
 
+import { toMessage } from '../src/settings.js';
+
 const CHANNEL = 'tintinnabulum';
 
 /**
@@ -31,7 +33,7 @@ export function createProjector({ settings }) {
         // A window that has just opened knows nothing. Tell it everything
         // rather than leaving it on defaults until somebody moves a slider.
         listeners++;
-        channel.postMessage({ type: 'settings', settings: settings() });
+        channel.postMessage(toMessage(settings()));
         onChange(listeners);
         onHelloFn(listeners);
       }
@@ -91,7 +93,7 @@ export function createProjector({ settings }) {
     /** Push the current look across, after anything visual changes. */
     sync() {
       if (!channel || !listeners) return;
-      channel.postMessage({ type: 'settings', settings: settings() });
+      channel.postMessage(toMessage(settings()));
     },
 
     clear() {

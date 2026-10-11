@@ -33,12 +33,16 @@ import {
   CanvasSink, PALETTES, WORKS, SCENES, Mapper, normalize, mediumOf, workSettings, drawQr,
   FINISHES, GROUNDS, MATS, KITS, LIVING, Sonifier, exhibitedDials,
   exhibition, exhibitionAt, describeExhibition,
-  replaySource, loadRecording, watchedSource,
+  replaySource, loadRecording, watchedSource, fromQuery, fromMessage,
   wikipedia, bitcoin, coinbase, earthquakes, bluesky, github, noaaAlerts, hackerNews, randomSource,
 } from '../src/index.js';
 
 const CHANNEL = 'tintinnabulum';
-const params = new URLSearchParams(location.search);
+// The address, read by the one codec every setting goes through
+// (src/settings.js): the show as the strings the address holds, and a look
+// in Settings' own units when the address carries one.
+const query = fromQuery(location.search, SCENES);
+const params = { get: (name) => (query.show[name] === undefined ? null : query.show[name]) };
 
 // An exhibition is the whole room in one word: the catalogue in a drawn
 // order, every Wikipedia, people alone ringing, sound on, and the recorded
@@ -347,7 +351,7 @@ function applySettings(s) {
   if (typeof s.finish === 'string') sink.setFinish(s.finish);
   if (typeof s.ground === 'string') sink.setGround(s.ground);
   if (typeof s.mat === 'string') sink.setMat(s.mat);
-  if (typeof s.grain === 'boolean') sink.setGrain(s.grain);
+  if (s.grain !== undefined) sink.setGrain(s.grain);
   if (typeof s.pace === 'number') sink.setPace(s.pace);
   if (typeof s.living === 'string' && s.living !== sink.living) sink.setLiving(s.living);
   if (s.palette && PALETTES[s.palette]) dressCartel(PALETTES[s.palette].colors);
@@ -360,7 +364,8 @@ function applySettings(s) {
 channel.onmessage = (m) => {
   const msg = m.data;
   if (!msg || typeof msg !== 'object') return;
-  if (msg.type === 'settings') return applySettings(msg.settings);
+  // Read by the codec: an older console sent the grain as a flag.
+  if (msg.type === 'settings') return applySettings(fromMessage(msg, SCENES));
   if (msg.type === 'event') {
     arrive(msg.event);
     return;
@@ -606,6 +611,11 @@ if (ex) {
   followProgramme();
   setInterval(followProgramme, 5000);
 } else {
+  // A look the address carries (palette=, scene=, grain=, pace=...), in
+  // Settings' units; a work named beside it is hung over it.
+  const look = { ...query };
+  delete look.show;
+  if (Object.keys(look).length) applySettings(look);
   const wanted = params.get('work');
   if (wanted) {
     showWork(wanted);

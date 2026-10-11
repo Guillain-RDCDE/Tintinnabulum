@@ -10,6 +10,11 @@ import { makeSceneApi, gradientFill } from './scenes/api.js';
 import { dialName, canonicalDials } from './scenes/contract.js';
 import { feedFor } from './scenes/feed.js';
 
+// The grain an amount of one is drawn at, and the amount "on" has always
+// meant (a strength of 0.28): see src/settings.js, which says the same.
+const GRAIN_STRENGTH = 0.6;
+const GRAIN_ON = 0.28 / GRAIN_STRENGTH;
+
 // Canvas 2D rewrite of the original D3 v3 visuals.
 //
 // D3 v3 is unmaintained and the APIs this project used (.attr({}) with an
@@ -74,7 +79,9 @@ export class CanvasSink {
     // What the scene is printed on, and how it is hung. See finish.js.
     this.finish = FINISHES[opts.finish] ? opts.finish : 'none';
     this.mat = MATS[opts.mat] ? opts.mat : 'none';
-    this.grain = opts.grain === true;
+    this.grain = false;
+    this.grainAmount = 0;
+    this.setGrain(opts.grain === true || typeof opts.grain === 'number' ? opts.grain : false);
     // What it is printed on: a sheet of paper, a canvas, a wall. See grounds.js.
     this.ground = GROUNDS[opts.ground] ? opts.ground : 'none';
     // How fast the scene lives. Below one everything breathes more slowly --
@@ -624,9 +631,16 @@ export class CanvasSink {
     return this;
   }
 
-  /** Moving film grain over the picture. */
-  setGrain(on) {
-    this.grain = Boolean(on);
+  /**
+   * Moving film grain over the picture: an amount from 0 to 1, or on and off
+   * as it used to be (on is the amount it was always drawn at). `grain` stays
+   * true or false for whoever reads it; `grainAmount` is how much.
+   */
+  setGrain(v) {
+    this.grainAmount = v === true ? GRAIN_ON : v === false || v == null ? 0 : Math.max(0, Math.min(1, Number(v) || 0));
+    this.grain = this.grainAmount > 0;
+    // Drawn at exactly the strength it always was when it is simply on.
+    this._grainStrength = v === true || this.grainAmount === GRAIN_ON ? 0.28 : this.grainAmount * GRAIN_STRENGTH;
     return this;
   }
 
@@ -997,7 +1011,7 @@ export class CanvasSink {
     // The sheet under it all, after the finish -- a linocut is still printed on
     // paper -- and before the grain, which is the film's, not the paper's.
     if (this.ground !== 'none') applyGround(ctx, this.ground, { palette: this.palette, pool: this._finishPool });
-    if (this.grain) drawGrain(ctx, { pool: this._finishPool, now });
+    if (this.grain) drawGrain(ctx, { pool: this._finishPool, now, strength: this._grainStrength });
 
     // Labels only where the marks actually sit at their particle's position.
     if (scene.positional !== false) {

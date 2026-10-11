@@ -36,6 +36,8 @@ import {
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { renderDials, SKINS } from './dials.js';
+import { saved, save, saveDial, savedDials } from './settings-store.js';
+import { grainAmount } from '../src/settings.js';
 import { store } from './store.js';
 
 // How far each event's colour may stray from its category's. The wording says
@@ -68,7 +70,7 @@ const SHAPE_LABELS = {
  * one control in the project that multiplies rather than adds -- every scene
  * against every other, and seven ways of mixing them.
  */
-function setupSecond({ canvas, store, $, SCENES, SCENE_NAMES, BLENDS, shelfOf, onChange }) {
+function setupSecond({ canvas, $, SCENES, SCENE_NAMES, BLENDS, shelfOf, onChange }) {
   const select = $('#second');
   const blend = $('#blend');
   const mix = $('#mix');
@@ -129,23 +131,24 @@ function setupSecond({ canvas, store, $, SCENES, SCENE_NAMES, BLENDS, shelfOf, o
 
   select.addEventListener('change', () => {
     canvas.setSecond(select.value);
-    store.set('second', select.value);
+    save({ second: select.value });
     refresh();
   });
   blend.addEventListener('change', () => {
     canvas.setBlend(blend.value);
-    store.set('blend', blend.value);
+    save({ blend: blend.value });
     refresh();
   });
   mix.addEventListener('input', () => {
     canvas.setMix(Number(mix.value) / 100);
-    store.set('mix', mix.value);
+    save({ mix: Number(mix.value) / 100 });
     refresh();
   });
 
-  canvas.setSecond(store.get('second') || 'none', {
-    blend: store.get('blend') || 'multiply',
-    mix: store.get('mix') == null ? 0.65 : Number(store.get('mix')) / 100,
+  const kept = saved();
+  canvas.setSecond(kept.second || 'none', {
+    blend: kept.blend || 'multiply',
+    mix: kept.mix === undefined ? 0.65 : kept.mix,
   });
   refresh(true);
   return { refresh };
@@ -155,7 +158,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
   let richnessWord = 'balanced';
 
   const second = setupSecond({
-    canvas, store, $, SCENES, SCENE_NAMES, BLENDS, shelfOf,
+    canvas, $, SCENES, SCENE_NAMES, BLENDS, shelfOf,
     onChange: () => {
       updateSummaries();
       onLookChange();
@@ -182,7 +185,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     // still deciding where to put it.
     const commit = (name, v) => {
       canvas.setParam(name, v);
-      store.set(`p:${canvas.sceneName}:${name}`, String(v));
+      saveDial(canvas.sceneName, name, v);
       repaintScenePreviews();
       onLookChange();
     };
@@ -210,7 +213,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     reset.className = 'reset';
     reset.textContent = 'Back to defaults';
     reset.addEventListener('click', () => {
-      for (const d of canvas.paramsOf()) store.set(`p:${canvas.sceneName}:${d.name}`, '');
+      for (const d of canvas.paramsOf()) saveDial(canvas.sceneName, d.name, null);
       canvas.resetParams();
       drawParams();
       repaintScenePreviews();
@@ -220,22 +223,12 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
   }
 
   /**
-   * Dial positions survive a reload, per scene. A dial renamed since it was
-   * stored is found under its old name, moved to the new one and the old key
-   * cleared, so the next reload reads it where it now lives.
+   * Dial positions survive a reload, per scene: kept in the Settings record
+   * (settings-store.js), where a dial renamed since it was turned is already
+   * under its new name.
    */
   function restoreParams(sceneName) {
-    const aliases = (SCENES[sceneName] && SCENES[sceneName].aliases) || {};
-    for (const [old, name] of Object.entries(aliases)) {
-      const was = store.get(`p:${sceneName}:${old}`);
-      if (!was) continue;
-      if (!store.get(`p:${sceneName}:${name}`)) store.set(`p:${sceneName}:${name}`, was);
-      store.set(`p:${sceneName}:${old}`, '');
-    }
-    for (const d of canvas.paramsOf(sceneName)) {
-      const held = store.get(`p:${sceneName}:${d.name}`);
-      if (held) canvas.setParam(d.name, Number(held), sceneName);
-    }
+    for (const [name, v] of Object.entries(savedDials(sceneName))) canvas.setParam(name, v, sceneName);
   }
 
   // --- scenes -------------------------------------------------------------
@@ -254,7 +247,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     $('#shapes').style.opacity = usesShapes ? '1' : '.4';
     $('#shapes').style.pointerEvents = usesShapes ? '' : 'none';
     $('#shapes-label').textContent = usesShapes ? 'Shapes' : 'Shapes — used by Bloom only';
-    if (persist) store.set('scene', name);
+    if (persist) save({ scene: name });
     restoreParams(name);
     drawParams();
     if (typeof repaintFinishCards === 'function') repaintFinishCards();
@@ -406,7 +399,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     canvas.setGround(pick);
     groundPicker.mark(pick);
     $('#ground-note').textContent = GROUNDS[pick].note;
-    if (persist) store.set('ground', pick);
+    if (persist) save({ ground: pick });
     // Built in the background if it is not ready: the picture goes on without
     // it for a moment and the cards catch up when it arrives.
     prepareGround(pick).then(() => repaintScenePreviews());
@@ -419,7 +412,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     canvas.setFinish(pick);
     finishPicker.mark(pick);
     $('#finish-note').textContent = FINISHES[pick].note;
-    if (persist) store.set('finish', pick);
+    if (persist) save({ finish: pick });
     repaintScenePreviews();
     onLookChange();
   }
@@ -428,15 +421,16 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     const pick = MATS[name] ? name : 'none';
     canvas.setMat(pick);
     $('#mat').value = pick;
-    if (persist) store.set('mat', pick);
+    if (persist) save({ mat: pick });
     repaintScenePreviews();
     onLookChange();
   }
 
   function selectGrain(on, persist = true) {
+    // On and off here; an amount from a work is kept as the amount it is.
     canvas.setGrain(on);
     $('#grain').checked = Boolean(on);
-    if (persist) store.setFlag('grain', Boolean(on));
+    if (persist) save({ grain: grainAmount(on) });
     onLookChange();
   }
 
@@ -460,7 +454,8 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     $('#pace').value = String(i);
     $('#pace-val').textContent = word;
     $('#pace-note').textContent = note;
-    if (persist) store.set('pace', String(i));
+    // Kept as the multiplier it is, not as the place of a word in a list.
+    if (persist) save({ pace: x });
     onLookChange();
   }
 
@@ -475,7 +470,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     canvas.canvas.style.background = PALETTES[name].colors.background;
     $('#palette-note').textContent = PALETTES[name].note;
     palettePicker.mark(name);
-    if (persist) store.set('palette', name);
+    if (persist) save({ palette: name });
     // The swatches and the stills are drawn in the palette's own colours, so
     // they follow the choice rather than lying about it.
     repaintShapeSwatches();
@@ -631,7 +626,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     canvas.setLiving(pick);
     $('#living').value = pick;
     $('#living-note').textContent = LIVING[pick].note;
-    if (persist) store.set('living', pick);
+    if (persist) save({ living: pick });
     updateSummaries();
     onLookChange();
   }
@@ -688,7 +683,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     canvas.setShape(name);
     $('#shape-note').textContent = SHAPE_LABELS[name].note;
     shapePicker.mark(name);
-    if (persist) store.set('shape', name);
+    if (persist) save({ shape: name });
   }
 
   function paintSwatch(cv, name) {
@@ -729,7 +724,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     $('#richness-val').textContent = word;
     $('#richness-note').textContent = note;
     $('#richness').value = String(Math.round(v * 100));
-    if (persist) store.set('richness', String(Math.round(v * 100)));
+    if (persist) save({ richness: v });
     updateSummaries();
     // The palette swatches and stills are drawn through the same renderer, so
     // they have to be redrawn or they would advertise the wrong setting.
@@ -741,13 +736,13 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     canvas.setMaxParticles(n);
     $('#budget').value = String(canvas.maxParticles);
     $('#budget-val').textContent = String(canvas.maxParticles);
-    if (persist) store.set('budget', String(canvas.maxParticles));
+    if (persist) save({ budget: canvas.maxParticles });
   }
 
   $('#richness').addEventListener('input', (e) => selectRichness(Number(e.target.value) / 100));
   $('#depth').addEventListener('change', (e) => {
     canvas.setDepth(e.target.checked);
-    store.setFlag('depth', e.target.checked);
+    save({ depth: e.target.checked });
   });
   // On `change`, not `input`: applying it restarts the active scene's own
   // state, and doing that on every pixel of a drag would wipe the picture
@@ -756,7 +751,7 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
   $('#budget').addEventListener('change', (e) => selectBudget(Number(e.target.value)));
   $('#starfield').addEventListener('change', (e) => {
     canvas.setStarfield(e.target.checked);
-    store.setFlag('starfield', e.target.checked);
+    save({ starfield: e.target.checked });
   });
   $('#labels').addEventListener('change', (e) => (canvas.showLabels = e.target.checked));
   $('#hud').addEventListener('change', (e) => (canvas.showHud = e.target.checked));

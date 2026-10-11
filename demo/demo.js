@@ -25,6 +25,8 @@ import {
 
 import { $, createPicker, fitCanvas, caption } from './dom.js';
 import { store } from './store.js';
+import { saved, save, saveDial } from './settings-store.js';
+import { paceStep } from '../src/settings.js';
 import { createFeedCatalog } from './feed-catalog.js';
 import { setupLook } from './look.js';
 import { createProjector } from './broadcast.js';
@@ -34,7 +36,9 @@ import { setupShell } from './shell.js';
 import { parseShow, formatShow, parseHours, formatHours, showAt, isOpen, untilOpen, describeShow } from '../src/show.js';
 import { setupStudio } from './studio.js';
 
-const storedPalette = store.pick('palette', PALETTES, DEFAULT_PALETTE_NAME);
+// What the viewer last had, as one Settings record (settings-store.js).
+const kept = saved();
+const storedPalette = PALETTES[kept.palette] ? kept.palette : DEFAULT_PALETTE_NAME;
 
 const son = new Sonifier({
   kit: 'hatnote',
@@ -275,7 +279,7 @@ startBtn.onclick = async () => {
 // Sound
 // =========================================================================
 
-let currentKit = store.pick('kit', KITS, 'hatnote');
+let currentKit = KITS[kept.kit] ? kept.kit : 'hatnote';
 
 async function selectKit(name, { persist = true, audition = true } = {}) {
   if (!KITS[name]) return;
@@ -283,7 +287,7 @@ async function selectKit(name, { persist = true, audition = true } = {}) {
   $('#kit-note').textContent = KITS[name].note;
   kitPicker.mark(name);
   if (persist) {
-    store.set('kit', name);
+    save({ kit: name });
     sampleState = 'chosen'; // an explicit choice is never overridden
   }
   await son.setKit(name); // while locked this only assigns
@@ -439,7 +443,7 @@ const projector = createProjector({
     finish: canvas.finish,
     ground: canvas.ground,
     mat: canvas.mat,
-    grain: canvas.grain,
+    grain: canvas.grainAmount,
     pace: canvas.pace,
     living: canvas.living,
     depth: canvas.depth,
@@ -496,13 +500,12 @@ const { selectScene, selectPalette, selectShape, selectRichness, selectBudget, S
 // summary and the summary reads `look`.
 look.selectRotate(Number(store.get('rotate') || 0), false);
 look.selectSceneRotate(Number(store.get('scene-rotate') || 0), false);
-look.selectFinish(store.get('finish') || 'none', false);
-look.selectGround(store.get('ground') || 'none', false);
-look.selectMat(store.get('mat') || 'none', false);
-look.selectGrain(store.flag('grain'), false);
-look.selectLiving(store.get('living') || 'still', false);
-look.selectPace(store.get('pace') === null || store.get('pace') === undefined || store.get('pace') === ''
-  ? 3 : Number(store.get('pace')), false);
+look.selectFinish(kept.finish || 'none', false);
+look.selectGround(kept.ground || 'none', false);
+look.selectMat(kept.mat || 'none', false);
+look.selectGrain(kept.grain || false, false);
+look.selectLiving(kept.living || 'still', false);
+look.selectPace(paceStep(kept.pace === undefined ? 1 : kept.pace), false);
 
 // A card inside a folded panel is skipped rather than drawn -- see the note on
 // `repaint` in dom.js -- so unfolding a panel is when the cards inside it get
@@ -572,7 +575,7 @@ function selectSpace(name, persist = true) {
   spaceWord = SPACES[name].label;
   $('#space-note').textContent = SPACES[name].note;
   spacePicker.mark(name);
-  if (persist) store.set('space', name);
+  if (persist) save({ space: name });
   updateSummaries();
 }
 
@@ -605,7 +608,7 @@ const spacePicker = createPicker($('#spaces'), Object.entries(SPACES), {
 });
 const paintSpaceArts = () => spacePicker.repaint(paintSpaceArt);
 requestAnimationFrame(paintSpaceArts);
-selectSpace(store.pick('space', SPACES, DEFAULT_SPACE), false);
+selectSpace(SPACES[kept.space] ? kept.space : DEFAULT_SPACE, false);
 
 // =========================================================================
 // Works
@@ -726,7 +729,7 @@ studio = setupStudio({
     look.selectLiving('still');
     for (const [k, v] of Object.entries(pic.params)) {
       canvas.setParam(k, v, pic.scene);
-      store.set(`p:${pic.scene}:${k}`, String(v));
+      saveDial(pic.scene, k, v);
     }
     look.selectScene(pic.scene);
     if (typeof pic.palette === 'string') {
@@ -1172,12 +1175,12 @@ selectFeed(feed, false);
 syncLangs(false);
 selectKit(currentKit, { persist: false, audition: false });
 selectPalette(canvas.paletteName, false);
-selectShape(store.pick('shape', SHAPE_LABELS, DEFAULT_SHAPE), false);
-selectScene(store.pick('scene', SCENES, DEFAULT_SCENE), false);
-selectRichness(store.number('richness', canvas.richness * 100, 0, 100) / 100, false);
-$('#depth').checked = store.flag('depth', true);
+selectShape(SHAPE_LABELS[kept.shape] ? kept.shape : DEFAULT_SHAPE, false);
+selectScene(SCENES[kept.scene] ? kept.scene : DEFAULT_SCENE, false);
+selectRichness(kept.richness === undefined ? canvas.richness : kept.richness, false);
+$('#depth').checked = kept.depth === undefined ? true : kept.depth;
 canvas.setDepth($('#depth').checked);
-selectBudget(store.number('budget', canvas.maxParticles, 100, 6000), false);
+selectBudget(Number.isFinite(kept.budget) ? Math.max(100, Math.min(6000, kept.budget)) : canvas.maxParticles, false);
 selectRestraint(store.number('restraint', 0, 0, 1200), false);
 // Your data: the standard, usable without a server. Events are handed to the
 // engine one every 400ms rather than all at once, because three notes at the
@@ -1194,7 +1197,7 @@ setupConnect({
 $('#cats').addEventListener('change', updateSummaries);
 $('#minmag').addEventListener('input', updateSummaries);
 updateSummaries();
-$('#starfield').checked = store.flag('starfield');
+$('#starfield').checked = Boolean(kept.starfield);
 canvas.setStarfield($('#starfield').checked);
 setRunning(false);
 setAudioStatus('');

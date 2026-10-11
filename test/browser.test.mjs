@@ -1263,7 +1263,8 @@ const dressing = await page.evaluate(async () => {
     mat: sink.mat,
     grain: sink.grain,
     pace: sink.pace,
-    stored: ['finish', 'mat', 'grain', 'pace'].map((k) => localStorage.getItem('t:' + k)),
+    // Kept as one Settings record (src/settings.js), grain an amount and pace a multiplier.
+    stored: ((r) => [r.finish, r.mat, +r.grain.toFixed(4), r.pace])(JSON.parse(localStorage.getItem('t:settings'))),
     cards: document.querySelectorAll('#finishes .card').length,
     finishCount: (await import('../src/index.js')).FINISH_ORDER.length,
   };
@@ -1286,7 +1287,7 @@ const dressing = await page.evaluate(async () => {
 ok('finish, frame, grain and pace reach the canvas',
    dressing.finish === 'cyanotype' && dressing.mat === 'thin' && dressing.grain === true && Math.abs(dressing.pace - 0.25) < 1e-9,
    JSON.stringify(dressing));
-ok('finish, frame, grain and pace are remembered', JSON.stringify(dressing.stored) === JSON.stringify(['cyanotype', 'thin', '1', '0']),
+ok('finish, frame, grain and pace are remembered', JSON.stringify(dressing.stored) === JSON.stringify(['cyanotype', 'thin', 0.4667, 0.25]),
    JSON.stringify(dressing.stored));
 ok('there is a card for every finish', dressing.cards === dressing.finishCount, `${dressing.cards} of ${dressing.finishCount}`);
 ok('a slow pace slows the picture', dressing.slow < dressing.real * 0.45, `slow ${dressing.slow.toFixed(0)} ms vs real ${dressing.real.toFixed(0)} ms`);
@@ -1361,7 +1362,7 @@ const paperPanel = await page.evaluate(async () => {
   const cards = document.querySelectorAll('#grounds .card').length;
   const { GROUND_ORDER } = await import('../src/index.js');
   document.querySelector('#grounds [data-ground="washi"]').click();
-  const picked = { ground: sink.ground, stored: localStorage.getItem('t:ground'), note: document.querySelector('#ground-note').textContent.length > 20 };
+  const picked = { ground: sink.ground, stored: JSON.parse(localStorage.getItem('t:settings')).ground, note: document.querySelector('#ground-note').textContent.length > 20 };
   await new Promise((r) => setTimeout(r, 300));
   const c = document.querySelector('#canvas');
   const px = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;

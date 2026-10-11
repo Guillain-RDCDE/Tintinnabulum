@@ -2059,6 +2059,23 @@ Shapes are pure geometry in [`src/visual/shapes.js`](../src/visual/shapes.js): a
 sandbox are drawn with the same function as the canvas, so a preview can never
 drift from what you actually get.
 
+### Settings
+
+What a picture is set to is one object, Settings (`src/settings.js`): the
+shape `workSettings()` resolves a work to -- scene, palette, kit, space,
+finish, ground, mat, grain, living, pace, params -- with the rest of the look
+beside it and the projection window's show underneath. In it `grain` is an
+amount from 0 to 1 (a work's or the wall's grain switched on is 0.28 / 0.6)
+and `pace` a multiplier, always. It is written down by one codec:
+`toQuery`/`fromQuery` for a projection address, `toStore`/`fromStore` for what
+the sandbox keeps in a browser (one record, `t:settings`), `toMessage`/
+`fromMessage` for the console's message to a wall, and `toHash`/`fromHash`
+for a Create address. Everything written before still reads as it did: the
+Look panel's old per-control keys are read once in their old units and moved
+into the record, an old Create address keeps its strength-valued `g` and its
+old dial names, a projection address keeps every parameter it ever had, and a
+message from an older console that sends the grain as a flag is read as on.
+
 ### Tests
 
 ```bash

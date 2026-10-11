@@ -868,7 +868,9 @@ export function workSettings(work, scenes) {
     finish: w.finish,
     ground: w.ground,
     mat: w.mat,
-    grain: Boolean(w.grain),
+    // An amount from 0 to 1, as everywhere (src/settings.js): a work's grain
+    // is on or off, and on is what the wall has always drawn (0.28 / 0.6).
+    grain: w.grain ? 0.28 / 0.6 : 0,
     living: w.living,
     paceStep: w.pace,
     pace: WORK_PACE[w.pace] ?? 1,

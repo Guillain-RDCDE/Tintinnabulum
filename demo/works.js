@@ -445,7 +445,8 @@ export function setupWorks({
         canvas.finish === s.finish &&
         canvas.ground === s.ground &&
         canvas.mat === s.mat &&
-        Boolean(canvas.grain) === s.grain &&
+        // The grain is an amount now, on the canvas and in a work alike.
+        Math.abs((canvas.grainAmount || 0) - s.grain) < 1e-6 &&
         Math.abs(canvas.pace - s.pace) < 1e-6 &&
         canvas.living === s.living &&
         getKit() === s.kit &&

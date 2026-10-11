@@ -19,7 +19,7 @@ import {
   GROUNDS, GROUND_ORDER, prepareGround,
   Sonifier, makeKit, previewScene, animateScene, playScene,
   inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, seedParams, defaultParams, choicesOf, isViolet,
-  workSettings, dialName, canonicalDials, colourwayDials,
+  workSettings, canonicalDials, colourwayDials, toHash, fromHash, grainStrength,
 } from '../src/index.js';
 import { lightnessOf, parseColor } from '../src/visual/color.js';
 import { accentFor } from './shell.js';
@@ -93,7 +93,7 @@ export function setupStudio({
         kit: SOUND_KITS.includes(work.kit) ? work.kit : SOUND_KITS[hashOf(name) % SOUND_KITS.length],
         finish: FINISHES[work.finish] ? work.finish : 'none',
         mat: MATS[work.mat] ? work.mat : 'none',
-        grain: work.grain ? 0.18 : 0,
+        grain: work.grain ? 0.3 : 0,
         ground: GROUNDS[work.ground] ? work.ground : 'none',
       };
     }
@@ -134,9 +134,16 @@ export function setupStudio({
     }
   };
   const titleOf = (st) => `${(SCENES[st.tool] || {}).label || st.tool}, No. ${st.seed}`;
+  // A piece kept before the grain became an amount (v 2) had it as a strength.
   let captures = readJson('play-captures')
     .filter((c) => c && c.state && SCENES[c.state.tool])
-    .map((c, i) => ({ ...c, id: c.id || `p${c.at || 0}-${i}`, title: c.title || titleOf(c.state) }));
+    .map((c, i) => ({
+      ...c,
+      v: 2,
+      state: c.v === 2 ? c.state : { ...c.state, grain: Math.min(1, (Number(c.state.grain) || 0) / 0.6) },
+      id: c.id || `p${c.at || 0}-${i}`,
+      title: c.title || titleOf(c.state),
+    }));
   // Where the picture on the bench came from: a work, one of yours, or what was
   // playing. Shown on the bench, and one click takes it back there.
   let from = null;
@@ -146,54 +153,18 @@ export function setupStudio({
 
   // --- the address --------------------------------------------------------------------
 
+  // Written and read by the one codec (src/settings.js, toHash/fromHash), in
+  // the format every Create address was ever written in; the grain is an
+  // amount on the bench and a strength in the address, as it always was there.
   function encode(s = state) {
-    const q = new URLSearchParams();
-    q.set('i', s.inks.map((c) => hex(c).slice(1)).join('-'));
     // Against what the number alone gives, as every address ever written was.
     const drawn = seedParams(SCENES[s.tool], s.seed);
-    const moved = Object.entries(s.params).filter(([k, v]) => drawn[k] !== v).map(([k, v]) => `${k}:${v}`);
-    if (moved.length) q.set('d', moved.join(','));
-    if (s.finish !== 'none') q.set('f', s.finish);
-    if (s.grain > 0) q.set('g', String(s.grain));
-    if (s.mat !== 'none') q.set('m', s.mat);
-    if (s.ground && s.ground !== 'none') q.set('p', s.ground);
-    q.set('r', s.ratio.replace(':', 'x'));
-    return `${PREFIX}/${s.tool}/${s.seed}?${q.toString()}`;
+    return toHash({ ...s, inks: s.inks.map(hex) }, { prefix: PREFIX, drawn });
   }
 
   /** What an address asks for: nothing, the index, or a picture. */
   function parse(hash) {
-    if (!hash.startsWith(PREFIX)) return null;
-    const rest = hash.slice(PREFIX.length).replace(/^\/?/, '');
-    if (!rest) return { index: true };
-    const [path, query = ''] = rest.split('?');
-    const [tool, seedText] = path.split('/');
-    if (!SCENES[tool]) return { index: true };
-    const q = new URLSearchParams(query);
-    const seed = Number.parseInt(seedText, 10);
-    const inks = (q.get('i') || '').split('-').filter((c) => /^[0-9a-f]{6}$/i.test(c)).map((c) => '#' + c.toLowerCase());
-    const specs = SCENES[tool].params || {};
-    const dials = {};
-    for (const pair of (q.get('d') || '').split(',')) {
-      // A dial renamed since the address was written is read by its new name.
-      const [old, v] = pair.split(':');
-      const k = dialName(SCENES[tool], old);
-      const n = Number(v);
-      if (specs[k] && Number.isFinite(n)) dials[k] = clamp(n, specs[k].min, specs[k].max);
-    }
-    const ratio = (q.get('r') || '').replace('x', ':');
-    return {
-      tool,
-      seed: Number.isFinite(seed) && seed > 0 ? Math.min(999999, seed) : null,
-      inks: inks.length >= 2 ? inks.slice(0, 6) : null,
-      dials,
-      finish: FINISHES[q.get('f')] ? q.get('f') : null,
-      grain: q.has('g') ? clamp(Number(q.get('g')) || 0, 0, 0.6) : null,
-      mat: MATS[q.get('m')] ? q.get('m') : null,
-      ground: GROUNDS[q.get('p')] ? q.get('p') : null,
-      ratio: RATIOS.includes(ratio) ? ratio : null,
-      full: q.has('i'),
-    };
+    return fromHash(hash, { prefix: PREFIX, scenes: SCENES, finishes: FINISHES, mats: MATS, grounds: GROUNDS, ratios: RATIOS });
   }
 
   /** Put an address in the bar without adding a step to the back button. */
@@ -545,7 +516,7 @@ export function setupStudio({
     for (const b of el('ratios').querySelectorAll('button')) b.setAttribute('aria-pressed', String(b.dataset.ratio === state.ratio));
     const grain = el('grain');
     grain.value = state.grain;
-    el('grain-out').textContent = state.grain ? `${Math.round((state.grain / 0.6) * 100)}%` : 'Off';
+    el('grain-out').textContent = state.grain ? `${Math.round(state.grain * 100)}%` : 'Off';
     paintRange(grain);
     const tempo = el('tempo');
     tempo.value = state.tempo;
@@ -863,7 +834,7 @@ export function setupStudio({
       params: view.params,
       finish: state.finish,
       mat: state.mat,
-      grain: state.grain,
+      grain: grainStrength(state.grain),
       ground: state.ground,
       pool,
       seed: state.seed,
@@ -1077,7 +1048,7 @@ export function setupStudio({
     if (!state.tool || bench.hidden) return null;
     const at = Date.now();
     const piece = { id: `p${at}`, title: pieceTitle(), kit: state.kit, state: snapshot(), thumb: thumbOf(stage), at };
-    captures.unshift(piece);
+    captures.unshift({ ...piece, v: 2 });
     captures = captures.slice(0, 24);
     saveCaptures();
     renderCaptures(true);
@@ -1187,7 +1158,7 @@ export function setupStudio({
     cv.height = h;
     const player = playScene(cv.getContext('2d'), state.tool, {
       w, h, palette: paletteFromInks(state.inks), params: { ...state.params },
-      finish: state.finish, mat: state.mat, grain: state.grain, ground: state.ground, pool: {}, seed: state.seed, every: 1000 / state.tempo,
+      finish: state.finish, mat: state.mat, grain: grainStrength(state.grain), ground: state.ground, pool: {}, seed: state.seed, every: 1000 / state.tempo,
     });
     status('Developing at full size…');
     await new Promise((resolve) => {
@@ -1309,7 +1280,7 @@ export function setupStudio({
     const params = Object.fromEntries(canvas.paramsOf(name).map((d) => [d.name, d.value]));
     return {
       tool: name, seed: randomSeed(), inks: inks.length >= 2 ? inks : toolLook(name).inks, dials: params,
-      finish: FINISHES[canvas.finish] ? canvas.finish : 'none', grain: canvas.grain ? 0.18 : 0,
+      finish: FINISHES[canvas.finish] ? canvas.finish : 'none', grain: canvas.grain ? 0.3 : 0,
       mat: MATS[canvas.mat] ? canvas.mat : 'none', ground: GROUNDS[canvas.ground] ? canvas.ground : 'none', ratio: null, full: true,
     };
   }
@@ -1366,7 +1337,7 @@ export function setupStudio({
       dials: { ...s.params, ...colourwayDials(s.palette, s.scene) },
       kit: s.kit,
       finish: FINISHES[s.finish] ? s.finish : 'none',
-      grain: s.grain ? 0.18 : 0,
+      grain: s.grain ? 0.3 : 0,
       mat: MATS[s.mat] ? s.mat : 'none',
       ground: GROUNDS[s.ground] ? s.ground : 'none',
       full: true,
