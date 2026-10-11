@@ -19,7 +19,7 @@ import {
   GROUNDS, GROUND_ORDER, prepareGround,
   Sonifier, makeKit, previewScene, animateScene, playScene,
   inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, seedParams, defaultParams, choicesOf, isViolet,
-  workSettings, dialName, canonicalDials,
+  workSettings, dialName, canonicalDials, colourwayDials,
 } from '../src/index.js';
 import { lightnessOf, parseColor } from '../src/visual/color.js';
 import { accentFor } from './shell.js';
@@ -1361,7 +1361,9 @@ export function setupStudio({
       tool: s.scene,
       seed: 1 + (hashOf(name) % 99999),
       inks: inksOfPalette(s.palette).map(hex).filter((c) => !isViolet(c)),
-      dials: s.params,
+      // The bench draws in inks, not in a named palette, so a work hung in a
+      // colourway brings it as the dial that names it (palettes.js, print.dials).
+      dials: { ...s.params, ...colourwayDials(s.palette, s.scene) },
       kit: s.kit,
       finish: FINISHES[s.finish] ? s.finish : 'none',
       grain: s.grain ? 0.18 : 0,

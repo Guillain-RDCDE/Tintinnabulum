@@ -1691,6 +1691,129 @@ export const PALETTES = {
 
 };
 
+// --- colourways: the prints' own colours, as palettes ---------------------
+//
+// Four scenes were made from prints that came in colourways -- the tilted
+// floors and boards, the specimen sheets of modular glyphs, the patch of a
+// planet's rings, the screentone boards -- and each kept its colourways in a
+// table of its own, chosen by a dial, out of reach of everything else that
+// knows about colour: the palette picker, the exhibition's wardrobe, a work's
+// `palette`. They are palettes now.
+//
+// A colourway palette is the palette its works were hung on (`on`), with the
+// colourway itself carried as `colors.print`: the scene it belongs to, the
+// position its old dial gave it (`dials`), and the colours that scene draws
+// with. Every role is the `on` palette's, so the mat, the paper, the label
+// and any other scene wear exactly what they wore before; the scene the print
+// belongs to reads `print` and draws the colourway. The old dials still work:
+// `colours: 1` on a tilted floor is the Harbour palette's print, wherever it
+// is hung. See colourwayOf.
+const TILT_JOINT = '#ffffff';
+const GLYPH_DARK = '#1f2120';
+const GLYPH_LIGHT = '#ebe2d0';
+const COLOURWAYS = [
+  // The tilted floors and boards (scenes/tilted.js), on daylight.
+  ['tilted-harbour', 'Harbour', 'daylight', 'Orange, vermilion, steel blue and navy, cut with white joints: a colourway of the tilted floors.', { scene: 'tilted', name: 'harbour', dials: { colours: 1 }, inks: ['#fa831e', '#e14d2a', '#3e6d9c', '#021152'], joint: TILT_JOINT }],
+  ['tilted-sunday', 'Sunday', 'daylight', 'Cream, saffron and two blues: a colourway of the tilted floors.', { scene: 'tilted', name: 'sunday', dials: { colours: 2 }, inks: ['#fce5b4', '#fca502', '#204790', '#3a5ba0'], joint: TILT_JOINT }],
+  ['tilted-primary', 'Primary', 'daylight', 'Blue, yellow, red and white: a colourway of the tilted floors.', { scene: 'tilted', name: 'primary', dials: { colours: 3 }, inks: ['#225095', '#f9c803', '#dc0302', '#fcfcfc'], joint: TILT_JOINT }],
+  ['tilted-carmine', 'Carmine', 'daylight', 'Carmine, orange, apricot and navy: a colourway of the tilted floors.', { scene: 'tilted', name: 'carmine', dials: { colours: 4 }, inks: ['#c70239', '#f37121', '#fcbd69', '#111d5e'], joint: TILT_JOINT }],
+  ['tilted-petrol', 'Petrol', 'ironwork', 'Three petrol blues and a sand: a colourway of the tilted floors.', { scene: 'tilted', name: 'petrol', dials: { colours: 5 }, inks: ['#042839', '#074663', '#06324a', '#ebb264'], joint: TILT_JOINT }],
+  ['tilted-lagoon', 'Lagoon', 'daylight', 'Coral, teal and two pale blues: a colourway of the tilted floors.', { scene: 'tilted', name: 'lagoon', dials: { colours: 6 }, inks: ['#eb6440', '#497174', '#d6e4e5', '#eff5f5'], joint: TILT_JOINT }],
+  ['tilted-graphite', 'Graphite', 'daylight', 'Black, three greys and white: a colourway of the tilted floors.', { scene: 'tilted', name: 'graphite', dials: { colours: 7 }, inks: ['#020202', '#313131', '#4d4d4d', '#b3b3b3', '#fcfcfc'], joint: TILT_JOINT }],
+  // The specimen sheets of modular glyphs (scenes/graphic.js, glyphs).
+  ['glyphs-steel', 'Steel specimen', 'ironwork', 'Steel blue on black: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'steel', dials: { colours: 1 }, ground: GLYPH_DARK, colours: ['#206682'] }],
+  ['glyphs-teal', 'Teal specimen', 'ironwork', 'Teal on black: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'teal', dials: { colours: 2 }, ground: GLYPH_DARK, colours: ['#216768'] }],
+  ['glyphs-coral', 'Coral specimen', 'ironwork', 'Coral on black: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'coral', dials: { colours: 3 }, ground: GLYPH_DARK, colours: ['#e95140'] }],
+  ['glyphs-signal', 'Signal specimen', 'ironwork', 'Red and pink on black: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'signal', dials: { colours: 4 }, ground: GLYPH_DARK, colours: ['#e53225', '#f2aacc'] }],
+  ['glyphs-carnival', 'Carnival specimen', 'ironwork', 'Six colours on black: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'carnival', dials: { colours: 5 }, ground: GLYPH_DARK, colours: ['#e53224', '#f0f500', '#6380b2', '#9cc4a1', '#fac310', '#bbbcdc'] }],
+  ['glyphs-bone', 'Bone specimen', 'ironwork', 'Cream alone on black: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'bone', dials: { colours: 6 }, ground: GLYPH_DARK, colours: [] }],
+  ['glyphs-cobalt', 'Cobalt specimen', 'linen', 'Cobalt on cream: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'cobalt', dials: { colours: 7 }, ground: GLYPH_LIGHT, colours: ['#00599c'] }],
+  ['glyphs-mint', 'Mint specimen', 'linen', 'Mint on cream: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'mint', dials: { colours: 8 }, ground: GLYPH_LIGHT, colours: ['#9cc5a1'] }],
+  ['glyphs-lemon', 'Lemon specimen', 'linen', 'Lemon on cream: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'lemon', dials: { colours: 9 }, ground: GLYPH_LIGHT, colours: ['#f0f500'] }],
+  ['glyphs-gold', 'Gold specimen', 'linen', 'Gold and blue on cream: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'gold', dials: { colours: 10 }, ground: GLYPH_LIGHT, colours: ['#fac311', '#41699c'] }],
+  ['glyphs-holly', 'Holly specimen', 'linen', 'Two reds and a green on cream: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'holly', dials: { colours: 11 }, ground: GLYPH_LIGHT, colours: ['#c83818', '#509066', '#ec1c24'] }],
+  ['glyphs-pastel', 'Pastel specimen', 'linen', 'Four pastels on cream: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'pastel', dials: { colours: 12 }, ground: GLYPH_LIGHT, colours: ['#9cc4a1', '#f2aacc', '#6380b2', '#bbbcdc'] }],
+  ['glyphs-flamingo', 'Flamingo specimen', 'linen', 'Red, orange and amber on pink: a colourway of the glyph specimens.', { scene: 'glyphs', name: 'flamingo', dials: { colours: 13 }, ground: '#f2aacc', colours: ['#fe1c1c', '#f95a22', '#f8aa1f'] }],
+  // The patch of a planet's rings (scenes/rings.js).
+  ['rings-saturn', 'Saturn', 'coal', 'Cream and ochre ice on black: the rings as the eye would see them.', { scene: 'rings', name: 'saturn', dials: { colours: 1 }, ground: '#07080b', ice: ['#efe4cf', '#cdb18b', '#f8f1e4'], stains: ['#e0a458', '#8fb8de', '#d1495b', '#f2d0a4'], bounce: '#ffd25e', hot: ['#4a3f33', '#c98f4e', '#ffe3a1'] }],
+  ['rings-ultraviolet', 'Ultraviolet', 'coal', 'The ultraviolet the Cassini spectrograph saw: dirty ice red, clean ice turquoise.', { scene: 'rings', name: 'ultraviolet', dials: { colours: 2 }, ground: '#03060c', ice: ['#46c4c4', '#2b8ea6', '#a2e6df'], stains: ['#e4572e', '#ff9f68', '#c03a2b', '#f3d9b1'], bounce: '#ffffff', hot: ['#123744', '#d1495b', '#ffd6a5'] }],
+  ['rings-moonlit', 'Moonlit', 'abyss', 'White ice under a blue night.', { scene: 'rings', name: 'moonlit', dials: { colours: 3 }, ground: '#0a1322', ice: ['#eef3f8', '#b9cde0', '#8ea9c3'], stains: ['#7fd1ff', '#ffd166', '#ef476f', '#06d6a0'], bounce: '#ffd166', hot: ['#1d3557', '#7fd1ff', '#ffffff'] }],
+  ['rings-ember', 'Embers', 'coal', 'Dark grains, glowing where they are hit.', { scene: 'rings', name: 'ember', dials: { colours: 4 }, ground: '#0c0706', ice: ['#5a3a2e', '#7b4f39', '#3f2a23'], stains: ['#ff7b00', '#ffb000', '#ff3c38', '#ffe3a3'], bounce: '#ffcf70', hot: ['#3f2a23', '#ff6a00', '#fff1c1'] }],
+  ['rings-graphite', 'Graphite spheres', 'daylight', 'Graphite spheres on paper.', { scene: 'rings', name: 'graphite', dials: { colours: 5 }, ground: '#efe9dc', ice: ['#26262a', '#45454a', '#66666b'], stains: ['#c0392b', '#2c5d8f', '#d68c1e', '#1e6f5c'], bounce: '#c0392b', hot: ['#8a8a8f', '#2c5d8f', '#c0392b'] }],
+  ['rings-cyanotype', 'Cyanotype', 'abyss', 'White on the blue of a sun print.', { scene: 'rings', name: 'cyanotype', dials: { colours: 6 }, ground: '#173f73', ice: ['#f1f4f8', '#cfdcec', '#a9c0dc'], stains: ['#ffffff', '#9fd3ff', '#ffe9a8', '#ffb4a2'], bounce: '#ffffff', hot: ['#5f86b8', '#dbe8f6', '#ffffff'] }],
+  // The screentone boards (scenes/graphic.js, screentone): the tints the
+  // screens were sold in and the paper of the square, on the board they were
+  // pasted on. Every tint set and every square is in one of these.
+  ['screens-teal-yellow', 'Teal screens, yellow square', 'iris', 'Teal screens and a yellow square: a screentone board.', { scene: 'screentone', dials: { tones: 1, square: 1 }, toneName: 'teal', tones: ['#2f6f7c'], squareName: 'yellow', square: '#f0c646' }],
+  ['screens-trio-blue', 'Three tints, blue square', 'lichen', 'Yellow, teal and cyan screens and a blue square: a screentone board.', { scene: 'screentone', dials: { tones: 2, square: 2 }, toneName: 'yellow, teal and cyan', tones: ['#e8c45a', '#2f6f7c', '#28abdb'], squareName: 'blue', square: '#057da1' }],
+  ['screens-cyan-coral', 'Cyan and yellow, coral square', 'iris', 'Cyan and yellow screens and a coral square: a screentone board.', { scene: 'screentone', dials: { tones: 3, square: 3 }, toneName: 'cyan and yellow', tones: ['#28abdb', '#e8c45a'], squareName: 'coral', square: '#f4687a' }],
+  ['screens-cyan-coral-lichen', 'Cyan and yellow, coral square, on lichen', 'lichen', 'Cyan and yellow screens and a coral square on a lichen board.', { scene: 'screentone', dials: { tones: 3, square: 3 }, toneName: 'cyan and yellow', tones: ['#28abdb', '#e8c45a'], squareName: 'coral', square: '#f4687a' }],
+  ['screens-yellow-magenta', 'Yellow screens, magenta square', 'bone', 'Yellow screens and a magenta square: a screentone board.', { scene: 'screentone', dials: { tones: 4, square: 4 }, toneName: 'yellow', tones: ['#e8c45a'], squareName: 'magenta', square: '#c96fa8' }],
+  ['screens-yellow-pink', 'Yellow screens, pink square', 'newsprint', 'Yellow screens and a pink square: a screentone board.', { scene: 'screentone', dials: { tones: 4, square: 5 }, toneName: 'yellow', tones: ['#e8c45a'], squareName: 'pink', square: '#f9356a' }],
+  ['screens-pink-blue', 'Pink screens, blue square', 'pigeon', 'Pink screens and a blue square: a screentone board.', { scene: 'screentone', dials: { tones: 5, square: 2 }, toneName: 'pink', tones: ['#e8687a'], squareName: 'blue', square: '#057da1' }],
+];
+for (const [key, label, on, note, print] of COLOURWAYS) {
+  PALETTES[key] = {
+    label,
+    family: PALETTES[on].family,
+    note,
+    on,
+    colors: { ...PALETTES[on].colors, print: Object.freeze({ ...print, dials: Object.freeze({ ...print.dials }) }) },
+  };
+}
+
+/** Whether a palette is a scene's colourway rather than a palette of its own making. */
+export function isColourway(name) {
+  return Boolean(PALETTES[name] && PALETTES[name].colors.print);
+}
+
+/**
+ * The dials that name a palette's colourway on its own scene -- `{ colours: 1 }`
+ * for the Harbour floor -- or nothing: for a picture that keeps its colours as
+ * dials rather than as a palette name, as Create's bench does.
+ */
+export function colourwayDials(name, scene) {
+  const p = PALETTES[name] && PALETTES[name].colors.print;
+  return p && p.scene === scene ? { ...p.dials } : {};
+}
+
+/**
+ * A scene's colourways for one of its old dials, by the position the dial
+ * gave them: index 0 is the palette's own (null), and every other index the
+ * `print` of the colourway palette that dial position names. A position two
+ * palettes share (the same screens on two boards) is the first one's.
+ *
+ * @param {string} scene
+ * @param {string} dial
+ * @returns {Array<?object>}
+ */
+export function colourwaysOf(scene, dial) {
+  const out = [null];
+  for (const entry of Object.values(PALETTES)) {
+    const p = entry.colors.print;
+    if (!p || p.scene !== scene || p.dials[dial] === undefined) continue;
+    if (!out[p.dials[dial]]) out[p.dials[dial]] = p;
+  }
+  return out;
+}
+
+/**
+ * The colourway a scene draws in: the one its dial names when the dial is
+ * turned, else the palette's own print when it belongs to this scene, else
+ * none (the scene draws in the palette's roles).
+ *
+ * @param {object} palette   resolved colours, as a scene's api.palette
+ * @param {string} scene
+ * @param {Array<?object>} ways   colourwaysOf(scene, dial)
+ * @param {number} turned    the dial's value
+ */
+export function colourwayOf(palette, scene, ways, turned) {
+  const n = Math.round(Number(turned) || 0);
+  if (n > 0 && ways[Math.min(n, ways.length - 1)]) return ways[Math.min(n, ways.length - 1)];
+  const own = palette && palette.print;
+  return own && own.scene === scene ? own : null;
+}
+
 export const DEFAULT_PALETTE_NAME = 'marine';
 
 /** Accepts a palette name or a colours object; always returns a full set. */
@@ -1738,8 +1861,13 @@ export function familyOf(name) {
   return (entry && entry.family) || 'Neutral';
 }
 
-/** The few colours a picker needs to show for a palette, ground first. */
+/** The few colours a picker needs to show for a palette, ground first: a colourway shows its own. */
 export function swatchOf(name) {
   const c = resolvePalette(name);
+  const p = c.print;
+  if (p) {
+    const dots = [...(p.inks || p.colours || p.stains || p.tones || []), p.square].filter(Boolean).slice(0, 4);
+    return { background: p.ground || c.background, dots: dots.length ? dots : [GLYPH_LIGHT] };
+  }
   return { background: c.background, dots: [c.user, c.anon, c.bot, c.alert] };
 }

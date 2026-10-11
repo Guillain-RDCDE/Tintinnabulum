@@ -44,9 +44,10 @@
 
 import { lightnessOf, lighten, mixColors } from '../color.js';
 import { scratch } from './paint.js';
-import { TAU, sizeOf, kick, tempo, ambient, clampTo } from './shared.js';
+import { TAU, sizeOf, kick, tempo, ambient } from './shared.js';
 import { cap } from './budget.js';
 import { sheets } from './sheets.js';
+import { colourwaysOf, colourwayOf } from '../palettes.js';
 
 // --- the box ---------------------------------------------------------------------------
 
@@ -71,21 +72,11 @@ const VMAX = 45;
  * Colourways. Each has a ground, three ices, four stains for the kinds of
  * event, a colour for a bounce, and a ramp for a grain that has been heated.
  */
-const WAYS = [
-  null,
-  // The rings as the eye would see them: cream and ochre ice on black.
-  { name: 'saturn', ground: '#07080b', ice: ['#efe4cf', '#cdb18b', '#f8f1e4'], stains: ['#e0a458', '#8fb8de', '#d1495b', '#f2d0a4'], bounce: '#ffd25e', hot: ['#4a3f33', '#c98f4e', '#ffe3a1'] },
-  // The ultraviolet the Cassini spectrograph saw: dirty ice red, clean ice turquoise.
-  { name: 'ultraviolet', ground: '#03060c', ice: ['#46c4c4', '#2b8ea6', '#a2e6df'], stains: ['#e4572e', '#ff9f68', '#c03a2b', '#f3d9b1'], bounce: '#ffffff', hot: ['#123744', '#d1495b', '#ffd6a5'] },
-  // White ice under a blue night.
-  { name: 'moonlit', ground: '#0a1322', ice: ['#eef3f8', '#b9cde0', '#8ea9c3'], stains: ['#7fd1ff', '#ffd166', '#ef476f', '#06d6a0'], bounce: '#ffd166', hot: ['#1d3557', '#7fd1ff', '#ffffff'] },
-  // Dark grains, glowing where they are hit.
-  { name: 'ember', ground: '#0c0706', ice: ['#5a3a2e', '#7b4f39', '#3f2a23'], stains: ['#ff7b00', '#ffb000', '#ff3c38', '#ffe3a3'], bounce: '#ffcf70', hot: ['#3f2a23', '#ff6a00', '#fff1c1'] },
-  // Graphite spheres on paper.
-  { name: 'graphite', ground: '#efe9dc', ice: ['#26262a', '#45454a', '#66666b'], stains: ['#c0392b', '#2c5d8f', '#d68c1e', '#1e6f5c'], bounce: '#c0392b', hot: ['#8a8a8f', '#2c5d8f', '#c0392b'] },
-  // White on the blue of a sun print.
-  { name: 'cyanotype', ground: '#173f73', ice: ['#f1f4f8', '#cfdcec', '#a9c0dc'], stains: ['#ffffff', '#9fd3ff', '#ffe9a8', '#ffb4a2'], bounce: '#ffffff', hot: ['#5f86b8', '#dbe8f6', '#ffffff'] },
-];
+// They are palettes now (palettes.js: rings-saturn, rings-ultraviolet,
+// rings-moonlit, rings-ember, rings-graphite, rings-cyanotype), each carrying
+// its colourway as `print`; the first position of the old `colours` dial is
+// the palette's own.
+const WAYS = colourwaysOf('rings', 'colours');
 const WAY_NAMES = WAYS.map((w) => (w ? w.name : 'palette'));
 const KINDS = ['user', 'anon', 'bot', 'alert'];
 const HEAT_STEPS = 12;
@@ -93,7 +84,7 @@ const STAIN_STEPS = 5;
 
 /** The colourway, the palette's own when the first is chosen. */
 function wayOf(api) {
-  const way = WAYS[clampTo(Math.round(api.param('colours')), 0, WAYS.length - 1)];
+  const way = colourwayOf(api.palette, 'rings', WAYS, api.param('colours'));
   if (way) return way;
   const pal = api.palette;
   const ice = pal.default || '#ffffff';

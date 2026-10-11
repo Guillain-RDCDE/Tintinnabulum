@@ -642,6 +642,20 @@ sharing a luminance band. *Monochrome* is the deliberate exception, held to a
 lightness floor instead, since its purpose is to remain readable without colour
 vision.
 
+#### Colourways
+
+Four scenes were made from prints that came in colourways -- the tilted
+floors and boards, the glyph specimens, the planet's rings, the screentone
+boards -- and those colourways are palettes too (`tilted-harbour`,
+`glyphs-steel`, `rings-saturn`, `screens-teal-yellow` and the rest). A
+colourway palette is the palette its works were hung on (`on`) in every role,
+so a mat, a sheet of paper or a label wears what it always wore, and carries
+the colourway as `colors.print`, which only its own scene draws. The old dials
+still name them -- `colours: 1` on a tilted floor is Harbour wherever it hangs
+-- and a picture kept as dials gets its dial back from `colourwayDials()`. In
+an exhibition a work hung in a colourway wears only its own, and no other work
+is dressed in one.
+
 ### Letting it change on its own
 
 Every palette but the one chosen is a palette nobody sees, because choosing one

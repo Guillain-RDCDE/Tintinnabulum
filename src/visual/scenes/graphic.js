@@ -13,34 +13,27 @@ import { noise2 } from './noise.js';
 import { toRgb, scratch, packRgba } from './paint.js';
 import { mixColors, parseColor, rgbToOklab, toOklch, fromOklch, toCss, lightnessOf } from '../color.js';
 import { TAU, sizeOf, ambient, clampTo, papers } from './shared.js';
+import { colourwaysOf, colourwayOf } from '../palettes.js';
 
-/** The tints the screens came in, as the sheets were sold; the first is the palette's own. */
-const TONE_SETS = [null, ['#2f6f7c'], ['#e8c45a', '#2f6f7c', '#28abdb'], ['#28abdb', '#e8c45a'], ['#e8c45a'], ['#e8687a']];
-const TONE_NAMES = ['palette', 'teal', 'yellow, teal and cyan', 'cyan and yellow', 'yellow', 'pink'];
-/** The papers the square was cut from; the first is the palette's own. */
-const SQUARES = [null, '#f0c646', '#057da1', '#f4687a', '#c96fa8', '#f9356a'];
-const SQUARE_NAMES = ['palette', 'yellow', 'blue', 'coral', 'magenta', 'pink'];
+// The tints the screens came in, as the sheets were sold, and the papers the
+// square was cut from: palettes now (palettes.js, screens-teal-yellow and the
+// rest), each board carrying its tints and its square as `print`. The first
+// position of each old dial is the palette's own.
+const TONE_WAYS = colourwaysOf('screentone', 'tones');
+const TONE_NAMES = TONE_WAYS.map((w) => (w ? w.toneName : 'palette'));
+const SQUARE_WAYS = colourwaysOf('screentone', 'square');
+const SQUARE_NAMES = SQUARE_WAYS.map((w) => (w ? w.squareName : 'palette'));
 
 /** The specimen's two neutrals: the black and the cream every sheet is printed with. */
 const GLYPH_DARK = '#1f2120';
 const GLYPH_LIGHT = '#ebe2d0';
-/** The colourways the specimen sheets were printed in: a ground and the colours on it; the first is the palette's own. */
-const GLYPH_WAYS = [
-  null,
-  { name: 'steel', ground: GLYPH_DARK, colours: ['#206682'] },
-  { name: 'teal', ground: GLYPH_DARK, colours: ['#216768'] },
-  { name: 'coral', ground: GLYPH_DARK, colours: ['#e95140'] },
-  { name: 'signal', ground: GLYPH_DARK, colours: ['#e53225', '#f2aacc'] },
-  { name: 'carnival', ground: GLYPH_DARK, colours: ['#e53224', '#f0f500', '#6380b2', '#9cc4a1', '#fac310', '#bbbcdc'] },
-  { name: 'bone', ground: GLYPH_DARK, colours: [] },
-  { name: 'cobalt', ground: GLYPH_LIGHT, colours: ['#00599c'] },
-  { name: 'mint', ground: GLYPH_LIGHT, colours: ['#9cc5a1'] },
-  { name: 'lemon', ground: GLYPH_LIGHT, colours: ['#f0f500'] },
-  { name: 'gold', ground: GLYPH_LIGHT, colours: ['#fac311', '#41699c'] },
-  { name: 'holly', ground: GLYPH_LIGHT, colours: ['#c83818', '#509066', '#ec1c24'] },
-  { name: 'pastel', ground: GLYPH_LIGHT, colours: ['#9cc4a1', '#f2aacc', '#6380b2', '#bbbcdc'] },
-  { name: 'flamingo', ground: '#f2aacc', colours: ['#fe1c1c', '#f95a22', '#f8aa1f'] },
-];
+/**
+ * The colourways the specimen sheets were printed in, a ground and the
+ * colours on it: palettes now (palettes.js, glyphs-steel and the rest), each
+ * carrying them as `print`. The first position of the old dial is the
+ * palette's own.
+ */
+const GLYPH_WAYS = colourwaysOf('glyphs', 'colours');
 const GLYPH_WAY_NAMES = GLYPH_WAYS.map((w) => (w ? w.name : 'palette'));
 const GLYPH_GRIDS = [8, 12, 20];
 
@@ -923,7 +916,8 @@ function layScreens(api) {
   s.ink = paper.pale ? '#111111' : '#f2eee6';
   // White screens stay white on any ground: they were sheets of white tone.
   s.chalk = '#fbfaf6';
-  s.tones = TONE_SETS[clampTo(Math.round(api.param('tones')), 0, TONE_SETS.length - 1)];
+  const board = colourwayOf(api.palette, 'screentone', TONE_WAYS, api.param('tones'));
+  s.tones = board ? board.tones : null;
   s.cap = Math.round(api.param('count'));
   s.patches = [];
   const kinds = boardKinds(s.cap);
@@ -1046,12 +1040,12 @@ function drawScreens(ctx, api) {
   }
   s.patches = s.patches.filter((sw) => !peeled(sw) || api.now - sw.leftAt < PEEL);
   // The square, over everything.
-  const pick = clampTo(Math.round(api.param('square')), 0, SQUARES.length - 1);
+  const paper = colourwayOf(api.palette, 'screentone', SQUARE_WAYS, api.param('square'));
   const sq = s.square;
   ctx.save();
   ctx.translate(sq.x, sq.y);
   ctx.rotate((api.param('turn') * Math.PI) / 180);
-  ctx.fillStyle = SQUARES[pick] || api.palette.default;
+  ctx.fillStyle = (paper && paper.square) || api.palette.default;
   ctx.fillRect(-sq.side / 2, -sq.side / 2, sq.side, sq.side);
   ctx.restore();
 }
@@ -1074,7 +1068,7 @@ function weighted(pairs) {
 
 /** The press: the ground, the neutral opposite it, and the colours. */
 function pressOf(api) {
-  const way = GLYPH_WAYS[clampTo(Math.round(api.param('colours')), 0, GLYPH_WAYS.length - 1)];
+  const way = colourwayOf(api.palette, 'glyphs', GLYPH_WAYS, api.param('colours'));
   if (way) {
     const dark = lightnessOf(way.ground) < 0.4;
     return { ground: way.ground, neutral: dark ? GLYPH_LIGHT : GLYPH_DARK, colours: way.colours };

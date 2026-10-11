@@ -114,6 +114,31 @@ for (const [key, w] of Object.entries(WORKS)) {
 }
 ok('every work sets real dials within their ranges', wrong.length === 0, wrong.join(', ') || `${Object.keys(WORKS).length} works`);
 
+// --- colourways are palettes --------------------------------------------------------------
+{
+  const { PALETTES, colourwaysOf, colourwayOf, colourwayDials } = await import('../src/index.js');
+  const ways = Object.entries(PALETTES).filter(([, e]) => e.colors.print);
+  // Every old position of every colourway dial still names a colourway, so a
+  // work, an address or a stored dial that says colours: 3 draws what it did.
+  const OLD = { tilted: { colours: 7 }, glyphs: { colours: 13 }, rings: { colours: 6 }, screentone: { tones: 5, square: 5 } };
+  const missing = [];
+  for (const [scene, dials] of Object.entries(OLD)) {
+    for (const [dial, most] of Object.entries(dials)) {
+      const list = colourwaysOf(scene, dial);
+      for (let n = 1; n <= most; n++) if (!list[n]) missing.push(`${scene}.${dial}=${n}`);
+      if (SCENES[scene].params[dial].options.length !== most + 1) missing.push(`${scene}.${dial} options`);
+    }
+  }
+  ok('every old colourway position is a palette', missing.length === 0, missing.join(', ') || `${ways.length} colourway palettes`);
+  ok('each colourway palette is its own palette in every role, plus its print', ways.every(([, e]) => PALETTES[e.on] && Object.keys(PALETTES[e.on].colors).every((k) => PALETTES[e.on].colors[k] === e.colors[k])));
+  const harbour = PALETTES['tilted-harbour'].colors;
+  ok('the old dial still names it, and the palette alone draws it', colourwayOf({}, 'tilted', colourwaysOf('tilted', 'colours'), 1) === harbour.print &&
+    colourwayOf(harbour, 'tilted', colourwaysOf('tilted', 'colours'), 0) === harbour.print && colourwayOf(harbour, 'glyphs', colourwaysOf('glyphs', 'colours'), 0) === null);
+  ok('a colourway gives back its dial for a picture kept as dials', colourwayDials('tilted-harbour', 'tilted').colours === 1 && Object.keys(colourwayDials('tilted-harbour', 'rings')).length === 0);
+  const turned = Object.entries(WORKS).filter(([, w]) => ['tilted', 'glyphs', 'rings', 'screentone'].includes(w.scene) && ['colours', 'tones', 'square'].some((k) => (w.dials || {})[k]));
+  ok('no work names a colourway by its dial any more', turned.length === 0, turned.map(([k]) => k).join(', '));
+}
+
 // The pages that describe the catalogue do not count it: a number written in
 // prose is out of date the day a scene is added, and both of the last two
 // were. The registry is the count.

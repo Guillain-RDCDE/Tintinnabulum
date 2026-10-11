@@ -208,7 +208,19 @@ const ok = (name, cond, extra = '') => {
   ok('the exhibition hangs every choice exactly as the work has it', moved.length === 0, moved.slice(0, 6).join(', ') || `${compared} dials`);
   ok('and varies every other dial around the work\'s own value', strayed.length === 0, strayed.slice(0, 6).join(', ') || `${compared} dials`);
   const harbour = Array.from({ length: 40 }, (_, i) => exhibitedDials('tiltharbour', i * 211 + 1, SCENES));
-  ok('Harbour floor keeps its colours in every dress', harbour.every((d) => d.colours === 1 && d.figure === 0));
+  ok('Harbour floor keeps its sheet in every dress', harbour.every((d) => d.figure === 0 && d.colours === 0));
+  // Its colours are its palette now, a colourway, and the exhibition dresses
+  // it in nothing else; nor does it lend the colourway to any other work.
+  const ex = exhibition({ seed: 7 });
+  const wearing = [];
+  for (let m = 0; m < 4000; m += 2) {
+    const at = exhibitionAt(ex, new Date(Date.UTC(2026, 3, 1) + m * 60000));
+    if (!at) continue;
+    const own = WORKS[at.work].palette;
+    const colourway = Boolean(PALETTES[own].colors.print);
+    if (colourway ? at.palette !== own : Boolean(PALETTES[at.palette].colors.print)) wearing.push(`${at.work} in ${at.palette}`);
+  }
+  ok('a work in a colourway wears only its own, and no other work wears one', wearing.length === 0, wearing.slice(0, 5).join(', ') || 'all as hung');
   const tiles = harbour.map((d) => d.tiles);
   ok('and its tiles stay near seven', tiles.every((t) => t >= 4 && t <= 25) && tiles.filter((t) => t <= 12).length > tiles.length / 2, tiles.join(' '));
   // Spread 0 is no variation at all: the work as it is.

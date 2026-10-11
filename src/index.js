@@ -87,6 +87,10 @@ export {
   groundBandOf,
   PALETTE_FAMILIES,
   familyOf,
+  isColourway,
+  colourwaysOf,
+  colourwayOf,
+  colourwayDials,
 } from './visual/palettes.js';
 
 export {

@@ -22,28 +22,23 @@
 import { scratch } from './paint.js';
 import { sizeOf, ambient, clampTo } from './shared.js';
 import { sheets } from './sheets.js';
+import { colourwaysOf, colourwayOf } from '../palettes.js';
 
-/** The colourways the prints were made in; the first is the palette's own. */
-const WAYS = [
-  null,
-  { name: 'harbour', inks: ['#fa831e', '#e14d2a', '#3e6d9c', '#021152'] },
-  { name: 'sunday', inks: ['#fce5b4', '#fca502', '#204790', '#3a5ba0'] },
-  { name: 'primary', inks: ['#225095', '#f9c803', '#dc0302', '#fcfcfc'] },
-  { name: 'carmine', inks: ['#c70239', '#f37121', '#fcbd69', '#111d5e'] },
-  { name: 'petrol', inks: ['#042839', '#074663', '#06324a', '#ebb264'] },
-  { name: 'lagoon', inks: ['#eb6440', '#497174', '#d6e4e5', '#eff5f5'] },
-  { name: 'graphite', inks: ['#020202', '#313131', '#4d4d4d', '#b3b3b3', '#fcfcfc'] },
-];
+/**
+ * The colourways the prints were made in: palettes now (palettes.js,
+ * tilted-harbour and the rest), each carrying its inks as `print`. The first
+ * position of the old `colours` dial is the palette's own.
+ */
+const WAYS = colourwaysOf('tilted', 'colours');
 const WAY_NAMES = WAYS.map((w) => (w ? w.name : 'palette'));
-const JOINT = '#ffffff';
 const TURN = 300;
 
 const between = (a, b) => a + Math.random() * (b - a);
 
 /** The inks, and the colour the joints are cut in. */
 function inksOf(api) {
-  const way = WAYS[clampTo(Math.round(api.param('colours')), 0, WAYS.length - 1)];
-  if (way) return { inks: way.inks, joint: JOINT };
+  const way = colourwayOf(api.palette, 'tilted', WAYS, api.param('colours'));
+  if (way) return { inks: way.inks, joint: way.joint };
   const pal = api.palette;
   return { inks: [pal.user, pal.anon, pal.bot, pal.alert].filter(Boolean), joint: pal.background };
 }

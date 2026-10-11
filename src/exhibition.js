@@ -17,7 +17,7 @@
 
 import { WORKS, workSettings } from './works.js';
 import { variedParams } from './visual/inks.js';
-import { PALETTES, groundBandOf } from './visual/palettes.js';
+import { PALETTES, groundBandOf, isColourway } from './visual/palettes.js';
 import { KITS } from './audio/kits.js';
 
 /** A small seeded generator: the same number always gives the same draw. */
@@ -55,12 +55,18 @@ export function shuffled(list, seed) {
  * The palettes a work may wear: those on the same ground as its own, so a
  * night work stays a night work and a paper one stays on paper. The work's
  * own palette is in the set, so one round in a few it comes as it was hung.
+ *
+ * A work hung in a colourway -- a print's own colours, a palette now (see
+ * palettes.js) -- wears nothing else: the colours are the work, and in any
+ * other palette it would be another picture. And no other work is dressed in
+ * a colourway, whose roles are only the palette it was printed on.
  */
 export function wardrobeOf(workKey, palettes = PALETTES) {
   const w = WORKS[workKey];
   if (!w) return [];
+  if (isColourway(w.palette)) return [w.palette];
   const band = groundBandOf(w.palette);
-  return Object.keys(palettes).filter((p) => groundBandOf(p) === band);
+  return Object.keys(palettes).filter((p) => !isColourway(p) && groundBandOf(p) === band);
 }
 
 /**
