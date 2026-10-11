@@ -407,9 +407,11 @@ It is Canvas 2D rather than SVG because the original's one-DOM-node-plus-
 transition per circle does not survive a busy multi-language feed, and because
 D3 v3's API was removed in v4 — a migration was a rewrite either way.
 
-**Scenes.** The circles are the default picture, one of 114 scenes — 133
-pictures, counting the scenes that have several sheets — on eight shelves, from
-painting to night, water and pattern. Every one draws the same events and keeps
+**Scenes.** The circles are the default picture, one of more than a hundred
+scenes — more pictures still, counting the scenes that have several sheets —
+on a handful of shelves, from painting to night, water and pattern. The
+catalogue says how many there are today (`SCENE_NAMES`, `SCENE_SHELVES`); this
+page does not, so it cannot fall behind it. Every one draws the same events and keeps
 to one rule above all others: the picture follows the feed. A quiet second must
 change much less than a busy one. `npm run test:feed` measures that for every
 scene, sheet and work, and fails if any of them runs on by itself.

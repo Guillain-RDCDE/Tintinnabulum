@@ -66,4 +66,15 @@ for (const [key, w] of Object.entries(WORKS)) {
 }
 ok('every work sets real dials within their ranges', wrong.length === 0, wrong.join(', ') || `${Object.keys(WORKS).length} works`);
 
+// The pages that describe the catalogue do not count it: a number written in
+// prose is out of date the day a scene is added, and both of the last two
+// were. The registry is the count.
+const { readFileSync } = await import('node:fs');
+const counted = [];
+for (const page of ['README.md', 'docs/HOW-IT-WORKS.md', 'docs/REFERENCE.md']) {
+  const text = readFileSync(new URL('../' + page, import.meta.url), 'utf8');
+  for (const m of text.matchAll(/\b\d{2,}\s+(scenes|pictures|works)\b/g)) counted.push(`${page}: "${m[0]}"`);
+}
+ok('no page hard-codes how many scenes, pictures or works there are', counted.length === 0, counted.join(', ') || 'none');
+
 finish('dial checks');

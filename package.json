@@ -58,6 +58,5 @@
   },
   "devDependencies": {
     "playwright-core": "^1.63.0"
-  },
-  "sideEffects": false
+  }
 }

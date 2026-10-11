@@ -7,13 +7,16 @@
 // a megabyte and the offline guarantee while buying no capability at all.
 //
 //   {
-//     label, note, positional?, preview?,
-//     init?(api)          once per start, resize or palette change
+//     label, note, positional?, preview?, params?,
+//     init?(api)          once per start, resize, change of scene, change of a
+//                         `rebuild` dial, reset or clear -- not on a change of
+//                         palette, which a scene reads from api.palette each frame
 //     event?(p, api)      a particle was just born
 //     frame(ctx, api)     draw one frame
 //   }
 //
-// `api` carries { w, h, palette, particles, now, dt, shape, ringLife, scene }.
+// `api` carries { w, h, palette, particles, now, dt, shape, ringLife, scene,
+// buffers, depth, richness, darkGround, budget, sound, param(name), fill(ctx, p) }.
 // Every scene draws the same particle model, so hit-testing, lifetimes and the
 // event contract stay in one place; a scene only decides appearance.
 //
