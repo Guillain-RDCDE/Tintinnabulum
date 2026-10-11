@@ -31,7 +31,7 @@ import { parseColor, lightnessOf } from '../src/visual/color.js';
 import { parseShow, parseHours, showAt, isOpen, untilOpen, formatClock } from '../src/show.js';
 import {
   CanvasSink, PALETTES, WORKS, SCENES, Mapper, normalize, mediumOf, workSettings, drawQr,
-  FINISHES, GROUNDS, MATS, KITS, LIVING, Sonifier, variedParams,
+  FINISHES, GROUNDS, MATS, KITS, LIVING, Sonifier, exhibitedDials,
   exhibition, exhibitionAt, describeExhibition,
   replaySource, loadRecording, watchedSource,
   wikipedia, bitcoin, coinbase, earthquakes, bluesky, github, noaaAlerts, hackerNews, randomSource,
@@ -551,7 +551,7 @@ function hangDressed(at, { instant = false } = {}) {
   const w = WORKS[at.work];
   if (!w || !SCENES[w.scene]) return false;
   const s = workSettings(w, SCENES);
-  const dials = variedParams(SCENES[s.scene], at.variation, 1, s.params);
+  const dials = exhibitedDials(w, at.variation, SCENES);
   const dress = {
     scene: s.scene, palette: at.palette, finish: s.finish, ground: s.ground,
     mat: s.mat, grain: s.grain, living: s.living, pace: s.pace,

@@ -18,7 +18,7 @@ import {
   SCENES, SCENE_SHELVES, WORKS, KITS, PALETTES, PALETTE_FAMILIES, familyOf, FINISHES, FINISH_ORDER, MATS, MAT_ORDER,
   GROUNDS, GROUND_ORDER, prepareGround,
   Sonifier, makeKit, previewScene, animateScene, playScene,
-  inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, defaultParams, isViolet,
+  inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, seedParams, defaultParams, choicesOf, isViolet,
   workSettings,
 } from '../src/index.js';
 import { lightnessOf, parseColor } from '../src/visual/color.js';
@@ -148,7 +148,8 @@ export function setupStudio({
   function encode(s = state) {
     const q = new URLSearchParams();
     q.set('i', s.inks.map((c) => hex(c).slice(1)).join('-'));
-    const drawn = variedParams(SCENES[s.tool], s.seed);
+    // Against what the number alone gives, as every address ever written was.
+    const drawn = seedParams(SCENES[s.tool], s.seed);
     const moved = Object.entries(s.params).filter(([k, v]) => drawn[k] !== v).map(([k, v]) => `${k}:${v}`);
     if (moved.length) q.set('d', moved.join(','));
     if (s.finish !== 'none') q.set('f', s.finish);
@@ -429,7 +430,7 @@ export function setupStudio({
     const look = toolLook(r.tool);
     state.tool = r.tool;
     state.seed = r.seed || randomSeed();
-    state.params = { ...variedParams(scene, state.seed), ...r.dials };
+    state.params = { ...seedParams(scene, state.seed), ...r.dials };
     if (r.inks) state.inks = r.inks;
     else if (fresh || !state.inks.length) state.inks = look.inks.slice();
     if (r.full || fresh) {
@@ -991,8 +992,9 @@ export function setupStudio({
   function setSeed(seed, { fromHistory = false } = {}) {
     state.seed = clamp(Math.round(seed), 1, 999999);
     // The dials that choose a sheet stay where they are: a new variation of
-    // this picture, not a different picture.
-    state.params = variedParams(SCENES[state.tool], state.seed, 1, state.params);
+    // this picture, not a different picture. The others are drawn from the
+    // number alone, so a variation number is always the same picture.
+    state.params = variedParams(SCENES[state.tool], state.seed, 1, choicesOf(SCENES[state.tool], state.params));
     if (!fromHistory) {
       history = history.slice(0, place + 1);
       history.push(state.seed);
@@ -1026,7 +1028,7 @@ export function setupStudio({
 
   function shuffleDials() {
     if (!SCENES[state.tool].params) return;
-    state.params = variedParams(SCENES[state.tool], randomSeed(), 1.4, state.params);
+    state.params = variedParams(SCENES[state.tool], randomSeed(), 1.4, choicesOf(SCENES[state.tool], state.params));
     changed();
   }
 

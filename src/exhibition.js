@@ -15,7 +15,8 @@
 // where the exhibition is. Nothing here touches a browser; see
 // test/exhibition.test.mjs.
 
-import { WORKS } from './works.js';
+import { WORKS, workSettings } from './works.js';
+import { variedParams } from './visual/inks.js';
 import { PALETTES, groundBandOf } from './visual/palettes.js';
 import { KITS } from './audio/kits.js';
 
@@ -145,4 +146,23 @@ export function describeExhibition(ex) {
   const hours = round >= 60 ? `${(round / 60).toFixed(round % 60 ? 1 : 0)} hours` : `${round} minutes`;
   return `${n} works, ${ex.minutes} minutes each, a new palette and variation every time; one round takes ${hours}. ` +
     `${ex.kits.length} instruments, each held for ${ex.hold} works.`;
+}
+
+/**
+ * The dials a work hangs at in the exhibition: a variation of the work's own.
+ *
+ * Varied around the work's dials, not the scene's defaults, so a work keeps
+ * what makes it that work -- its colours, its tiles, its sheet -- and comes
+ * round each time a little different within that. A dial that is a choice is
+ * not varied at all.
+ *
+ * @param {string|object} work
+ * @param {number} variation   the number exhibitionAt drew
+ * @param {object} scenes      the scene registry
+ * @returns {?object} every dial of the work's scene
+ */
+export function exhibitedDials(work, variation, scenes) {
+  const s = workSettings(work, scenes);
+  if (!s || !scenes[s.scene]) return null;
+  return variedParams(scenes[s.scene], variation, 1, s.params);
 }

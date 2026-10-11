@@ -200,43 +200,100 @@ export function defaultParams(scene) {
 }
 
 /**
- * A scene's dials, varied from a number.
+ * Whether a variation may move this dial.
  *
- * Each dial moves from where the scene ships towards one end or the other, by
- * a draw that peaks at no movement, and never more than three quarters of the
- * way. The first version spread the draw over the whole range and clamped:
- * a dial shipped near its minimum landed on the minimum a third of the time,
- * which is a whorl with no twist and a ring with no rays -- the dial switched
- * off rather than varied. Values are snapped to the dial's own step, so what
- * is shown is exactly what is drawn.
+ * A dial with named `options` is a choice -- which sheet, which layout, which
+ * set of colours -- and a different choice is a different picture rather than
+ * a variation of this one. It is never varied unless it says `vary: true`.
+ * Any other dial varies unless it says `vary: false`.
+ */
+export function dialVaries(spec) {
+  if (!spec) return false;
+  if (spec.vary === true) return true;
+  if (spec.vary === false) return false;
+  return !Array.isArray(spec.options);
+}
+
+/**
+ * Whether a dial takes a draw from the variation's number, varied or not.
  *
- * A dial marked `vary: false` is not a dial but a choice -- which sheet of a
- * scene, which of its layouts -- and a different choice is a different picture
- * rather than a variation of this one. Such a dial keeps the value it is
- * `held` at, or ships with. Before this, a new variation of a picture on a
- * scene's second sheet landed on its first one in six, and never reached a
- * third.
+ * The draws are taken in dial order, so a dial that stopped varying and gave
+ * its draw back would move every dial after it: the same number would give a
+ * different picture, and an address written before would open on another
+ * one. A dial that used to vary keeps its draw (`keepsDraw: true`), and a dial
+ * that never varied (`vary: false` from the start) takes none.
+ */
+function takesDraw(spec) {
+  return spec.vary !== false || spec.keepsDraw === true;
+}
+
+/** The dials of these values that a variation does not move: the choices, as they are. */
+export function choicesOf(scene, values = {}) {
+  const out = {};
+  for (const [name, spec] of Object.entries((scene && scene.params) || {})) {
+    if (!dialVaries(spec) && values[name] !== undefined) out[name] = values[name];
+  }
+  return out;
+}
+
+/**
+ * A scene's dials, varied from a number, around the values they are held at.
+ *
+ * Each dial moves from where it is `held` -- or, when nothing holds it, from
+ * where the scene ships it -- towards one end or the other, by a draw that
+ * peaks at no movement, and never more than three quarters of the way. The
+ * first version spread the draw over the whole range and clamped: a dial
+ * shipped near its minimum landed on the minimum a third of the time, which is
+ * a whorl with no twist and a ring with no rays -- the dial switched off rather
+ * than varied. Values are snapped to the dial's own step, so what is shown is
+ * exactly what is drawn.
+ *
+ * Varying around `held` is what lets a work be varied and stay itself: the
+ * exhibition dresses a work in a fresh variation of the work's own dials, not
+ * of the scene's defaults, which used to lose a work's colours and its tiles.
+ *
+ * A dial that does not vary (see `dialVaries`) keeps the value it is held at,
+ * or ships with. Before this, a new variation of a picture on a scene's second
+ * sheet landed on its first one in six, and never reached a third.
  *
  * @param {object} scene   a scene, with optional `params`
  * @param {number} seed
- * @param {number} [spread] 0 keeps the defaults, 1 is the usual reach
- * @param {object} [held]   current values, for the dials that do not vary
+ * @param {number} [spread] 0 keeps the held values, 1 is the usual reach
+ * @param {object} [held]   the values to vary around; a dial missing from it is varied around its default
  */
 export function variedParams(scene, seed, spread = 1, held = {}) {
+  return vary(scene, seed, spread, held, dialVaries);
+}
+
+/**
+ * The dials a variation number alone gives, every dial that takes a draw
+ * moved by it -- choices that used to vary included -- around the defaults.
+ *
+ * Not a variation anyone is shown: it is what a Create address is written
+ * against. An address carries only the dials that differ from what its number
+ * gives, and addresses were written while the colour choices of four scenes
+ * still varied with the number; read against anything else, those addresses
+ * would open in other colours.
+ */
+export function seedParams(scene, seed) {
+  return vary(scene, seed, 1, {}, takesDraw);
+}
+
+function vary(scene, seed, spread, held, varies) {
   const out = {};
   const specs = (scene && scene.params) || {};
   const rnd = rngOf((Number(seed) ^ 0x5bd1e995) >>> 0);
   for (const [name, spec] of Object.entries(specs)) {
-    if (spec.vary === false) {
-      const h = Number(held[name]);
-      out[name] = Number.isFinite(h) ? Math.max(spec.min, Math.min(spec.max, h)) : spec.default;
+    const h = Number(held && held[name]);
+    const centre = Math.max(spec.min, Math.min(spec.max, Number.isFinite(h) ? h : spec.default));
+    const t = takesDraw(spec) ? rnd() + rnd() - 1 : 0;
+    if (!varies(spec)) {
+      out[name] = Number.isFinite(h) ? centre : spec.default;
       continue;
     }
     const range = spec.max - spec.min;
-    const d = Math.max(spec.min, Math.min(spec.max, spec.default));
-    const t = rnd() + rnd() - 1;
     const reach = 0.75 * spread;
-    let v = t < 0 ? d + (d - spec.min) * t * reach : d + (spec.max - d) * t * reach;
+    let v = t < 0 ? centre + (centre - spec.min) * t * reach : centre + (spec.max - centre) * t * reach;
     v = Math.max(spec.min, Math.min(spec.max, v));
     const step = spec.step || range / 100;
     v = spec.min + Math.round((v - spec.min) / step) * step;

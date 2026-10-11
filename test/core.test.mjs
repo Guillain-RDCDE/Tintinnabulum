@@ -890,7 +890,7 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   let choices = 0;
   for (const scene of Object.values(m.SCENES)) {
     for (const [k, spec] of Object.entries(scene.params || {})) {
-      if (spec.vary !== false) continue;
+      if (m.dialVaries(spec)) continue;
       choices++;
       for (let s = 1; s <= 40; s++) {
         if (m.variedParams(scene, s)[k] !== spec.default) drifted++;
@@ -899,6 +899,26 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
     }
   }
   ok('a dial that chooses a sheet is never varied, and keeps the sheet it is held on', choices > 0 && drifted === 0 && lost === 0, `${choices} choices, drifted=${drifted} lost=${lost}`);
+  // A dial with named options is a choice too, unless it says it varies.
+  const optionsVaried = [];
+  for (const [name, scene] of Object.entries(m.SCENES)) {
+    for (const [k, spec] of Object.entries(scene.params || {})) {
+      if (Array.isArray(spec.options) && spec.vary !== true && m.dialVaries(spec)) optionsVaried.push(`${name}.${k}`);
+    }
+  }
+  ok('a dial with named options is never varied unless it opts in', optionsVaried.length === 0 && !m.dialVaries({ options: ['a', 'b'] }) && m.dialVaries({ options: ['a', 'b'], vary: true }), optionsVaried.join(', '));
+  // A variation of held values moves around them, not around the defaults.
+  const scene = { params: { a: { min: 0, max: 100, step: 1, default: 10 } } };
+  const near = Array.from({ length: 200 }, (_, s) => m.variedParams(scene, s + 1, 1, { a: 90 }).a);
+  ok('a dial held high is varied around where it is held', near.every((v) => v >= 22 && v <= 100) && near.reduce((x, y) => x + y, 0) / near.length > 70, `mean ${(near.reduce((x, y) => x + y, 0) / near.length).toFixed(1)}`);
+  // What a Create address is read against has not moved: the number alone,
+  // every dial that ever varied moved by it, for every scene.
+  const seedOnly = Object.values(m.SCENES).every((sc) => [1, 2, 3, 99, 4242].every((s) => {
+    const a = m.seedParams(sc, s);
+    const b = m.variedParams(sc, s);
+    return Object.keys(b).every((k) => (m.dialVaries(sc.params[k]) ? a[k] === b[k] : true));
+  }));
+  ok('a variation number gives the same dials as the address it was written with', seedOnly);
   ok('the same number varies the dials the same way', unstable === 0);
 
   // Every scene, not a list of the newest kept by hand: a scene on the last

@@ -1,10 +1,12 @@
 // The exhibition and the watch: arithmetic on a clock, a list and a seed, so
 // checked here rather than in a browser.
 import {
-  rng, seedOf, shuffled, wardrobeOf, exhibition, exhibitionAt, roundLength, describeExhibition,
+  rng, seedOf, shuffled, wardrobeOf, exhibition, exhibitionAt, roundLength, describeExhibition, exhibitedDials,
 } from '../src/exhibition.js';
 import { rowToEvent, offsetInto, seekTo, replaySource, watchedSource } from '../src/sources/replay.js';
-import { WORKS } from '../src/works.js';
+import { WORKS, workSettings } from '../src/works.js';
+import { SCENES } from '../src/visual/scenes/index.js';
+import { dialVaries, variedParams } from '../src/visual/inks.js';
 import { PALETTES, groundBandOf } from '../src/visual/palettes.js';
 import { KITS } from '../src/audio/kits.js';
 
@@ -171,6 +173,54 @@ const ok = (name, cond, extra = '') => {
   ok('and the journal records the return', journal[2].what === 'live', JSON.stringify(journal[2]));
   w.stop();
   ok('stopping stops both', !standbyOn && w.status === 'idle');
+}
+
+// --- a work's own dials, varied ------------------------------------------
+//
+// The exhibition dresses each work in a variation of the work's own dials. A
+// dial that does not vary hangs exactly as the work has it; one that does
+// stays within a variation's reach of the work's value, not of the scene's
+// default, which is how the exhibition used to lose a work's colours.
+{
+  let compared = 0;
+  const moved = [];
+  const strayed = [];
+  for (const [key, w] of Object.entries(WORKS)) {
+    const own = workSettings(key, SCENES).params;
+    const specs = SCENES[w.scene].params || {};
+    for (let variation = 1; variation <= 9000; variation += 150) {
+      const dials = exhibitedDials(key, variation, SCENES);
+      for (const [k, spec] of Object.entries(specs)) {
+        compared++;
+        const c = own[k];
+        const v = dials[k];
+        if (!dialVaries(spec)) {
+          if (v !== c) moved.push(`${key}.${k} ${c}->${v}`);
+          continue;
+        }
+        const half = (spec.step || (spec.max - spec.min) / 100) / 2 + 1e-9;
+        const low = c - 0.75 * (c - spec.min) - half;
+        const high = c + 0.75 * (spec.max - c) + half;
+        if (!(v >= low && v <= high && v >= spec.min && v <= spec.max)) strayed.push(`${key}.${k}=${v} around ${c}`);
+      }
+    }
+  }
+  ok('the exhibition hangs every choice exactly as the work has it', moved.length === 0, moved.slice(0, 6).join(', ') || `${compared} dials`);
+  ok('and varies every other dial around the work\'s own value', strayed.length === 0, strayed.slice(0, 6).join(', ') || `${compared} dials`);
+  const harbour = Array.from({ length: 40 }, (_, i) => exhibitedDials('tiltharbour', i * 211 + 1, SCENES));
+  ok('Harbour floor keeps its colours in every dress', harbour.every((d) => d.colours === 1 && d.figure === 0));
+  const tiles = harbour.map((d) => d.tiles);
+  ok('and its tiles stay near seven', tiles.every((t) => t >= 4 && t <= 25) && tiles.filter((t) => t <= 12).length > tiles.length / 2, tiles.join(' '));
+  // Spread 0 is no variation at all: the work as it is.
+  const still = Object.keys(WORKS).filter((key) => {
+    const s = workSettings(key, SCENES);
+    const v = variedParams(SCENES[s.scene], 77, 0, s.params);
+    return Object.entries(s.params).some(([k, x]) => {
+      const sp = SCENES[s.scene].params[k];
+      return Math.abs(v[k] - x) > (sp.step || (sp.max - sp.min) / 100) / 2 + 1e-9;
+    });
+  });
+  ok('a variation of no spread is the work itself', still.length === 0, still.join(', ') || `${Object.keys(WORKS).length} works`);
 }
 
 console.log(fails ? `\n${fails} failed: ${failedNames.join(', ')}` : '\nall ok');

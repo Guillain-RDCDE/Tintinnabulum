@@ -50,10 +50,10 @@ export { qrMatrix, qrMatrixMasked, qrScores, drawQr } from './visual/qr.js';
 export { drawSpaceArt, spaceArtOf } from './visual/space-art.js';
 export { FINISHES, FINISH_ORDER, MATS, MAT_ORDER, applyFinish, drawMat, drawGrain } from './visual/finish.js';
 export { WORKS, WORK_ROOMS, WORK_ROOM_NOTES, WORK_ENERGIES, worksIn, mediumOf, workSettings, WORK_PACE } from './works.js';
-export { exhibition, exhibitionAt, roundLength, describeExhibition, wardrobeOf, seedOf } from './exhibition.js';
+export { exhibition, exhibitionAt, roundLength, describeExhibition, wardrobeOf, seedOf, exhibitedDials } from './exhibition.js';
 export { sheets, sheetNameOf } from './visual/scenes/sheets.js';
 export { GROUNDS, GROUND_ORDER, applyGround, groundTone, prepareGround, groundReady, sheetOf, groundStats } from './visual/grounds.js';
-export { inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, defaultParams, isViolet, rngOf } from './visual/inks.js';
+export { inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, seedParams, defaultParams, dialVaries, choicesOf, isViolet, rngOf } from './visual/inks.js';
 export { LIVING, LIVING_ORDER, driftNeighbours, driftColours, daylightColours, moodColours, lightOfHour, busyness } from './visual/living.js';
 
 export { CanvasSink, DEFAULT_PALETTE, BLENDS } from './visual/canvas-sink.js';
