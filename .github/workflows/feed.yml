@@ -1,0 +1,29 @@
+# The project's highest rule, measured: every scene, every sheet and every
+# work's own dials must answer the feed (tools/follows-the-feed.mjs --strict).
+# Half an hour of headless Chrome, so weekly and by hand rather than on every
+# push. The runner's own Chrome is used (playwright-core, channel 'chrome').
+name: feed
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  follows-the-feed:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+      - run: npm run test:feed

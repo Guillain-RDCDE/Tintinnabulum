@@ -1,9 +1,9 @@
 # The checks that need only Node, on every push and pull request.
 #
-# The browser half (npm run test:browser, test:audio, test:perf, test:feed)
-# needs headless Chromium and a quarter of an hour, and the audio and
-# performance suites measure the machine as much as the code; those are run
-# by hand before a release rather than on every push.
+# The browser half (npm run test:browser, test:audio, test:perf) needs headless
+# Chromium and a quarter of an hour, and the audio and performance suites
+# measure the machine as much as the code; those are run by hand before a
+# release rather than on every push. test:feed runs weekly: see feed.yml.
 name: test
 
 on:
