@@ -35,6 +35,7 @@ import {
   BLENDS,
 } from '../src/index.js';
 import { $, createPicker, fitCanvas, caption } from './dom.js';
+import { renderDials, SKINS } from './dials.js';
 import { store } from './store.js';
 
 // How far each event's colour may stray from its category's. The wording says
@@ -176,77 +177,33 @@ export function setupLook({ canvas, updateSummaries, paintKitArts, onLookChange 
     $('#params-label').hidden = dials.length === 0;
     if (!dials.length) return;
 
-    // Which sheet the scene is on, so only that sheet's dials are drawn: a
-    // dial for the stripes is noise beside a sheet of meshes.
-    const choice = dials.find((d) => d.name === 'figure' && d.options);
-    const onSheet = choice ? choice.options[Math.round(choice.value)] : null;
-
-    for (const d of dials) {
-      if (d.sheets && onSheet && !d.sheets.includes(onSheet)) continue;
-      const wrap = document.createElement('label');
-      wrap.className = 'dial';
-      wrap.dataset.param = d.name;
-      const head = document.createElement('span');
-      head.className = 'dial-head';
-      const name = document.createElement('span');
-      name.textContent = d.label;
-      const val = document.createElement('span');
-      const show = (v) => (d.options ? d.options[Math.round(v)] : Math.abs(v) >= 100 || Number.isInteger(v) ? String(v) : v.toFixed(d.step < 0.01 ? 4 : 2));
-      val.textContent = !d.options && d.value === 0 && d.default === 0 ? 'auto' : show(d.value);
-      head.append(name, val);
-
-      // A dial that rebuilds the scene waits for the drag to finish: rebuilding
-      // on every pixel would wipe the picture continuously while somebody is
-      // still deciding where to put it.
-      const commit = (v) => {
-        canvas.setParam(d.name, v);
-        store.set(`p:${canvas.sceneName}:${d.name}`, String(v));
-        repaintScenePreviews();
-        onLookChange();
-      };
-
-      // A choice -- which sheet, which layout -- is a row of named buttons,
-      // not a slider that reads 0, 1, 2.
-      if (d.options) {
-        const row = document.createElement('span');
-        row.className = 'dial-options';
-        row.setAttribute('role', 'group');
-        d.options.forEach((option, i) => {
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.textContent = option;
-          b.dataset.value = String(i);
-          b.setAttribute('aria-pressed', String(Math.round(d.value) === i));
-          b.addEventListener('click', () => {
-            commit(i);
-            // Another sheet has other dials.
-            drawParams();
-          });
-          row.append(b);
-        });
-        wrap.append(head, row);
-        host.append(wrap);
-        continue;
-      }
-
-      const slider = document.createElement('input');
-      slider.type = 'range';
-      slider.min = String(d.min);
-      slider.max = String(d.max);
-      slider.step = String(d.step);
-      slider.value = String(d.value === 0 && d.default === 0 ? d.min : d.value);
-      slider.dataset.param = d.name;
-
-      slider.addEventListener('input', (e) => {
-        const v = Number(e.target.value);
-        val.textContent = show(v);
-        if (!d.rebuild) commit(v);
-      });
-      slider.addEventListener('change', (e) => { if (d.rebuild) commit(Number(e.target.value)); });
-
-      wrap.append(head, slider);
-      host.append(wrap);
-    }
+    // A dial that rebuilds the scene waits for the drag to finish: rebuilding
+    // on every pixel would wipe the picture continuously while somebody is
+    // still deciding where to put it.
+    const commit = (name, v) => {
+      canvas.setParam(name, v);
+      store.set(`p:${canvas.sceneName}:${name}`, String(v));
+      repaintScenePreviews();
+      onLookChange();
+    };
+    // Only the dials of the sheet on view, a choice as named buttons: see dials.js.
+    renderDials(host, {
+      specs: SCENES[canvas.sceneName].params,
+      values: Object.fromEntries(dials.map((d) => [d.name, d.value])),
+      skin: SKINS.look,
+      onInput: (name, v, spec, out) => {
+        out.textContent = SKINS.look.text(spec, v);
+        if (!spec.rebuild) commit(name, v);
+      },
+      onRelease: (name, v, spec) => {
+        if (spec.rebuild) commit(name, v);
+      },
+      onChoose: (name, i) => {
+        commit(name, i);
+        // Another sheet has other dials.
+        drawParams();
+      },
+    });
 
     const reset = document.createElement('button');
     reset.type = 'button';

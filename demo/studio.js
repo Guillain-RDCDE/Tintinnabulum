@@ -24,6 +24,7 @@ import {
 import { lightnessOf, parseColor } from '../src/visual/color.js';
 import { accentFor } from './shell.js';
 import { store } from './store.js';
+import { renderDials, SKINS, sheetOn, createText } from './dials.js';
 
 const clamp = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
 const el = (id) => document.getElementById(`st-${id}`);
@@ -479,78 +480,42 @@ export function setupStudio({
       host.append(p);
       return;
     }
-    // Which sheet the tool is on, so only that sheet's dials are drawn: a
-    // dial for the stripes is noise beside a sheet of meshes.
-    const choice = scene.params.figure && scene.params.figure.options ? scene.params.figure : null;
-    const onSheet = choice ? choice.options[Math.round(state.params.figure)] : null;
-    host.dataset.sheet = onSheet || '';
-    for (const [name, spec] of specs) {
-      if (spec.sheets && onSheet && !spec.sheets.includes(onSheet)) continue;
-      const wrap = document.createElement('div');
-      wrap.className = 'st-dial';
-      wrap.dataset.param = name;
-      const id = `st-dial-${name}`;
-      if (spec.options) {
-        // A choice -- which sheet, which layout -- is a row of named chips,
-        // not a slider that reads 0, 1, 2.
-        wrap.innerHTML = '<div class="lab"><span></span><output></output></div><div class="st-options" role="group"></div>';
-        wrap.querySelector('span').textContent = spec.label;
-        const row = wrap.querySelector('.st-options');
-        spec.options.forEach((option, i) => {
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'st-chip';
-          b.textContent = option;
-          b.dataset.param = name;
-          b.dataset.value = String(i);
-          b.addEventListener('click', () => {
-            state.params[name] = i;
-            writeAddress();
-            // Another sheet has other dials.
-            buildDials();
-            refreshAll();
-            scheduleRebuild();
-          });
-          row.append(b);
-        });
-        host.append(wrap);
-        continue;
-      }
-      wrap.innerHTML = `<div class="lab"><label for="${id}"></label><output></output></div><input type="range" id="${id}">`;
-      wrap.querySelector('label').textContent = spec.label;
-      const input = wrap.querySelector('input');
-      input.min = spec.min;
-      input.max = spec.max;
-      input.step = spec.step || (spec.max - spec.min) / 100;
-      input.dataset.param = name;
-      input.addEventListener('input', () => {
-        const v = Number(input.value);
+    // Only the dials of the sheet on view, a choice as named chips: see dials.js.
+    const { sheet } = renderDials(host, {
+      specs: scene.params,
+      values: state.params,
+      skin: SKINS.create,
+      onInput: (name, v, spec) => {
         state.params[name] = v;
-        showDial(input);
+        showDial(host.querySelector(`input[data-param="${name}"]`));
         // Felt at once while the picture is moving; drawn again from the
         // beginning when the hand comes off, so the number stays the picture.
         if (view.params && !spec.rebuild) view.params[name] = v;
         else scheduleRebuild();
-      });
-      input.addEventListener('change', () => {
+      },
+      onRelease: () => {
         writeAddress();
         scheduleRebuild();
-      });
-      host.append(wrap);
-    }
+      },
+      onChoose: (name, i) => {
+        state.params[name] = i;
+        writeAddress();
+        // Another sheet has other dials.
+        buildDials();
+        refreshAll();
+        scheduleRebuild();
+      },
+    });
+    host.dataset.sheet = sheet || '';
   }
 
-  const fmt = (v, step) => {
-    const d = step >= 1 ? 0 : Math.min(4, Math.max(0, -Math.floor(Math.log10(step))));
-    return Number(v).toFixed(d);
-  };
   function paintRange(input) {
     const pct = ((Number(input.value) - Number(input.min)) / (Number(input.max) - Number(input.min) || 1)) * 100;
     input.style.setProperty('--pct', `${clamp(pct, 0, 100)}%`);
   }
   function showDial(input) {
     const spec = SCENES[state.tool].params[input.dataset.param];
-    input.parentElement.querySelector('output').textContent = fmt(input.value, spec.step || 0.01);
+    input.parentElement.querySelector('output').textContent = createText(spec, input.value);
     paintRange(input);
   }
 
@@ -559,9 +524,7 @@ export function setupStudio({
     // The sheet may have changed under the panel -- a reset, a picture
     // opened from a link -- and another sheet has other dials.
     const specs = SCENES[state.tool].params || {};
-    const choice = specs.figure && specs.figure.options ? specs.figure : null;
-    const onSheet = choice ? choice.options[Math.round(state.params.figure)] : '';
-    if (el('dials').dataset.sheet !== (onSheet || '')) buildDials();
+    if (el('dials').dataset.sheet !== (sheetOn(specs, state.params) || '')) buildDials();
     for (const input of el('dials').querySelectorAll('input[type="range"]')) {
       input.value = state.params[input.dataset.param];
       showDial(input);
