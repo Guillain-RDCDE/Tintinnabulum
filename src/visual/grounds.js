@@ -193,6 +193,9 @@ function* fibres(g, w, h, rnd, { count, length, width, alpha, curl }) {
   }
 }
 
+// A step that draws in one go: a generator only so it can be run with
+// yield* beside the steps that do give the page a breath.
+// eslint-disable-next-line require-yield
 function* flecks(g, w, h, rnd, count, size) {
   for (let i = 0; i < count; i++) {
     g.fillStyle = `rgba(255,255,255,${0.4 + rnd() * 0.6})`;
@@ -309,6 +312,7 @@ function* buildSheet(name) {
       break;
     }
     case 'plaster': {
+      // eslint-disable-next-line require-yield
       const trowel = yield* drawnField(w, h, function* (g) {
         for (let i = 0; i < 60; i++) {
           const x = rnd() * w;

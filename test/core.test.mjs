@@ -414,9 +414,6 @@ ok('the replay runs in chronological order',
 // The real property: each event lands at its own position in the source's
 // timeline, scaled into the window. An even spacing would put event 6 at the
 // halfway mark; the true timeline puts it at the start of the second swarm.
-const span = CLUSTERED[11].ts - CLUSTERED[0].ts;
-const expected = CLUSTERED.map((e) => ((e.ts - CLUSTERED[0].ts) / span) * 1500);
-const drift = rhythm.map((t, i) => Math.abs(t - expected[i]));
 // Placement is proportional to the timestamps *subject to* a minimum audible
 // separation: two notes in the same millisecond are one blurred chord, not
 // two events. So the contract is not exact proportional placement but
@@ -570,7 +567,7 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
 // --- perceptual colour ---------------------------------------------------
 
 {
-  const { parseColor, rgbToOklab, oklabToRgb, toOklch, fromOklch, shadeOf, lighten, lightnessOf } =
+  const { parseColor, rgbToOklab, oklabToRgb, toOklch, shadeOf, lighten, lightnessOf } =
     await import('../src/visual/color.js');
 
   let worst = 0;

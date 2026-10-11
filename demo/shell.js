@@ -189,7 +189,7 @@ export function setupShell({ canvas, look, works, startBtn, selectKit, getKit, g
   }, true);
 
   // The summary of a tab that is a single panel is a caption, not a switch.
-  for (const [tab, def] of Object.entries(TABS)) {
+  for (const [, def] of Object.entries(TABS)) {
     if (def.panels.length !== 1) continue;
     const summary = document.getElementById(def.panels[0]).querySelector('summary');
     summary.addEventListener('click', (e) => e.preventDefault());

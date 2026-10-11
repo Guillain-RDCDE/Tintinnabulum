@@ -534,7 +534,7 @@ function reink(api, s, i, r, base, delay = 0) {
   const st = s.stripes[i];
   const old = { a0: st.a0, a1: st.a1, ink: st.ink, lvl: st.lvl };
   let ink = st.ink;
-  let lvl = st.lvl;
+  let lvl;
   // The event's own colour a third of the time, when the sheaf is cut from
   // it; otherwise any ink but this stripe's, so a re-inking always shows. Not
   // every time: the commonest kind of event would take the whole sheet over

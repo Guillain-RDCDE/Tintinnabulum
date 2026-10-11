@@ -12,7 +12,7 @@
 // arrives, and the picture is kept on a buffer of the renderer's pool rather
 // than redrawn every frame.
 
-import { toRgb, scratch } from './paint.js';
+import { scratch } from './paint.js';
 import { shadeOf, lighten, lightnessOf, mixColors } from '../color.js';
 
 const TAU = Math.PI * 2;
@@ -213,7 +213,6 @@ export const SPREAD_SCENES = {
         blow(api, Math.random() * api.w, Math.random() * api.h, null, 0.8);
       }
 
-      const m = Math.min(api.w, api.h);
       const step = Math.max(1, s.cell * 0.9 * api.param('speed'));
       const wander = 0.22 * api.param('wander');
       const fork = 0.012 * api.param('brittle');

@@ -858,7 +858,6 @@ export const PAINTER_SCENES = {
       api.scene.bufClean = false;
     },
     event(p, api) {
-      const s = api.scene;
       const cv = scratch(api);
       const g = bufferFor(api);
       if (!g) return;

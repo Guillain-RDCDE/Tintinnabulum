@@ -28,6 +28,7 @@
     "test:perf": "node test/browser-perf.test.mjs",
     "test:feed": "node tools/follows-the-feed.mjs --strict --sheets --works",
     "check": "npm test && npm run test:browser",
+    "lint": "eslint . --max-warnings 0",
     "sheet": "node tools/contact-sheet.mjs",
     "record": "node tools/record-day.mjs --people --gzip --out demo/recordings/a-day.json",
     "social": "node tools/make-social-preview.mjs"
@@ -57,6 +58,9 @@
     "node": ">=18"
   },
   "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "eslint": "10.12.0",
+    "globals": "17.13.0",
     "playwright-core": "^1.63.0"
   }
 }

@@ -13,7 +13,7 @@
 // arrives, and the collections the budget watches stay short.
 
 import { noise2 } from './noise.js';
-import { toRgb, scratch, packRgba as pack } from './paint.js';
+import { scratch, packRgba as pack } from './paint.js';
 import { mixColors, shadeOf, lighten, lightnessOf } from '../color.js';
 
 const TAU = Math.PI * 2;

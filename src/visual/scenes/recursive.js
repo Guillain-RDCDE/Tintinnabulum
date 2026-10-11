@@ -503,8 +503,8 @@ export const RECURSIVE_SCENES = {
  * is the same shape at every scale, turned.
  */
 function d2xy(n, d) {
-  let rx = 0;
-  let ry = 0;
+  let rx;
+  let ry;
   let t = d;
   let x = 0;
   let y = 0;
@@ -521,8 +521,8 @@ function d2xy(n, d) {
 
 /** Hilbert: grid position to distance along the curve. */
 function xy2d(n, x, y) {
-  let rx = 0;
-  let ry = 0;
+  let rx;
+  let ry;
   let d = 0;
   for (let s = n / 2; s > 0; s = Math.floor(s / 2)) {
     rx = (x & s) > 0 ? 1 : 0;

@@ -19,7 +19,7 @@
 //   Pursuit     The mice problem, in Martin Gardner's phrasing: four mice at
 //               the corners of a square, each running at the next.
 
-import { scratch, bufferFor, fade } from './paint.js';
+import { scratch, bufferFor } from './paint.js';
 import { cap } from './budget.js';
 import { TAU, seeded, kick, tempo } from './shared.js';
 

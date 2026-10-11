@@ -821,8 +821,8 @@ function drawEdges(ctx, s, view, W, H, alpha = 1, sizeK = 1) {
   const prev = ctx.globalAlpha;
   ctx.globalAlpha = alpha;
   for (let i = 0; i < n; i++) {
-    let ox = 0;
-    let oy = 0;
+    let ox;
+    let oy;
     if (x[i] > LR / 2 - s.amax) { ox = -LR; oy = S; }
     else if (x[i] < -LR / 2 + s.amax) { ox = LR; oy = -S; }
     else continue;

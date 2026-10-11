@@ -20,7 +20,7 @@
 // and a picture that works when nothing arrives works slowly.
 
 import { scratch } from './paint.js';
-import { TAU, sizeOf, ambient, clampTo } from './shared.js';
+import { sizeOf, ambient, clampTo } from './shared.js';
 import { sheets } from './sheets.js';
 
 /** The colourways the prints were made in; the first is the palette's own. */

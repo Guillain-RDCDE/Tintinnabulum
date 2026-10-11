@@ -27,7 +27,6 @@ import {
   compileProfile,
   validateProfile,
   profileFromQuery,
-  ProfileError,
   MAPPING_VERSION,
   EVENT_VERSION,
 } from '../src/core/profile.js';
@@ -159,7 +158,7 @@ function buildSource(doc) {
 }
 
 function listSources() {
-  let files = [];
+  let files;
   try {
     files = fs.readdirSync(SOURCE_DIR).filter((f) => f.endsWith('.json'));
   } catch (e) {
@@ -224,7 +223,7 @@ function serveSchema(res, file) {
 }
 
 function listProfiles() {
-  let files = [];
+  let files;
   try {
     files = fs.readdirSync(PROFILE_DIR).filter((f) => f.endsWith('.json'));
   } catch (e) {
@@ -341,7 +340,7 @@ async function handleEmit(req, res, url) {
   const problems = [];
 
   for (const item of list) {
-    let ev = null;
+    let ev;
     if (m.profile) {
       const r = m.profile.apply(item);
       if (r.skipped) {

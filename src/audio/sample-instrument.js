@@ -123,7 +123,7 @@ export class SampleInstrument extends Instrument {
   play(ctx, dest, { semitone = 0, velocity = 1, when = 0 } = {}) {
     if (!this.ready) return null;
     let idx;
-    let rate = 1;
+    let rate;
     if (this.step === 0) {
       // Unpitched bank (one-shots): pick a variation at random, and vary the
       // playback a little so repeats are not heard as a loop.

@@ -329,7 +329,7 @@ export class CanvasSink {
    */
   _readSound() {
     if (!this.listen) return;
-    let analyser = null;
+    let analyser;
     try {
       analyser = this.listen();
     } catch (e) {

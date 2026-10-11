@@ -474,7 +474,6 @@ if (keepAlive) {
 // two screens in one room agree without talking to each other.
 const programme = parseShow(params.get('show'), (n) => Boolean(WORKS[n]));
 const hours = parseHours(params.get('open'));
-const shut = document.getElementById('shut');
 let closed = false;
 
 /** Closing time: the picture goes down like the lights, and nothing burns in. */

@@ -138,9 +138,7 @@ ok('expand on a stream is refused',
 }
 
 // --- the runner, against a local endpoint --------------------------------
-let served = 0;
 const fake = http.createServer((req, res) => {
-  served++;
   res.writeHead(200, { 'Content-Type': 'application/json' });
   // The same item twice, so de-duplication has something to do.
   res.end(JSON.stringify({ data: [{ ref: 'a', n: 10 }, { ref: 'b', n: 20 }, { ref: 'a', n: 10 }] }));
@@ -191,12 +189,9 @@ fake.close();
 
 // --- streams and two-stage sources, against local servers ----------------
 {
-  const { WebSocketServer } = await import('node:http').then(() => ({ WebSocketServer: null })).catch(() => ({ WebSocketServer: null }));
   // No websocket server without a dependency, so SSE stands in for the live
   // path: same _consume, same dedupe, same reconnect.
-  let sseHits = 0;
   const sse = http.createServer((req, res) => {
-    sseHits++;
     res.writeHead(200, { 'Content-Type': 'text/event-stream' });
     const frame = (o) => 'data: ' + JSON.stringify(o) + '\n\n';
     res.write(frame({ kind: 'tick', n: 7, ref: 'a' }));

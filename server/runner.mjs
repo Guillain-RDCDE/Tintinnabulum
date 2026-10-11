@@ -4,7 +4,7 @@
 // rather than in the browser for three reasons a page cannot get around: CORS,
 // secrets, and the fact that a background tab is throttled.
 
-import { compileSource, SourceError } from '../src/core/source.js';
+import { SourceError } from '../src/core/source.js';
 
 export class SourceRunner {
   /**
@@ -340,7 +340,7 @@ export class SourceRunner {
       });
       ws.addEventListener('message', (ev) => {
         state.polls++;
-        let body = null;
+        let body;
         try { body = JSON.parse(typeof ev.data === 'string' ? ev.data : String(ev.data)); }
         catch (e) { return; } // a heartbeat or a non-JSON frame is not an error
         try { this._consume(state, body); } catch (e) { state.lastError = String(e.message); }

@@ -8,13 +8,10 @@ import {
   KEYS,
   PALETTES,
   DEFAULT_PALETTE_NAME,
-  swatchOf,
   KITS,
   drawKitArt,
   drawSpaceArt,
-  SHAPES,
   DEFAULT_SHAPE,
-  drawShape,
   SCENES,
   WORKS,
   DEFAULT_SCENE,
@@ -22,7 +19,6 @@ import {
   LIVING,
   SPACES,
   DEFAULT_SPACE,
-  previewScene,
   WIKIPEDIA_LANGUAGES,
   WIKIPEDIA_FLAG_CC,
 } from '../src/index.js';
@@ -1186,7 +1182,7 @@ selectRestraint(store.number('restraint', 0, 0, 1200), false);
 // Your data: the standard, usable without a server. Events are handed to the
 // engine one every 400ms rather than all at once, because three notes at the
 // same instant is a chord, not three events.
-const connect = setupConnect({
+setupConnect({
   onState: (text) => { connectSummary = text; updateSummaries(); },
   play: async (events) => {
     await ensureAudio();

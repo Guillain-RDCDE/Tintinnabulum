@@ -80,7 +80,7 @@ export async function startServer(port) {
  * Returns null, after saying so, when Playwright is not installed.
  */
 export async function launchBrowser() {
-  let chromium = null;
+  let chromium;
   try {
     ({ chromium } = await import('playwright-core'));
   } catch {

@@ -2270,7 +2270,7 @@ ok('a dial turned on the laptop reaches the wall', dialCrossed === null || wallD
 // turn, which a background popup may not get promptly -- so wait for the size
 // to arrive rather than for a fixed delay that only holds on a fast machine.
 await wall.setViewportSize({ width: 540, height: 960 }); // portrait, as a gallery panel
-let reshaped = { w: 0, h: 0 };
+let reshaped;
 try {
   await wall.waitForFunction(
     () => window.projection.sink.w === 540 && window.projection.sink.h === 960,
@@ -2370,7 +2370,7 @@ await quietWall.goto(BASE + '/demo/project.html?exhibition=1&minutes=2&feed=wiki
 await quietWall.bringToFront();
 await quietWall.waitForFunction(() => window.projection && window.projection.slot !== null, null, { timeout: 25000 });
 await quietWall.mouse.click(200, 200);
-let standbyState = { skipped: true };
+let standbyState;
 try {
   await quietWall.waitForFunction(() => window.projection.standby, null, { timeout: 20000 });
   await quietWall.waitForFunction(() => window.projection.onStandby && window.projection.seen, null, { timeout: 30000 });
@@ -4353,7 +4353,6 @@ ok('a kind shows that shelf and nothing else', pgNight.shown === pgNight.all && 
 await pg.click('#st-random');
 await developed();
 const pgSurprise = await pg.evaluate(async () => {
-  const { SCENES } = await import('../src/index.js');
   return window.son.studio.state.tool;
 });
 ok('Surprise me opens a tool of that kind', await pg.evaluate(async (t) => (await import('../src/index.js')).SCENES[t].shelf === 'Night', pgSurprise), pgSurprise);
