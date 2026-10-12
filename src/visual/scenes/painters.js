@@ -498,8 +498,10 @@ export const PAINTER_SCENES = {
       // through a busy one, so the feed decided what happened in the picture
       // but never how much. Now it idles, and a burst sets it going; ages and
       // lifetimes stay on the real clock, so nothing that was timed in
-      // seconds is disturbed.
-      const pace = tempo(s, api, 0.05);
+      // seconds is disturbed. The floor is low: the arms keep their swing
+      // when the feed stops, and at a twentieth of the rate they still moved
+      // as much in a silent second as half a busy one.
+      const pace = tempo(s, api, 0.02);
       const dt = Math.min(50, api.dt) * pace;
       s.clock = (s.clock || 0) + api.dt * pace;
       // A damped pendulum per arm, with a slow drift so it never stops dead.

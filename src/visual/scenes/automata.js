@@ -65,8 +65,11 @@ export const AUTOMATA_SCENES = {
       if (!s.grid) return;
       // The generations come at the rate events do. At a steady nine a
       // second a board in a quiet room changed as much as one in a busy
-      // room, and the feed was a few gliders lost in it.
-      const pace = tempo(s, api, 0.05);
+      // room, and the feed was a few gliders lost in it. In silence it steps
+      // about once in five seconds: at a floor of 0.05 it still turned the
+      // board over every two, enough for test:feed on a slower machine to
+      // count it deaf.
+      const pace = tempo(s, api, 0.02);
       s.acc += (api.param('rate') * api.dt * pace) / 1000;
       const steps = Math.min(4, Math.floor(s.acc));
       s.acc -= steps;
