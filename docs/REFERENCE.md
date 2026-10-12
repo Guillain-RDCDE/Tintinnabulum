@@ -620,6 +620,16 @@ The suite holds both groupings to the same standard: every palette must land in
 a band, every palette must declare a dominant from the known list, and no
 heading may stand over a single swatch.
 
+**Violet has one definition.** `isViolet` (`src/visual/color.js`) is an OKLCH
+hue between 290° and 341° with a chroma of at least 0.04: purples, mauves,
+lilacs and violet magentas, and not crimsons, carmines, raspberries, corals,
+pinks, slate blues or greys with a cool cast. The edges were set on named
+colours, which the suite keeps. Everything that keeps violet out uses it: the
+inks Create draws, the palettes it offers (`paletteIsViolet`, which also reads
+a colourway's print), the hour's tint on a ground, and the interface's accent.
+The palettes that are violet under it today are listed in the suite with the
+colours that make them so (`violetInksOf`); a new one fails.
+
 ```js
 new CanvasSink('#canvas', { palette: 'bronze' });
 sink.setPalette('aurora');                    // circles already drawn recolour
@@ -2168,7 +2178,8 @@ src/visual/
                         sheets, budget.js the ceilings; catalogue.js puts
                         them on shelves and says what each looks like
   palettes.js           colour schemes
-  color.js              OKLab shading, gamut fitting, per-event variation
+  color.js              OKLab shading, gamut fitting, per-event variation;
+                        isViolet, the one rule for what violet is
   shapes.js             mark geometry
 src/works.js            finished pieces: a scene, a sound and a frame, titled
 src/show.js             a programme: which work hangs, for how long, when the room is open

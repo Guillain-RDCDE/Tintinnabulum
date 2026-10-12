@@ -212,3 +212,40 @@ export function lightnessOf(base) {
   const { r, g, b } = parseColor(base);
   return rgbToOklab({ r, g, b }).L;
 }
+
+// --- violet ------------------------------------------------------------------
+//
+// Violet is not a colour this project shows: the art direction rules it out.
+// This is the one definition of it, used by everything that keeps violet out
+// -- the inks Create draws, the palettes it offers, the hour's tint on a
+// ground, the interface's accent -- and by the tests that hold them to it.
+//
+// Violet is what lies between blue and red and reads as purple, mauve, lilac
+// or a violet magenta. Not a crimson, a carmine, a raspberry red, a coral or a
+// flamingo pink on the one side, nor a blue, a slate blue or a periwinkle on
+// the other. So it is a band of OKLCH hue, and a colour only counts with
+// enough chroma to be a colour at all: a grey with a cool cast never does.
+//
+// The edges were set on named colours (test/core.test.mjs holds them):
+//   violet     #9370db medium purple (297), #8a2be2 blue violet (301),
+//              #6a0dad purple (303), #b19cd9 light purple (300),
+//              #800080 purple (328), #924d7d plum (339.8)
+//   not violet #3a5fcd blue (266), #7b68ee medium slate blue (285.5),
+//              #c96fa8 pink (342.7), #f2aacc pale pink (349.5),
+//              #ef476f, #f9356a, #c70239 (11-18), #e34234 vermilion (29)
+// The blue edge sits in the gap between the slate blues (286 and under) and
+// the purples (293 and over); the red edge between a plum and a pink.
+export const VIOLET = Object.freeze({ from: 290, to: 341, chroma: 0.04 });
+
+/** A colour's OKLCH hue in degrees, 0..360, and its chroma. */
+export function hueOf(base) {
+  const { r, g, b } = parseColor(base);
+  const c = toOklch(rgbToOklab({ r, g, b }));
+  return { h: (((c.h * 180) / Math.PI) % 360 + 360) % 360, C: c.C };
+}
+
+/** Whether a colour reads as violet: the project's one rule for it. */
+export function isViolet(base) {
+  const { h, C } = hueOf(base);
+  return C >= VIOLET.chroma && h >= VIOLET.from && h <= VIOLET.to;
+}

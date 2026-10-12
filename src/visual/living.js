@@ -17,7 +17,7 @@
 // without a canvas and previewed at any hour.
 
 import { PALETTES } from './palettes.js';
-import { lightnessOf, mixColors, lighten, parseColor } from './color.js';
+import { lightnessOf, mixColors, lighten, isViolet } from './color.js';
 
 export const LIVING_ORDER = ['still', 'drift', 'daylight', 'mood'];
 
@@ -128,12 +128,6 @@ export function daylightColours(name, hour) {
   }
   return out;
 }
-
-/** Red and blue both well above green: what reads as violet on a ground. */
-const isViolet = (c) => {
-  const { r, g, b } = parseColor(c);
-  return b > g + 25 && r > g + 25;
-};
 
 /**
  * A ground tinted by the hour, never into violet. A wine or rose ground under

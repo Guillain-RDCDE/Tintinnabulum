@@ -793,14 +793,88 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
     return Math.abs(a.r - e.r) + Math.abs(a.g - e.g) + Math.abs(a.b - e.b) <= 3;
   }));
   ok('busyness is a 0..1 dial that rises with the rate', busyness(0) === 0 && busyness(10) < busyness(100) && busyness(1e6) === 1);
+  const { isViolet } = await import('../src/visual/color.js');
   const violet = [];
   for (const n of Object.keys(PALETTES)) {
-    for (const h of [0, 7, 13, 19, 21]) {
-      const c = rgb(daylightColours(n, h).background);
-      if (c.b > c.g + 25 && c.r > c.g + 25) violet.push(`${n}@${h}`);
+    for (let h = 0; h < 24; h += 0.5) {
+      if (isViolet(daylightColours(n, h).background)) violet.push(`${n}@${h}`);
     }
   }
   ok('no hour of the day turns a ground violet', violet.length === 0, violet.slice(0, 6).join(', ') || 'none');
+}
+
+// --- violet: one definition, and the palettes held to it ---------------------
+// The art direction rules violet out. color.js's isViolet is the one rule for
+// what violet is; these named colours are what its edges were set on, so a
+// change to the rule has to answer to them.
+{
+  const { isViolet, VIOLET } = await import('../src/visual/color.js');
+  const { violetInksOf, paletteIsViolet } = await import('../src/visual/inks.js');
+  const { WORKS } = await import('../src/works.js');
+
+  const VIOLETS = {
+    '#8a2be2': 'blue violet', '#9370db': 'medium purple', '#6a0dad': 'purple', '#b19cd9': 'light purple',
+    '#800080': 'purple (web)', '#4b0082': 'indigo (web)', '#663399': 'rebecca purple', '#9966cc': 'amethyst',
+    '#da70d6': 'orchid', '#ee82ee': 'violet (web)', '#ff00ff': 'magenta', '#c8a2c8': 'lilac',
+    '#e0b0ff': 'mauve', '#dda0dd': 'plum (web)', '#d8bfd8': 'thistle', '#702963': 'byzantium',
+    '#924d7d': 'plum', '#7c3aed': 'violet 600', '#5f5570': 'heather grey-violet',
+  };
+  const NOT_VIOLETS = {
+    '#c70239': 'carmine', '#ef476f': 'raspberry', '#f9356a': 'raspberry pink', '#e34234': 'vermilion',
+    '#f2aacc': 'pale pink', '#c96fa8': 'pink', '#dc143c': 'crimson', '#960018': 'carmine (deep)',
+    '#e30b5c': 'raspberry red', '#ff7f50': 'coral', '#fc8eac': 'flamingo pink', '#ffc0cb': 'pink (web)',
+    '#ff69b4': 'hot pink', '#722f37': 'wine', '#3a5fcd': 'blue', '#4169e1': 'royal blue', '#000080': 'navy',
+    '#3f00ff': 'ultramarine', '#7b68ee': 'medium slate blue', '#6495ed': 'cornflower',
+    '#808080': 'grey', '#8a8790': 'cool grey', '#6b6670': 'cool grey (dark)', '#2a2830': 'near black',
+    '#e6e6fa': 'lavender white', '#f0e6ff': 'violet-white paper',
+  };
+  const wrongIn = Object.entries(VIOLETS).filter(([c]) => !isViolet(c)).map(([c, n]) => `${n} ${c}`);
+  const wrongOut = Object.entries(NOT_VIOLETS).filter(([c]) => isViolet(c)).map(([c, n]) => `${n} ${c}`);
+  ok('purples, mauves, lilacs and violet magentas are violet', wrongIn.length === 0, wrongIn.join(', '));
+  ok('crimsons, carmines, raspberries, corals, pinks, blues and greys are not', wrongOut.length === 0, wrongOut.join(', '));
+  ok('the rule is a band of hue with a floor of chroma', VIOLET.from < VIOLET.to && VIOLET.chroma > 0.02 &&
+     !isViolet('#7f7f80') && isViolet('#9370db'), JSON.stringify(VIOLET));
+
+  // The palettes that are violet today. They were made before the rule was
+  // one rule, and recolouring them is the owner's call, not a test's: each is
+  // listed with the colours that make it violet, so the list cannot grow
+  // quietly -- a new palette that is violet fails, a listed one that gains
+  // another violet colour fails, and one that is cleaned must leave the list.
+  const VIOLET_TODAY = {
+    nocturne: ['bot #9b59b6'],
+    ultraviolet: ['background #0d0518', 'bot #c026d3'],
+    sakura: ['bot #8b5cf6'],
+    daylight: ['bot #7c3aed'],
+    dusk: ['bot #e0a0d0'],
+    citron: ['default #7a3d86'],
+    orchard: ['alert #7a2e8c'],
+    iris: ['alert #924d7d'],
+    lichen: ['alert #924d7d'],
+    pigeon: ['alert #924d7d'],
+    heather: ['background #5f5570'],
+    // colourways, violet by the role they inherit from the palette they hang on
+    'tilted-harbour': ['bot #7c3aed'],
+    'tilted-sunday': ['bot #7c3aed'],
+    'tilted-primary': ['bot #7c3aed'],
+    'tilted-carmine': ['bot #7c3aed'],
+    'tilted-lagoon': ['bot #7c3aed'],
+    'tilted-graphite': ['bot #7c3aed'],
+    'rings-graphite': ['bot #7c3aed'],
+    'screens-teal-yellow': ['alert #924d7d'],
+    'screens-trio-blue': ['alert #924d7d'],
+    'screens-cyan-coral': ['alert #924d7d'],
+    'screens-cyan-coral-lichen': ['alert #924d7d'],
+    'screens-pink-blue': ['alert #924d7d'],
+  };
+  const seen = (n) => violetInksOf(n).map(([k, c]) => `${k} ${String(c).toLowerCase()}`).join();
+  const newViolet = Object.keys(PALETTES).filter((n) => paletteIsViolet(n) && !VIOLET_TODAY[n]);
+  ok('no palette outside the list of today\'s is violet', newViolet.length === 0,
+     newViolet.map((n) => `${n}: ${seen(n)}`).join('; '));
+  const drifted = Object.entries(VIOLET_TODAY).filter(([n, cs]) => !PALETTES[n] || seen(n) !== cs.join());
+  ok('every listed palette is violet in exactly the colours listed (a cleaned one leaves the list)', drifted.length === 0,
+     drifted.map(([n]) => `${n}: ${PALETTES[n] ? seen(n) || 'not violet any more' : 'gone'}`).join('; '));
+  const hung = Object.values(WORKS).filter((w) => VIOLET_TODAY[w.palette]).length;
+  console.log(`      (${Object.keys(VIOLET_TODAY).length} palettes on the list, ${hung} works hung on them)`);
 }
 
 // --- accents have a ceiling of their own -------------------------------------

@@ -9,10 +9,13 @@
 //
 // Violet is out, by instruction, whatever the seed. Hues are drawn from the
 // wheel with the violet band removed, and anything that still reads as violet
-// once it is in gamut is turned away from it.
+// once it is in gamut is turned away from it. What violet is, is color.js's
+// `isViolet` and nothing else.
 
-import { fromOklch, parseColor, lightnessOf } from './color.js';
+import { fromOklch, parseColor, lightnessOf, isViolet, VIOLET } from './color.js';
 import { PALETTES } from './palettes.js';
+
+export { isViolet };
 
 /** A small seeded generator: the same number always gives the same inks. */
 export function rngOf(seed) {
@@ -26,18 +29,16 @@ export function rngOf(seed) {
   };
 }
 
-/** Red and blue both well above green: what reads as violet. The same rule the interface uses. */
-export function isViolet(c) {
-  const { r, g, b } = parseColor(c);
-  return b > g + 25 && r > g + 25;
-}
-
 const hex = ({ r, g, b }) => '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
 const DEG = Math.PI / 180;
 
-// The violet band of the OKLCH wheel, in degrees: blue-violet through magenta.
-const BAND_FROM = 272;
-const BAND_TO = 348;
+// The hues the drawing keeps off: the violet band, and a margin either side
+// so that an ink fitted into gamut, or shaded by a scene, does not drift in.
+// The margin is wider on the blue side, where the slate blues and periwinkles
+// are not violet but stand right next to it; a drawn ink has no need of them.
+// (272 to 348 degrees, the band these inks were always drawn around.)
+const BAND_FROM = VIOLET.from - 18;
+const BAND_TO = VIOLET.to + 7;
 
 /** A hue in degrees, moved out of the violet band towards whichever edge is nearer. */
 function allowed(h) {
@@ -145,12 +146,38 @@ export function inksOfPalette(name) {
   return out;
 }
 
+/** Every colour written in a value, however deep: a colourway's print is lists and fields. */
+function coloursIn(v, out = []) {
+  if (typeof v === 'string') {
+    if (/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(v.trim())) out.push(v.trim().toLowerCase());
+  } else if (Array.isArray(v)) {
+    for (const x of v) coloursIn(x, out);
+  } else if (v && typeof v === 'object') {
+    for (const x of Object.values(v)) coloursIn(x, out);
+  }
+  return out;
+}
+
+/**
+ * The colours of a named palette that read as violet, each with where it is:
+ * a role (`bot`, `alert`...) or `print` for the colourway its scene draws.
+ * The text colour is left out: it is the labels', not the picture's.
+ *
+ * @returns {Array<[string, string]>} [where, colour]
+ */
+export function violetInksOf(name) {
+  const entry = PALETTES[name];
+  if (!entry) return [];
+  const c = entry.colors;
+  const out = [];
+  for (const k of ['background', 'user', 'anon', 'bot', 'alert', 'default']) if (isViolet(c[k])) out.push([k, c[k]]);
+  for (const v of new Set(coloursIn(c.print))) if (isViolet(v)) out.push(['print', v]);
+  return out;
+}
+
 /** Whether a named palette has any ink that reads as violet. */
 export function paletteIsViolet(name) {
-  const entry = PALETTES[name];
-  if (!entry) return false;
-  const c = entry.colors;
-  return ['background', 'user', 'anon', 'bot', 'alert', 'default'].some((k) => isViolet(c[k]));
+  return violetInksOf(name).length > 0;
 }
 
 /** An rgba() form of a colour. */

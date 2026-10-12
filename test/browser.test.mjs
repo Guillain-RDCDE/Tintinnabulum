@@ -3801,18 +3801,12 @@ ok('and "All" brings every work back', gallery.allBack);
 
 // --- the dock, surprise, and the chrome that gets out of the way ---------------
 const dock = await page.evaluate(async () => {
-  const { SCENES, WORKS } = await import('../src/index.js');
+  const { SCENES, WORKS, isViolet } = await import('../src/index.js');
   const son = window.son;
   const shell = son.shell;
   const sink = son.sinks.find((s) => s.particles);
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const rgb = (c) => {
-    const m = /^#([0-9a-f]{6})$/i.exec(String(c).trim());
-    if (!m) return null;
-    const n = parseInt(m[1], 16);
-    return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
-  };
-  const violet = (c) => { const v = rgb(c); return Boolean(v) && v[2] > v[1] + 25 && v[0] > v[1] + 25; };
+  const violet = (c) => /^#[0-9a-f]{6}$/i.test(String(c).trim()) && isViolet(String(c).trim());
   shell.close();
   const out = {};
 

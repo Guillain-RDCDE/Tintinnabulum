@@ -59,7 +59,8 @@ export {
   GRAIN_STRENGTH, GRAIN_ON, PACE_STEPS, grainAmount, grainStrength, paceStep, settingsOfWork, normalizeSettings,
   toMessage, fromMessage, toQuery, fromQuery, SHOW_KEYS, toStore, fromStore, migrateStore, toHash, fromHash,
 } from './settings.js';
-export { inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, variedParams, seedParams, defaultParams, dialVaries, choicesOf, isViolet, rngOf } from './visual/inks.js';
+export { inkSet, rotateInks, inksOfPalette, paletteFromInks, paletteIsViolet, violetInksOf, variedParams, seedParams, defaultParams, dialVaries, choicesOf, isViolet, rngOf } from './visual/inks.js';
+export { VIOLET } from './visual/color.js';
 export { LIVING, LIVING_ORDER, driftNeighbours, driftColours, daylightColours, moodColours, lightOfHour, busyness } from './visual/living.js';
 
 export { CanvasSink, DEFAULT_PALETTE, BLENDS } from './visual/canvas-sink.js';

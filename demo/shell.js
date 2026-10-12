@@ -13,7 +13,7 @@
 // dock's buttons call the same functions as the panels' controls.
 
 import { SCENES, PALETTES, KITS, WORKS } from '../src/index.js';
-import { parseColor, lightnessOf } from '../src/visual/color.js';
+import { parseColor, lightnessOf, isViolet } from '../src/visual/color.js';
 import { $ } from './dom.js';
 import { store } from './store.js';
 
@@ -31,12 +31,6 @@ const ORDER = ['gallery', 'sound', 'picture', 'data', 'create'];
 const ART_SHELVES = new Set(['Painting', 'Paper and print', 'Nature', 'Water', 'Night', 'Materials']);
 
 const pick = (list) => list[Math.floor(Math.random() * list.length)];
-
-/** Red and blue both well above green: violet, which the interface never wears. */
-const isViolet = (c) => {
-  const { r, g, b } = parseColor(c);
-  return b > g + 25 && r > g + 25;
-};
 
 /**
  * The accent the interface takes from the palette on show: its most colourful
