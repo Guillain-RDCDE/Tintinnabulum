@@ -406,7 +406,7 @@ export const WORKS = {
   network: work('Daylight', 'lively', 'Molecule on yellow', {
     scene: 'constellation', palette: 'citron', kit: 'marimba', space: 'room',
     grain: true, pace: REAL_TIME, dials: { figure: 1, bonds: 0.76 },
-    cartel: 'A whole network of targets in pink, violet, navy, orange and leaf green on lemon yellow, bonded by black lines and dotted ones in the colours of their two ends. The feed keeps adding atoms and the oldest let go.',
+    cartel: 'A whole network of targets in pink, claret, navy, orange and leaf green on lemon yellow, bonded by black lines and dotted ones in the colours of their two ends. The feed keeps adding atoms and the oldest let go.',
   }),
   confetti: work('Dawn', 'lively', 'Confetti molecule', {
     scene: 'constellation', palette: 'confetti', kit: 'musicbox', space: 'room',
@@ -777,7 +777,7 @@ export const WORKS = {
   sketchnotes: work('Dawn', 'calm', 'Colour notes', {
     scene: 'sketchbook', palette: 'daylight', kit: 'glassy', space: 'room',
     ground: 'coldpress', mat: 'thin', pace: UNHURRIED, dials: { figure: 0, pages: 30 },
-    cartel: 'Blue, green, violet and red put down in quick washes, as a painter tries colours on the corner of a sheet, and ringed in pencil. Blue over green goes deeper, red over blue goes violet. Glass; the page is turned every thirty marks.',
+    cartel: 'Blue, green, indigo and red put down in quick washes, as a painter tries colours on the corner of a sheet, and ringed in pencil. Blue over green goes deeper, red over blue goes violet. Glass; the page is turned every thirty marks.',
   }),
   sketchhatched: work('Daylight', 'calm', 'Hatched studies', {
     scene: 'sketchbook', palette: 'papyrus', kit: 'strings', space: 'room',
@@ -792,7 +792,7 @@ export const WORKS = {
   sketchsummer: work('Daylight', 'lively', 'Summer, sketched', {
     scene: 'sketchbook', palette: 'daylight', kit: 'aviary', space: 'room',
     ground: 'coldpress', mat: 'gallery', pace: REAL_TIME, dials: { figure: 2, pages: 60 },
-    cartel: 'The same walk on a brighter day: a blue sky, a red sun, hills of green, violet and red, trees arriving on them as fast as the feed brings them. An aviary.',
+    cartel: 'The same walk on a brighter day: a blue sky, a red sun, hills of green, indigo and red, trees arriving on them as fast as the feed brings them. An aviary.',
   }),
   // Seven views of a patch of a planet's rings: the grains themselves, the
   // copies of the box that hold them, and long exposures of their tracks.

@@ -1,7 +1,7 @@
 import { FINISHES, MATS, applyFinish, drawMat, drawGrain } from './finish.js';
 import { GROUNDS, applyGround } from './grounds.js';
 import { rngFrom } from '../core/event.js';
-import { PALETTES, DEFAULT_PALETTE_NAME, resolvePalette } from './palettes.js';
+import { PALETTES, DEFAULT_PALETTE_NAME, resolvePalette, paletteNameOf } from './palettes.js';
 import { LIVING, driftColours, daylightColours, moodColours, busyness } from './living.js';
 import { shadeOf, lighten, lightnessOf, mixColors } from './color.js';
 import { SHAPES, DEFAULT_SHAPE } from './shapes.js';
@@ -51,7 +51,7 @@ export class CanvasSink {
     this.ctx = this.canvas.getContext('2d');
     this.paletteName =
       typeof opts.palette === 'string' && PALETTES[opts.palette]
-        ? opts.palette
+        ? paletteNameOf(opts.palette)
         : DEFAULT_PALETTE_NAME;
     this.palette = resolvePalette(opts.palette || DEFAULT_PALETTE_NAME);
 
@@ -550,7 +550,7 @@ export class CanvasSink {
     this.palette = resolvePalette(nameOrColors);
     this.paletteName =
       typeof nameOrColors === 'string' && PALETTES[nameOrColors]
-        ? nameOrColors
+        ? paletteNameOf(nameOrColors)
         : this.paletteName;
     this._darkGround = lightnessOf(this.palette.background) < 0.5;
     this._recolor();

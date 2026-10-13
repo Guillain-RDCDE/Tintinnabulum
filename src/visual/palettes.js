@@ -24,7 +24,7 @@ export const PALETTES = {
       default: '#ffffff',
       user: '#5dade2',
       anon: '#2ecc71',
-      bot: '#9b59b6',
+      bot: '#5366ce',
       alert: '#e67e22',
       text: '#ffffff',
       banner: 'rgba(41, 128, 185, 0.85)',
@@ -83,20 +83,22 @@ export const PALETTES = {
     },
   },
 
-  ultraviolet: {
-    label: 'Ultraviolet',
+  // Called Ultraviolet until its magenta and its ground were taken out of the
+  // violet band; the old name still resolves (see the alias below).
+  highlighter: {
+    label: 'Highlighter',
     family: 'Rose',
-    note: 'Magenta and cyan on near-black. The loudest one here.',
+    note: 'Highlighter rose, lime, cyan and amber on a blue-black. The loudest one here.',
     colors: {
-      background: '#0d0518',
+      background: '#060912',
       default: '#f0e6ff',
       user: '#a3e635',
       anon: '#0891b2',
-      bot: '#c026d3',
+      bot: '#e11d48',
       alert: '#fbbf24',
       text: '#f5ecff',
-      banner: 'rgba(192, 38, 211, 0.80)',
-      hud: 'rgba(192, 38, 211, 0.50)',
+      banner: 'rgba(225, 29, 72, 0.80)',
+      hud: 'rgba(225, 29, 72, 0.50)',
     },
   },
 
@@ -120,13 +122,13 @@ export const PALETTES = {
   sakura: {
     label: 'Sakura',
     family: 'Rose',
-    note: 'Blossom and lilac on plum. Soft without losing contrast.',
+    note: 'Blossom and cornflower on plum. Soft without losing contrast.',
     colors: {
       background: '#1b1020',
       default: '#fdf7fb',
       user: '#7ec98f',
       anon: '#ff9ec7',
-      bot: '#8b5cf6',
+      bot: '#4278f8',
       alert: '#ffd166',
       text: '#fff0f6',
       banner: 'rgba(255, 158, 199, 0.75)',
@@ -143,7 +145,7 @@ export const PALETTES = {
       default: '#2f3a45',
       user: '#1d5fa8',
       anon: '#12805f',
-      bot: '#7c3aed',
+      bot: '#4858ec',
       alert: '#dc2626',
       text: '#1c2733',
       banner: 'rgba(47, 58, 69, 0.85)',
@@ -423,7 +425,7 @@ export const PALETTES = {
       default: '#eef1f7',
       user: '#ffb26b',
       anon: '#6ec8ee',
-      bot: '#e0a0d0',
+      bot: '#ecb2bf',
       alert: '#ff5f7a',
       text: '#f3f6fb',
       banner: 'rgba(238, 241, 247, 0.32)',
@@ -896,10 +898,10 @@ export const PALETTES = {
   citron: {
     label: 'Citron',
     family: 'Amber',
-    note: 'Lemon yellow, and on it pink, violet, navy and leaf green: loud colours that hold together because the ground is louder.',
+    note: 'Lemon yellow, and on it pink, claret, navy and leaf green: loud colours that hold together because the ground is louder.',
     colors: {
       background: '#f8d21a',
-      default: '#7a3d86',
+      default: '#923354',
       user: '#2c2f86',
       anon: '#e2468e',
       bot: '#6f8f12',
@@ -1021,7 +1023,7 @@ export const PALETTES = {
       user: '#5e7f08',
       anon: '#cf7205',
       bot: '#2d6fa3',
-      alert: '#7a2e8c',
+      alert: '#971c4f',
       text: '#2b2a10',
       banner: 'rgba(43, 42, 16, 0.85)',
       hud: 'rgba(43, 42, 16, 0.45)',
@@ -1099,14 +1101,14 @@ export const PALETTES = {
   iris: {
     label: 'Iris',
     family: 'Blue',
-    note: 'A cool lavender wall with a yellow square pinned to it, and a teal, a moss, an umber and a plum for everything else.',
+    note: 'A cool lavender wall with a yellow square pinned to it, and a teal, a moss, an umber and a madder red for everything else.',
     colors: {
       background: '#c6c6de',
       default: '#f0c646',
       user: '#2f6f7c',
       anon: '#2d6121',
       bot: '#965719',
-      alert: '#924d7d',
+      alert: '#923141',
       text: '#22223a',
       banner: 'rgba(34, 34, 58, 0.85)',
       hud: 'rgba(34, 34, 58, 0.45)',
@@ -1122,7 +1124,7 @@ export const PALETTES = {
       user: '#05708f',
       anon: '#965719',
       bot: '#447838',
-      alert: '#924d7d',
+      alert: '#9e4766',
       text: '#1d2a20',
       banner: 'rgba(29, 42, 32, 0.85)',
       hud: 'rgba(29, 42, 32, 0.45)',
@@ -1131,14 +1133,14 @@ export const PALETTES = {
   pigeon: {
     label: 'Pigeon',
     family: 'Neutral',
-    note: 'A lilac grey, the breast of a city pigeon, with the same sea blue and a bronze, a jade and a plum.',
+    note: 'A lilac grey, the breast of a city pigeon, with the same sea blue and a bronze, a jade and a madder red.',
     colors: {
       background: '#a9a9bc',
       default: '#057da1',
       user: '#055f7d',
       anon: '#786900',
       bot: '#177c52',
-      alert: '#924d7d',
+      alert: '#9e4b54',
       text: '#17172a',
       banner: 'rgba(23, 23, 42, 0.85)',
       hud: 'rgba(23, 23, 42, 0.45)',
@@ -1388,7 +1390,7 @@ export const PALETTES = {
     family: 'Rose',
     note: 'Moorland in flower, which is a grey with pink underneath it.',
     colors: {
-      background: '#5f5570',
+      background: '#6a5457',
       default: '#e5e2e9',
       user: '#5a9ad3',
       anon: '#e09994',
@@ -1760,6 +1762,22 @@ for (const [key, label, on, note, print] of COLOURWAYS) {
     on,
     colors: { ...PALETTES[on].colors, print: Object.freeze({ ...print, dials: Object.freeze({ ...print.dials }) }) },
   };
+}
+
+// --- old names ------------------------------------------------------------
+//
+// A palette renamed keeps its old name as an alias, so an address, a saved
+// setting or a programme written with it still finds the palette it meant.
+// The alias is not enumerable: a picker, the exhibition's wardrobe and every
+// count see the palette once, under its present name.
+export const PALETTE_ALIASES = Object.freeze({ ultraviolet: 'highlighter' });
+for (const [old, now] of Object.entries(PALETTE_ALIASES)) {
+  Object.defineProperty(PALETTES, old, { value: PALETTES[now], enumerable: false });
+}
+
+/** A palette's present name: an old name is read as the one it became. */
+export function paletteNameOf(name) {
+  return PALETTE_ALIASES[name] || name;
 }
 
 /** Whether a palette is a scene's colourway rather than a palette of its own making. */

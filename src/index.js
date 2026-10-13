@@ -96,6 +96,8 @@ export {
   colourwaysOf,
   colourwayOf,
   colourwayDials,
+  PALETTE_ALIASES,
+  paletteNameOf,
 } from './visual/palettes.js';
 
 export {

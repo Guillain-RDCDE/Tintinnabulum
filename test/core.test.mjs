@@ -835,46 +835,34 @@ ok('a finer division gives a tighter grid', Math.abs(fine - 10.125) < 1e-9, Stri
   ok('the rule is a band of hue with a floor of chroma', VIOLET.from < VIOLET.to && VIOLET.chroma > 0.02 &&
      !isViolet('#7f7f80') && isViolet('#9370db'), JSON.stringify(VIOLET));
 
-  // The palettes that are violet today. They were made before the rule was
-  // one rule, and recolouring them is the owner's call, not a test's: each is
-  // listed with the colours that make it violet, so the list cannot grow
-  // quietly -- a new palette that is violet fails, a listed one that gains
-  // another violet colour fails, and one that is cleaned must leave the list.
-  const VIOLET_TODAY = {
-    nocturne: ['bot #9b59b6'],
-    ultraviolet: ['background #0d0518', 'bot #c026d3'],
-    sakura: ['bot #8b5cf6'],
-    daylight: ['bot #7c3aed'],
-    dusk: ['bot #e0a0d0'],
-    citron: ['default #7a3d86'],
-    orchard: ['alert #7a2e8c'],
-    iris: ['alert #924d7d'],
-    lichen: ['alert #924d7d'],
-    pigeon: ['alert #924d7d'],
-    heather: ['background #5f5570'],
-    // colourways, violet by the role they inherit from the palette they hang on
-    'tilted-harbour': ['bot #7c3aed'],
-    'tilted-sunday': ['bot #7c3aed'],
-    'tilted-primary': ['bot #7c3aed'],
-    'tilted-carmine': ['bot #7c3aed'],
-    'tilted-lagoon': ['bot #7c3aed'],
-    'tilted-graphite': ['bot #7c3aed'],
-    'rings-graphite': ['bot #7c3aed'],
-    'screens-teal-yellow': ['alert #924d7d'],
-    'screens-trio-blue': ['alert #924d7d'],
-    'screens-cyan-coral': ['alert #924d7d'],
-    'screens-cyan-coral-lichen': ['alert #924d7d'],
-    'screens-pink-blue': ['alert #924d7d'],
-  };
+  // No palette is violet, and there is no list of exceptions. Twenty-three
+  // were, when the rule became one rule; they were recoloured, each violet
+  // moved out of the band towards the palette's own colours (an indigo, a
+  // cornflower, a cherry, a madder, a blue-black, a rose grey). Violet in any
+  // role or in its print fails a palette here, whatever it is called.
   const seen = (n) => violetInksOf(n).map(([k, c]) => `${k} ${String(c).toLowerCase()}`).join();
-  const newViolet = Object.keys(PALETTES).filter((n) => paletteIsViolet(n) && !VIOLET_TODAY[n]);
-  ok('no palette outside the list of today\'s is violet', newViolet.length === 0,
-     newViolet.map((n) => `${n}: ${seen(n)}`).join('; '));
-  const drifted = Object.entries(VIOLET_TODAY).filter(([n, cs]) => !PALETTES[n] || seen(n) !== cs.join());
-  ok('every listed palette is violet in exactly the colours listed (a cleaned one leaves the list)', drifted.length === 0,
-     drifted.map(([n]) => `${n}: ${PALETTES[n] ? seen(n) || 'not violet any more' : 'gone'}`).join('; '));
-  const hung = Object.values(WORKS).filter((w) => VIOLET_TODAY[w.palette]).length;
-  console.log(`      (${Object.keys(VIOLET_TODAY).length} palettes on the list, ${hung} works hung on them)`);
+  const violetPalettes = Object.keys(PALETTES).filter((n) => paletteIsViolet(n));
+  ok('no palette is violet', violetPalettes.length === 0,
+     violetPalettes.map((n) => `${n}: ${seen(n)}`).join('; ') || `${Object.keys(PALETTES).length} palettes`);
+  // The banner and the HUD are the interface's, in rgba(): held to it too.
+  const rgbaHex = (v) => {
+    const m = /rgba?\(\s*(\d+),\s*(\d+),\s*(\d+)/.exec(String(v));
+    return m ? '#' + m.slice(1, 4).map((x) => Number(x).toString(16).padStart(2, '0')).join('') : null;
+  };
+  const violetChrome = Object.entries(PALETTES).flatMap(([n, p]) =>
+    ['banner', 'hud'].filter((k) => rgbaHex(p.colors[k]) && isViolet(rgbaHex(p.colors[k]))).map((k) => `${n}.${k}`));
+  ok('no palette dresses its banner or HUD in violet', violetChrome.length === 0, violetChrome.join(', '));
+  const hung = Object.values(WORKS).filter((w) => !PALETTES[w.palette] || paletteIsViolet(w.palette)).map((w) => w.title);
+  ok('no work is hung on a violet palette', hung.length === 0, hung.join(', ') || `${Object.keys(WORKS).length} works`);
+
+  // Ultraviolet was renamed Highlighter once it had no violet left in it; the
+  // old name still resolves, to the same palette, and is offered nowhere twice.
+  const { PALETTE_ALIASES, paletteNameOf } = await import('../src/visual/palettes.js');
+  ok('a renamed palette still answers to its old name',
+     PALETTES.ultraviolet === PALETTES.highlighter && resolvePalette('ultraviolet').bot === PALETTES.highlighter.colors.bot &&
+     paletteNameOf('ultraviolet') === 'highlighter' && paletteNameOf('marine') === 'marine');
+  ok('an old name is never listed beside the new one',
+     Object.keys(PALETTE_ALIASES).every((old) => !Object.keys(PALETTES).includes(old)));
 }
 
 // --- accents have a ceiling of their own -------------------------------------

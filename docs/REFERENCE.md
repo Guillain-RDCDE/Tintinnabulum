@@ -589,7 +589,7 @@ changed, offered fifteen times.
 |---|---|
 | **Paper** — 34 | Daylight, Papyrus, Chalk, Linen, Porcelain, Mint, Blush, Newsprint, Vellum, Ice, Seafoam, Shell, Oyster, Periwinkle, Straw, Rosewater, Celadon, Bone, Atelier, Salon, Citron, Confetti, Sorbet, Cabana, Awning, Orchard, Marquee, Kiosk, Guava, Iris, Lichen, Pigeon, Cobweb, Apricot |
 | **Twilight** — 24 | Slate, Terracotta, Sage, Dusk, Moss, Denim, Ochre, Pewter, Brick, Suede, Olive, Lagoon, Mulberry, Storm, Cedar, Fern, Indigo, Rosewood, Basalt, Marsh, Copper, Harbour, Heather, Tundra |
-| **Night** — 39 | Nocturne, Bronze, Aurora, Ember, Ultraviolet, Blueprint, Sakura, Nordic, Marine, Lacquer, Solar, Sunset, Neon, Rust, Monochrome, Cobalt, Oxblood, Ink, Abyss, Amber, Coal, Wasp, Regatta, Obsidian, Bottle, Carbon, Prussian, Wine, Espresso, Gunmetal, Deep water, Blackcurrant, Pinewood, Ironwork, Dark ochre, Midnight, Forge, Night slate, Night sea |
+| **Night** — 39 | Nocturne, Bronze, Aurora, Ember, Highlighter, Blueprint, Sakura, Nordic, Marine, Lacquer, Solar, Sunset, Neon, Rust, Monochrome, Cobalt, Oxblood, Ink, Abyss, Amber, Coal, Wasp, Regatta, Obsidian, Bottle, Carbon, Prussian, Wine, Espresso, Gunmetal, Deep water, Blackcurrant, Pinewood, Ironwork, Dark ochre, Midnight, Forge, Night slate, Night sea |
 
 **What colour is it.** Declared, and deliberately so. Deriving it was tried and
 is worse than it sounds: a rule reading the ground's hue calls every near-black
@@ -606,7 +606,7 @@ numbers that do not know.
 | **Green** — 13 | Sage, Mint, Moss, Seafoam, Celadon, Awning, Kiosk, Lichen, Olive, Fern, Marsh, Bottle, Pinewood |
 | **Amber** — 17 | Bronze, Rust, Papyrus, Linen, Vellum, Ochre, Amber, Shell, Straw, Citron, Wasp, Orchard, Apricot, Cedar, Copper, Espresso, Dark ochre |
 | **Red** — 12 | Ember, Lacquer, Terracotta, Oxblood, Blush, Brick, Rosewater, Mulberry, Rosewood, Wine, Blackcurrant, Forge |
-| **Rose** — 6 | Ultraviolet, Sakura, Sunset, Neon, Guava, Heather |
+| **Rose** — 6 | Highlighter, Sakura, Sunset, Neon, Guava, Heather |
 | **Neutral** — 22 | Daylight, Monochrome, Chalk, Newsprint, Pewter, Ink, Coal, Oyster, Bone, Atelier, Salon, Confetti, Sorbet, Marquee, Suede, Pigeon, Cobweb, Basalt, Tundra, Obsidian, Carbon, Ironwork |
 
 **The last forty were not chosen by eye.** A search took each ground and
@@ -627,8 +627,13 @@ pinks, slate blues or greys with a cool cast. The edges were set on named
 colours, which the suite keeps. Everything that keeps violet out uses it: the
 inks Create draws, the palettes it offers (`paletteIsViolet`, which also reads
 a colourway's print), the hour's tint on a ground, and the interface's accent.
-The palettes that are violet under it today are listed in the suite with the
-colours that make them so (`violetInksOf`); a new one fails.
+No palette is violet under it, and the suite has no list of exceptions: a
+palette violet in any role or in its print fails, and `violetInksOf` names the
+colours that make it so. The twenty-three that were violet when the rule became
+one rule were recoloured, each violet moved out of the band towards the
+palette's own colours. Ultraviolet, left with no violet in it, became
+**Highlighter**; `ultraviolet` still resolves to it (`PALETTE_ALIASES`), and is
+listed nowhere twice.
 
 ```js
 new CanvasSink('#canvas', { palette: 'bronze' });

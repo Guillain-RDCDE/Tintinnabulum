@@ -2779,7 +2779,8 @@ const recoloured = await page.evaluate(() => {
 });
 ok('circles already on screen are recoloured by a palette change',
    recoloured.born !== recoloured.after, `${recoloured.born} -> ${recoloured.after}`);
-ok('the sink reports the palette it is using', recoloured.name === 'ultraviolet', recoloured.name);
+// Asked for by the name it had before it was renamed, it reports the name it has now.
+ok('the sink reports the palette it is using', recoloured.name === 'highlighter', recoloured.name);
 
 // --- forty swatches, put in front of somebody ---------------------------
 //
