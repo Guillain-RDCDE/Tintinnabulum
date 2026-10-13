@@ -52,7 +52,7 @@ export const PALETTES = {
   aurora: {
     label: 'Aurora',
     family: 'Teal',
-    note: 'Mint and violet over deep teal. Cold and luminous.',
+    note: 'Mint and periwinkle over deep teal. Cold and luminous.',
     colors: {
       background: '#071a1c',
       default: '#d7fff4',
@@ -914,7 +914,7 @@ export const PALETTES = {
   confetti: {
     label: 'Confetti',
     family: 'Neutral',
-    note: 'Cream paper and a bag of party colours on it: pink, violet, navy, orange, leaf green and a teal.',
+    note: 'Cream paper and a bag of party colours on it: pink, indigo, saffron, orange and leaf green.',
     colors: {
       background: '#fbf7e6',
       default: '#f2a91a',
@@ -1133,7 +1133,7 @@ export const PALETTES = {
   pigeon: {
     label: 'Pigeon',
     family: 'Neutral',
-    note: 'A lilac grey, the breast of a city pigeon, with the same sea blue and a bronze, a jade and a madder red.',
+    note: 'A blue-grey, the breast of a city pigeon, with the same sea blue and a bronze, a jade and a madder red.',
     colors: {
       background: '#a9a9bc',
       default: '#057da1',

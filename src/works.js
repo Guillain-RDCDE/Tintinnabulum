@@ -536,7 +536,7 @@ export const WORKS = {
   tonepigeon: work('Dawn', 'lively', 'Blue on pigeon grey', {
     scene: 'screentone', palette: 'screens-pink-blue', kit: 'handbells', space: 'room', ground: 'stucco',
     grain: true, mat: 'frame', pace: REAL_TIME, dials: { turn: -30 },
-    cartel: 'A lilac grey board with grids of black squares laid over one another, white dashes, pink zigzags and black hatching, and a sea-blue square turned on its corner. Handbells; every event cuts a new swatch where it falls.',
+    cartel: 'A blue-grey board with grids of black squares laid over one another, white dashes, pink zigzags and black hatching, and a sea-blue square turned on its corner. Handbells; every event cuts a new swatch where it falls.',
   }),
   // Thirteen specimen sheets of one modular face: lines of glyphs on a grid,
   // each sheet in the colourway it was printed in.
@@ -558,7 +558,7 @@ export const WORKS = {
   glyphcarnival: work('Night', 'lively', 'Specimen, carnival', {
     scene: 'glyphs', palette: 'glyphs-carnival', kit: 'marimba', space: 'room',
     pace: REAL_TIME, dials: { grid: 1, rule: 1, fullness: 0.96 },
-    cartel: 'A sheet set solid on black in six colours at once -- red, lemon, cornflower, mint, saffron and lilac -- fading into one another and into the ground. A marimba; each event re-sets a glyph.',
+    cartel: 'A sheet set solid on black in six colours at once -- red, lemon, cornflower, mint, saffron and periwinkle -- fading into one another and into the ground. A marimba; each event re-sets a glyph.',
   }),
   glyphteal: work('Night', 'calm', 'Specimen, teal', {
     scene: 'glyphs', palette: 'glyphs-teal', kit: 'strings', space: 'room',
@@ -578,7 +578,7 @@ export const WORKS = {
   glyphpastel: work('Dawn', 'calm', 'Specimen, pastel', {
     scene: 'glyphs', palette: 'glyphs-pastel', kit: 'musicbox', space: 'room',
     pace: SLOW, dials: { grid: 1, rule: 0, fullness: 0.9 },
-    cartel: 'Mint, pink, cornflower and lilac on cream with a little black, every fade soft. A music box; every event re-sets the glyph it lands on.',
+    cartel: 'Mint, pink, cornflower and periwinkle on cream with a little black, every fade soft. A music box; every event re-sets the glyph it lands on.',
   }),
   glyphmint: work('Dawn', 'calm', 'Specimen, mint', {
     scene: 'glyphs', palette: 'glyphs-mint', kit: 'chimes', space: 'room',
